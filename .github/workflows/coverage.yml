@@ -1,11 +1,14 @@
-name: Generate Tekton Coverage Dashboard
+name: Generate Konflux Coverage Dashboard
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   schedule:
-    - cron: '0 3 * * *'  # Daily at 03:00 UTC
+    - cron: '0 19 * * *'  # Daily at 19:00 UTC (2:00 PM EST)
   workflow_dispatch:
 
 jobs:
@@ -13,46 +16,96 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: read  # Allow reading PR information
 
     steps:
       - name: Checkout this repo (dashboard)
         uses: actions/checkout@v4
+        with:
+          # For pull requests, this will checkout the PR branch with merge commit
+          # For push events, this will checkout the pushed branch
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
 
       - name: Install tools
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
           pip install yq
+          
+          # Install kind for Kubernetes E2E tests
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+          
+          # Install kubectl
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
 
       - name: Prepare workspace
         run: mkdir workspace
 
-      - name: Checkout gh-pages to access old coverage.json
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages
+      - name: Prepare gh-pages workspace(checkout or init)
+        run: |
+          set -e
+          REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          if git ls-remote --exit-code "$REPO_URL" gh-pages >/dev/null 2>&1; then
+            echo "Checking out existing gh-pages branch"
+            git clone --depth 1 --branch gh-pages "$REPO_URL" gh-pages
+          else
+            echo "gh-pages branch not found. Initializing local workspace"
+            mkdir gh-pages
+            cd gh-pages
+            git init
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git remote add origin "$REPO_URL"
+            git checkout -b gh-pages
+            echo '{"data":[]}' > coverage.json
+            cd ..
+          fi
 
       - name: Clone repos and calculate coverage
         run: |
+          # Set up Kind cluster for E2E tests
+          echo "Setting up Kind cluster for E2E tests..."
+          set +e  # Don't exit on Kind failures
+          if kind create cluster --wait=60s --name coverage-tests; then
+            echo "Kind cluster created successfully"
+            kubectl cluster-info --context kind-coverage-tests
+          else
+            echo "Kind cluster creation failed, E2E tests will be skipped"
+          fi
+          set -e  # Re-enable exit on error
+          
           cd workspace
           echo "[" > ../_temp_coverage.json
 
           COUNT=$(yq '.repositories | length' ../repos.yaml)
 
-          OLD_COVERAGE_JSON=$(cat ../gh-pages/coverage.json || echo "[]")
+          OLD_COVERAGE_JSON=$(cat ../gh-pages/coverage.json || echo '{"data":[]}')
+          
+          # Handle both old format (array) and new format (object with data field)
+          if echo "$OLD_COVERAGE_JSON" | jq -e 'type == "array"' >/dev/null 2>&1; then
+            # Old format: convert array to new format
+            OLD_COVERAGE_JSON=$(echo "$OLD_COVERAGE_JSON" | jq '{data: .}')
+          fi
 
           for i in $(seq 0 $((COUNT - 1))); do
             REPO=$(yq ".repositories[$i].name" ../repos.yaml | tr -d '"')
             REPO_NAME=$(basename "$REPO")
 
             echo "→ Cloning $REPO..."
-            git clone --depth 1 "https://github.com/$REPO.git"
+            if ! git clone --depth 1 "https://github.com/$REPO.git"; then
+              echo "    ❌ Failed to clone $REPO, skipping..."
+              echo "  {\"repo\": \"$REPO\", \"coverage\": null, \"status\": \"clone_failed\" }," >> ../../_temp_coverage.json
+              continue
+            fi
             cd "$REPO_NAME"
 
             # Get exclude patterns and build proper regex
@@ -128,32 +181,44 @@ jobs:
             STATUS="ok"
             COVERAGE="0.0"
 
-            if [ -n "$INCLUDED_PACKAGES" ] && go test -coverprofile=coverage_raw.out $INCLUDED_PACKAGES; then
-              cp coverage_raw.out coverage.out
+            if [ -n "$INCLUDED_PACKAGES" ]; then
+              echo "    Running tests with coverage..."
+              set +e  # Don't exit on test failures
+              go test -coverprofile=coverage_raw.out $INCLUDED_PACKAGES
+              TEST_EXIT_CODE=$?
+              set -e
+              
+              if [ $TEST_EXIT_CODE -eq 0 ] && [ -f coverage_raw.out ]; then
+                cp coverage_raw.out coverage.out
 
-              # Remove excluded files from coverage
-              FILE_COUNT=$(echo "$EXCLUDE_FILES" | yq 'length')
-              for j in $(seq 0 $((FILE_COUNT - 1))); do
-                FILE=$(echo "$EXCLUDE_FILES" | yq ".[$j]" | tr -d '"')
-                echo "    Removing $FILE from coverage"
-                sed -i "/$FILE/d" coverage.out || true
-              done
+                # Remove excluded files from coverage
+                FILE_COUNT=$(echo "$EXCLUDE_FILES" | yq 'length')
+                for j in $(seq 0 $((FILE_COUNT - 1))); do
+                  FILE=$(echo "$EXCLUDE_FILES" | yq ".[$j]" | tr -d '"')
+                  echo "    Removing $FILE from coverage"
+                  sed -i "/$FILE/d" coverage.out || true
+                done
 
-              COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
-              # Generate HTML report
-              go tool cover -html=coverage.out -o coverage.html
-              mkdir -p ../../gh-pages/coverage/$REPO
-              cp coverage.html ../../gh-pages/coverage/$REPO/index.html
-            else
-              echo "    ❌ Coverage failed or no testable packages"
-              STATUS="failed"
-
-              OLD_ENTRY=$(echo "$OLD_COVERAGE_JSON" | jq -r --arg repo "$REPO" '.data[]? | select(.repo == $repo)')
-              if [ -n "$OLD_ENTRY" ]; then
-                COVERAGE=$(echo "$OLD_ENTRY" | jq -r '.coverage')
+                COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+                # Generate HTML report
+                go tool cover -html=coverage.out -o coverage.html
+                mkdir -p ../../gh-pages/coverage/$REPO
+                cp coverage.html ../../gh-pages/coverage/$REPO/index.html
               else
-                COVERAGE=null
+                echo "    ❌ Tests failed (exit code: $TEST_EXIT_CODE) or no coverage file generated"
+                STATUS="failed"
+                
+                OLD_ENTRY=$(echo "$OLD_COVERAGE_JSON" | jq -r --arg repo "$REPO" '.data[]? | select(.repo == $repo)')
+                if [ -n "$OLD_ENTRY" ]; then
+                  COVERAGE=$(echo "$OLD_ENTRY" | jq -r '.coverage')
+                else
+                  COVERAGE=null
+                fi
               fi
+            else
+              echo "    ❌ No testable packages found"
+              STATUS="failed"
+              COVERAGE=null
             fi
 
             echo "    → $REPO coverage: $COVERAGE% (status: $STATUS)"
@@ -176,11 +241,15 @@ jobs:
             '{run_url: $run_url, data: $data}' > coverage.json
 
       - name: Commit and push updated coverage.json
+        # Only push to gh-pages on main branch (not on PRs)
+        if: github.event_name != 'pull_request'
         run: |
           cp coverage.json gh-pages/coverage.json
           cd gh-pages
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
+          REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git remote set-url origin "$REPO_URL"
           git add coverage.json coverage/
           if git diff --cached --quiet; then
             echo "No changes to commit"

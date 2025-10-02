@@ -1,62 +1,5 @@
 repositories:
-  - name: openshift-pipelines/pipelines-as-code
-    exclude_dirs:
-      - cmd/
-      - vendor/
-      - hack/
-      - proto/
-      - test/
-      - pkg/test
-      - tools/
-      - /fake(/|$)
-      - pkg/generated/
-    exclude_files:
-      - zz_generated.deepcopy.go
-      - openapi_generated.go
-
-  - name: tektoncd/results
-    exclude_dirs:
-      - cmd/
-      - vendor/
-      - hack/
-      - proto/
-      - test/
-      - pkg/test
-      - tools/
-      - /fake(/|$)
-    exclude_files:
-      - zz_generated.deepcopy.go
-      - openapi_generated.go
-
-  - name: tektoncd/pipeline
-    exclude_dirs:
-      - cmd/
-      - vendor/
-      - hack/
-      - proto/
-      - test/
-      - /fake(/|$)
-      - pkg/client
-      - third_party
-    exclude_files:
-      - zz_generated.deepcopy.go
-      - openapi_generated.go
-
-  - name: tektoncd/operator
-    exclude_dirs:
-      - cmd/
-      - vendor/
-      - hack/
-      - proto/
-      - test/
-      - /fake(/|$)
-      - pkg/client
-      - third_party
-    exclude_files:
-      - zz_generated.deepcopy.go
-      - openapi_generated.go
-
-  - name: tektoncd/chains
+  - name: konflux-ci/caching
     exclude_dirs:
       - cmd/
       - vendor/
@@ -68,7 +11,7 @@ repositories:
       - zz_generated.deepcopy.go
       - openapi_generated.go
 
-  - name: tektoncd/triggers
+  - name: konflux-ci/crossplane-control-plane
     exclude_dirs:
       - cmd/
       - vendor/
@@ -76,8 +19,42 @@ repositories:
       - proto/
       - test/
       - /fake(/|$)
-      - pkg/client
-      - third_party
+    exclude_files:
+      - zz_generated.deepcopy.go
+      - openapi_generated.go
+
+  - name: konflux-ci/konflux-ci
+    exclude_dirs:
+      - cmd/
+      - vendor/
+      - hack/
+      - proto/
+      - test/
+      - /fake(/|$)
+    exclude_files:
+      - zz_generated.deepcopy.go
+      - openapi_generated.go
+
+  - name: konflux-ci/project-controller
+    exclude_dirs:
+      - cmd/
+      - vendor/
+      - hack/
+      - proto/
+      - test/
+      - /fake(/|$)
+    exclude_files:
+      - zz_generated.deepcopy.go
+      - openapi_generated.go
+
+  - name: konflux-ci/notification-service
+    exclude_dirs:
+      - cmd/
+      - vendor/
+      - hack/
+      - proto/
+      - test/
+      - /fake(/|$)
     exclude_files:
       - zz_generated.deepcopy.go
       - openapi_generated.go
