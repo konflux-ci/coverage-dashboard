@@ -1,0 +1,651 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>icap-server: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/konflux-ci/caching/cmd/icap-server/main.go (75.0%)</option>
+				
+				<option value="file1">github.com/konflux-ci/caching/cmd/squid-per-site-exporter/main.go (51.2%)</option>
+				
+				<option value="file2">github.com/konflux-ci/caching/cmd/squid-store-id/main.go (62.5%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "log"
+        "os"
+        "regexp"
+        "strings"
+
+        "github.com/intra-sh/icap"
+)
+
+var cdnRegex = regexp.MustCompile(`^https://cdn(\d{2})?\.quay\.io/.+/sha256/.+/[a-f0-9]{64}`)
+
+// reqmodHandler handles REQMOD requests
+func reqmodHandler(w icap.ResponseWriter, req *icap.Request) <span class="cov8" title="1">{
+        h := w.Header()
+        h.Set("ISTag", "\"SQUID-ICAP-REQMOD\"")
+        h.Set("Service", "Squid ICAP REQMOD")
+
+        switch req.Method </span>{
+        case "OPTIONS":<span class="cov8" title="1">
+                h.Set("Methods", "REQMOD")
+                // Support 204 responses (if the client also allows it)
+                h.Set("Allow", "204")
+                // Don't allow clients to send preview bytes
+                h.Set("Preview", "0")
+                writeHeaderAndLog(w, req, 200)</span>
+        case "REQMOD":<span class="cov8" title="1">
+                // If there is no encapsulated HTTP request, return a 200 response
+                if req.Request == nil </span><span class="cov8" title="1">{
+                        writeHeaderAndLog(w, req, 200)
+                        return
+                }</span>
+
+                // If the request is for a CDN URL, delete the Authorization header
+                <span class="cov8" title="1">if cdnRegex.MatchString(req.Request.URL.String()) </span><span class="cov8" title="1">{
+                        req.Request.Header.Del("Authorization")
+                        writeHeaderAndLog(w, req, 200)
+                        return
+                }</span>
+
+                // No modification is needed for the request
+                // If the client allows 204 responses, use that to reduce bandwidth usage
+                <span class="cov8" title="1">if req.Header.Get("Allow") == "204" </span><span class="cov8" title="1">{
+                        writeHeaderAndLog(w, req, 204)
+                        return
+                }</span>
+
+                // Otherwise, return a 200 response
+                <span class="cov8" title="1">writeHeaderAndLog(w, req, 200)</span>
+        default:<span class="cov8" title="1">
+                // Unsupported method
+                writeHeaderAndLog(w, req, 405)</span>
+        }
+}
+
+// writeHeaderAndLog writes the ICAP response header and logs the request with the resulting status code
+func writeHeaderAndLog(w icap.ResponseWriter, req *icap.Request, code int) <span class="cov8" title="1">{
+        url := ""
+        if req.Request != nil </span><span class="cov8" title="1">{
+                // Remove credentials and potentially sensitive query parameters from the encapsulate HTTP request URL
+                url = strings.SplitN(req.Request.URL.Redacted(), "?", 2)[0]
+        }</span>
+
+        <span class="cov8" title="1">log.Println(req.Method, code, url)
+
+        if req.Request != nil &amp;&amp; code == 200 </span><span class="cov8" title="1">{
+                w.WriteHeader(code, req.Request, false)
+        }</span> else<span class="cov8" title="1"> {
+                w.WriteHeader(code, nil, false)
+        }</span>
+}
+
+func main() <span class="cov0" title="0">{
+        log.SetOutput(os.Stdout)
+
+        port := os.Getenv("ICAP_PORT")
+        if port == "" </span><span class="cov0" title="0">{
+                port = "1344"
+        }</span>
+
+        <span class="cov0" title="0">icap.HandleFunc("/reqmod", reqmodHandler)
+
+        log.Println("Starting ICAP server on port", port)
+        if err := icap.ListenAndServe(":"+port, nil); err != nil </span><span class="cov0" title="0">{
+                log.Println("Error starting server:", err)
+                os.Exit(1)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package main
+
+import (
+        "bufio"
+        "flag"
+        "log"
+        "net"
+        "net/http"
+        "net/url"
+        "os"
+        "strconv"
+        "strings"
+        "sync"
+        "time"
+
+        "github.com/prometheus/client_golang/prometheus"
+        "github.com/prometheus/client_golang/prometheus/promhttp"
+        dto "github.com/prometheus/client_model/go"
+)
+
+// fileExists returns true if the path exists and is not a directory
+func fileExists(path string) bool <span class="cov0" title="0">{
+        if path == "" </span><span class="cov0" title="0">{
+                return false
+        }</span>
+        <span class="cov0" title="0">if info, err := os.Stat(path); err == nil </span><span class="cov0" title="0">{
+                return !info.IsDir()
+        }</span>
+        <span class="cov0" title="0">return false</span>
+}
+
+// getEnvDefault returns the environment variable value or the default if not set
+func getEnvDefault(key, defaultValue string) string <span class="cov0" title="0">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                return value
+        }</span>
+        <span class="cov0" title="0">return defaultValue</span>
+}
+
+// getEnvDurationDefault returns the duration from env or the provided default
+func getEnvDurationDefault(key string, defaultValue time.Duration) time.Duration <span class="cov0" title="0">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                if d, err := time.ParseDuration(value); err == nil </span><span class="cov0" title="0">{
+                        return d
+                }</span>
+        }
+        <span class="cov0" title="0">return defaultValue</span>
+}
+
+var (
+        // Prometheus metrics
+        squidHitRatio = prometheus.NewGaugeVec(
+                prometheus.GaugeOpts{
+                        Name: "squid_site_hit_ratio",
+                        Help: "Hit ratio per site (hits / (hits + misses))",
+                },
+                []string{"hostname"},
+        )
+
+        squidHitTotal = prometheus.NewCounterVec(
+                prometheus.CounterOpts{
+                        Name: "squid_site_hits_total",
+                        Help: "Total number of cache hits per site",
+                },
+                []string{"hostname"},
+        )
+
+        squidMissTotal = prometheus.NewCounterVec(
+                prometheus.CounterOpts{
+                        Name: "squid_site_misses_total",
+                        Help: "Total number of cache misses per site",
+                },
+                []string{"hostname"},
+        )
+
+        squidRequestsTotal = prometheus.NewCounterVec(
+                prometheus.CounterOpts{
+                        Name: "squid_site_requests_total",
+                        Help: "Total number of requests per site",
+                },
+                []string{"hostname"},
+        )
+
+        squidBytesTotal = prometheus.NewCounterVec(
+                prometheus.CounterOpts{
+                        Name: "squid_site_bytes_total",
+                        Help: "Total bytes transferred per site",
+                },
+                []string{"hostname"},
+        )
+
+        squidResponseTime = prometheus.NewHistogramVec(
+                prometheus.HistogramOpts{
+                        Name:    "squid_site_response_time_seconds",
+                        Help:    "Response time per site in seconds",
+                        Buckets: prometheus.DefBuckets,
+                },
+                []string{"hostname"},
+        )
+)
+
+type Exporter struct {
+        mutex     sync.RWMutex
+        parseFunc func(string)
+}
+
+func NewExporter() *Exporter <span class="cov8" title="1">{
+        e := &amp;Exporter{}
+        // Default parsing function
+        e.parseFunc = e.parseLogLine
+        return e
+}</span>
+
+// getCounterValue reads the current value of a labeled Counter from a CounterVec
+func getCounterValue(vec *prometheus.CounterVec, hostname string) (float64, error) <span class="cov8" title="1">{
+        m, err := vec.GetMetricWithLabelValues(hostname)
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, err
+        }</span>
+        <span class="cov8" title="1">pb := &amp;dto.Metric{}
+        if err := m.Write(pb); err != nil </span><span class="cov0" title="0">{
+                return 0, err
+        }</span>
+        <span class="cov8" title="1">if pb.Counter == nil || pb.Counter.Value == nil </span><span class="cov0" title="0">{
+                return 0, nil
+        }</span>
+        <span class="cov8" title="1">return pb.Counter.GetValue(), nil</span>
+}
+
+func (e *Exporter) parseLogLine(line string) <span class="cov8" title="1">{
+        // Squid log format: timestamp elapsedtime remotehost code/status bytes method URL rfc931 peerstatus/peerhost type
+        fields := strings.Fields(line)
+        if len(fields) &lt; 7 </span><span class="cov8" title="1">{
+                log.Printf("Malformed access log entry: need &gt;=7 fields, got %d: %q", len(fields), line)
+                return
+        }</span>
+
+        // Extract relevant fields
+        <span class="cov8" title="1">elapsedTimeStr := fields[1]
+        codeStatus := fields[3]
+        bytesStr := fields[4]
+        method := fields[5]
+        urlStr := fields[6]
+
+        // Skip non-HTTP methods
+        if method == "-" </span><span class="cov0" title="0">{
+                log.Printf("Skipping non-HTTP request for line: %q", line)
+                return
+        }</span>
+
+        // Silently skip uncacheable methods to avoid filling the logs with unnecessary noise.
+        // GET and HEAD requests are cacheable.
+        // POST and PATCH are conditionally cacheable if the necessary response headers are set.
+        // See: https://wiki.squid-cache.org/SquidFaq/SquidLogs#request-methods
+        <span class="cov8" title="1">if method != "GET" &amp;&amp; method != "HEAD" &amp;&amp; method != "POST" &amp;&amp; method != "PATCH" </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        // Parse URL to extract hostname
+        <span class="cov8" title="1">parsedURL, err := url.Parse(urlStr)
+        if err != nil </span><span class="cov8" title="1">{
+                log.Printf("Invalid request URL %q: %v", urlStr, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">hostname := parsedURL.Hostname()
+        if hostname == "" </span><span class="cov0" title="0">{
+                log.Printf("Missing hostname in URL %q", urlStr)
+                return
+        }</span>
+
+        // Parse bytes
+        <span class="cov8" title="1">bytes, err := strconv.ParseInt(bytesStr, 10, 64)
+        if err != nil </span><span class="cov0" title="0">{
+                bytes = 0
+        }</span>
+
+        // Parse elapsed time
+        <span class="cov8" title="1">elapsedTime, err := strconv.ParseFloat(elapsedTimeStr, 64)
+        if err != nil </span><span class="cov0" title="0">{
+                elapsedTime = 0
+        }</span>
+
+        // Determine hit/miss from result code (token before '/')
+        // Consider only codes ending in "_HIT" as cache hits (e.g., TCP_HIT, MEM_HIT).
+        <span class="cov8" title="1">statusToken := codeStatus
+        if idx := strings.Index(codeStatus, "/"); idx &gt;= 0 </span><span class="cov8" title="1">{
+                statusToken = codeStatus[:idx]
+        }</span>
+        <span class="cov8" title="1">isHit := strings.HasSuffix(statusToken, "_HIT")
+
+        // Update Prometheus metrics
+        e.mutex.Lock()
+        defer e.mutex.Unlock()
+
+        squidRequestsTotal.WithLabelValues(hostname).Inc()
+        squidBytesTotal.WithLabelValues(hostname).Add(float64(bytes))
+        squidResponseTime.WithLabelValues(hostname).Observe(elapsedTime / 1000.0) // Convert ms to seconds
+
+        if isHit </span><span class="cov8" title="1">{
+                squidHitTotal.WithLabelValues(hostname).Inc()
+        }</span> else<span class="cov8" title="1"> {
+                squidMissTotal.WithLabelValues(hostname).Inc()
+        }</span>
+
+        // Ensure both hit and miss counters are initialized (even if 0) for this hostname
+        // This ensures squid_site_hits_total appears in metrics output even with 0 value
+        <span class="cov8" title="1">squidHitTotal.WithLabelValues(hostname).Add(0)
+        squidMissTotal.WithLabelValues(hostname).Add(0)
+
+        // Update hit ratio from Prometheus counters to keep alignment with exported metrics
+        hits, _ := getCounterValue(squidHitTotal, hostname)
+        reqs, _ := getCounterValue(squidRequestsTotal, hostname)
+        if reqs &gt; 0 </span><span class="cov8" title="1">{
+                squidHitRatio.WithLabelValues(hostname).Set(hits / reqs)
+        }</span>
+}
+
+func (e *Exporter) readFromStdin() <span class="cov8" title="1">{
+        // Fail fast if constructed without NewExporter()
+        if e.parseFunc == nil </span><span class="cov0" title="0">{
+                panic("Exporter not initialized correctly: use NewExporter() to set parseFunc")</span>
+        }
+        <span class="cov8" title="1">log.Printf("Reading squid logs from stdin")
+        scanner := bufio.NewScanner(os.Stdin)
+
+        for scanner.Scan() </span><span class="cov8" title="1">{
+                line := scanner.Text()
+                if line != "" </span><span class="cov8" title="1">{
+                        e.parseFunc(line)
+                        // Forward input to stdout so container logs still contain Squid access logs
+                        if _, err := os.Stdout.WriteString(line + "\n"); err != nil </span><span class="cov0" title="0">{
+                                log.Fatalf("Failed to forward log line to stdout: %v", err)
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">if err := scanner.Err(); err != nil </span><span class="cov0" title="0">{
+                log.Printf("Error reading from stdin: %v", err)
+        }</span>
+}
+
+func init() <span class="cov8" title="1">{
+        // Register Prometheus metrics
+        prometheus.MustRegister(squidHitRatio)
+        prometheus.MustRegister(squidHitTotal)
+        prometheus.MustRegister(squidMissTotal)
+        prometheus.MustRegister(squidRequestsTotal)
+        prometheus.MustRegister(squidBytesTotal)
+        prometheus.MustRegister(squidResponseTime)
+}</span>
+
+func main() <span class="cov0" title="0">{
+        // Configuration with environment variable fallbacks for container-friendly deployment
+        listenAddress := flag.String("web.listen-address",
+                getEnvDefault("WEB_LISTEN_ADDRESS", ":9302"),
+                "Address to listen on for web interface and telemetry. (Env: WEB_LISTEN_ADDRESS)")
+
+        // TLS configuration flags with environment variable support
+        tlsCertFile := flag.String("web.tls-cert-file",
+                getEnvDefault("WEB_TLS_CERT_FILE", "/etc/squid/certs/tls.crt"),
+                "Path to TLS certificate file (enables HTTPS). (Env: WEB_TLS_CERT_FILE)")
+        tlsKeyFile := flag.String("web.tls-key-file",
+                getEnvDefault("WEB_TLS_KEY_FILE", "/etc/squid/certs/tls.key"),
+                "Path to TLS private key file (enables HTTPS). (Env: WEB_TLS_KEY_FILE)")
+        // Require TLS by default; explicitly disable to allow HTTP
+        tlsRequired := flag.Bool("web.tls-required",
+                getEnvDefault("WEB_TLS_REQUIRED", "true") == "true",
+                "Require TLS certificate and key to be present. If true and files are missing, the server will not start. (Env: WEB_TLS_REQUIRED)")
+
+        // Health check options
+        squidHealthAddr := flag.String("squid.health-addr",
+                getEnvDefault("SQUID_HEALTH_ADDR", "127.0.0.1:3128"),
+                "Address to check Squid health (host:port). (Env: SQUID_HEALTH_ADDR)")
+        squidHealthTimeout := flag.Duration("squid.health-timeout",
+                getEnvDurationDefault("SQUID_HEALTH_TIMEOUT", 500*time.Millisecond),
+                "Timeout for Squid health dial (e.g., 500ms). (Env: SQUID_HEALTH_TIMEOUT)")
+
+        flag.Parse()
+
+        log.Printf("Starting squid per-site exporter")
+        log.Printf("Listening on %s", *listenAddress)
+        log.Printf("Reading logs from stdin (use shell redirection for files)")
+
+        exporter := NewExporter()
+
+        // Start reading from stdin in background
+        go exporter.readFromStdin()
+
+        // Setup HTTP handlers
+        // Use HandlerFor with custom options to control content type format
+        handler := promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
+                // Disable the escaping=values parameter to match expected format
+                EnableOpenMetrics: false,
+        })
+        http.Handle("/metrics", handler)
+        http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+                w.Write([]byte(`&lt;html&gt;
+                        &lt;head&gt;&lt;title&gt;Squid Per-Site Exporter&lt;/title&gt;&lt;/head&gt;
+                        &lt;body&gt;
+                        &lt;h1&gt;Squid Per-Site Exporter&lt;/h1&gt;
+                        &lt;p&gt;&lt;a href='/metrics'&gt;Metrics&lt;/a&gt;&lt;/p&gt;
+                        &lt;/body&gt;
+                        &lt;/html&gt;`))
+        }</span>)
+
+        // Health check endpoint: validates exporter process and Squid TCP port
+        <span class="cov0" title="0">http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+                conn, err := net.DialTimeout("tcp", *squidHealthAddr, *squidHealthTimeout)
+                if err != nil </span><span class="cov0" title="0">{
+                        http.Error(w, "squid unreachable", http.StatusServiceUnavailable)
+                        return
+                }</span>
+                <span class="cov0" title="0">_ = conn.Close()
+                w.WriteHeader(http.StatusOK)
+                w.Write([]byte("OK"))</span>
+        })
+
+        // Start server based on TLS configuration
+        <span class="cov0" title="0">certPresent := fileExists(*tlsCertFile) &amp;&amp; fileExists(*tlsKeyFile)
+        if *tlsRequired </span><span class="cov0" title="0">{
+                if certPresent </span><span class="cov0" title="0">{
+                        log.Printf("Starting HTTPS server on %s", *listenAddress)
+                        log.Printf("Using TLS cert: %s", *tlsCertFile)
+                        log.Printf("Using TLS key: %s", *tlsKeyFile)
+                        log.Fatal(http.ListenAndServeTLS(*listenAddress, *tlsCertFile, *tlsKeyFile, nil))
+                }</span>
+                <span class="cov0" title="0">log.Fatalf("TLS required but certificate or key not found (cert: %s, key: %s).", *tlsCertFile, *tlsKeyFile)</span>
+        } else<span class="cov0" title="0"> {
+                if certPresent </span><span class="cov0" title="0">{
+                        log.Printf("TLS not required but certificates found; starting HTTPS on %s", *listenAddress)
+                        log.Fatal(http.ListenAndServeTLS(*listenAddress, *tlsCertFile, *tlsKeyFile, nil))
+                }</span>
+                <span class="cov0" title="0">log.Printf("TLS disabled; starting HTTP server on %s", *listenAddress)
+                log.Fatal(http.ListenAndServe(*listenAddress, nil))</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package main
+
+import (
+        "bufio"
+        "fmt"
+        "log"
+        "net/http"
+        "os"
+        "regexp"
+        "strconv"
+        "strings"
+)
+
+var cdnRegex = regexp.MustCompile(`^https://cdn(\d{2})?\.quay\.io/.+/sha256/.+/[a-f0-9]{64}`)
+
+// HTTPClient interface for making HTTP requests (allows mocking)
+type HTTPClient interface {
+        Get(url string) (*http.Response, error)
+}
+
+// isChannelID checks if a string represents a positive integer (for channel-ID detection)
+func isChannelID(s string) bool <span class="cov8" title="1">{
+        val, err := strconv.ParseInt(s, 10, 64)
+        return err == nil &amp;&amp; val &gt;= 0
+}</span>
+
+// normalizeStoreID normalizes the store-id for caching by removing query parameters from CDN URLs.
+// The request URL must return a 200 status code to ensure the request is authorized.
+func normalizeStoreID(client HTTPClient, requestURL string) string <span class="cov8" title="1">{
+        if !cdnRegex.MatchString(requestURL) </span><span class="cov8" title="1">{
+                return requestURL
+        }</span>
+
+        // Issue the request to the CDN to check authorization but don't read the body
+        <span class="cov8" title="1">resp, err := client.Get(requestURL)
+        if err != nil </span><span class="cov8" title="1">{
+                // Don't log the request URL to avoid leaking sensitive information
+                log.Printf("Error getting URL: %v", err)
+                return requestURL
+        }</span>
+
+        <span class="cov8" title="1">defer resp.Body.Close()
+
+        if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
+                log.Printf("Error getting URL, status code: %v", resp.StatusCode)
+                return requestURL
+        }</span>
+
+        // Return the URL without query parameters as the cache key
+        <span class="cov8" title="1">return strings.SplitN(requestURL, "?", 2)[0]</span>
+}
+
+// parseLine parses the input line according to Squid protocol:
+// [channel-ID &lt;SP&gt;] request-URL [&lt;SP&gt; extras] &lt;NL&gt;
+// and returns the response for Squid.
+func parseLine(line string, normalizeFunc func(HTTPClient, string) string) string <span class="cov8" title="1">{
+        parts := strings.Fields(line)
+
+        var requestURL string
+        var response string
+
+        // Determine if we have a channel-ID (numeric first field)
+        if len(parts) &gt;= 2 &amp;&amp; isChannelID(parts[0]) </span><span class="cov8" title="1">{
+                response = parts[0] + " "
+                parts = parts[1:]
+        }</span>
+
+        <span class="cov8" title="1">requestURL = parts[0]
+
+        // Normalize the store-id for caching
+        storeID := normalizeFunc(http.DefaultClient, requestURL)
+
+        if storeID != requestURL </span><span class="cov8" title="1">{
+                // Return the normalized store-id for caching
+                response += fmt.Sprintf("OK store-id=%s", storeID)
+        }</span> else<span class="cov8" title="1"> {
+                // No normalization needed
+                response += "OK"
+        }</span>
+        <span class="cov8" title="1">return response</span>
+}
+
+func main() <span class="cov0" title="0">{
+        // Initialize logging to stderr so it doesn't interfere with stdout communication
+        log.SetOutput(os.Stderr)
+        log.SetPrefix("[squid-store-id] ")
+
+        log.Println("Starting Squid store-id helper")
+
+        // Create scanner to read from stdin line by line
+        scanner := bufio.NewScanner(os.Stdin)
+
+        // Process each line from Squid
+        for scanner.Scan() </span><span class="cov0" title="0">{
+                line := strings.TrimSpace(scanner.Text())
+
+                if line == "" </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">response := parseLine(line, normalizeStoreID)
+
+                log.Printf("Response: %s", response)
+                fmt.Println(response)</span>
+        }
+
+        // Check for scanning errors
+        <span class="cov0" title="0">if err := scanner.Err(); err != nil </span><span class="cov0" title="0">{
+                log.Printf("Error reading from stdin: %v", err)
+                os.Exit(1)
+        }</span>
+
+        <span class="cov0" title="0">log.Println("Squid store-id helper shutting down")</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

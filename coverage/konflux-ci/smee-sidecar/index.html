@@ -1,0 +1,537 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>cmd: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/konflux-ci/smee-sidecar/cmd/main.go (57.1%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "bytes"
+        "context"
+        "crypto/tls"
+        _ "embed"
+        "encoding/json"
+        "fmt"
+        "io"
+        "log"
+        "net/http"
+        "net/http/httputil"
+        "net/http/pprof"
+        "net/url"
+        "os"
+        "path/filepath"
+        "strconv"
+        "sync"
+        "time"
+
+        "github.com/google/uuid"
+
+        "github.com/prometheus/client_golang/prometheus"
+        "github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+//go:embed scripts/check-smee-health.sh
+var smeeHealthScript []byte
+
+//go:embed scripts/check-sidecar-health.sh
+var sidecarHealthScript []byte
+
+//go:embed scripts/check-file-age.sh
+var fileAgeScript []byte
+
+// HealthStatus represents the current health status
+type HealthStatus struct {
+        Status  string // "success" or "failure"
+        Message string
+}
+
+var (
+        forwardAttempts = prometheus.NewCounter(
+                prometheus.CounterOpts{
+                        Name: "smee_events_relayed_total",
+                        Help: "Total number of regular events relayed by the sidecar.",
+                },
+        )
+        // Gauge metric to track the health check status.
+        health_check = prometheus.NewGauge(
+                prometheus.GaugeOpts{
+                        Name: "health_check",
+                        Help: "Indicates the outcome of the last completed health check (1 for OK, 0 for failure).",
+                },
+        )
+        // The mutex protects a map where the KEY is the test ID
+        // and the VALUE is a channel that the handler will wait on.
+        healthChecks = make(map[string]chan bool)
+        mutex        = &amp;sync.Mutex{}
+        // Global downstream service URL for per-request proxy creation
+        downstreamServiceURL string
+
+        // Shared HTTP clients to prevent resource accumulation
+        healthCheckClient *http.Client
+        proxyInstance     *httputil.ReverseProxy
+
+        // Thread-safe initialization
+        healthCheckOnce sync.Once
+        proxyOnce       sync.Once
+        proxyError      error
+)
+
+type HealthCheckPayload struct {
+        Type string `json:"type"`
+        ID   string `json:"id"`
+}
+
+// createOptimizedTransport creates a transport with proper resource limits
+func createOptimizedTransport() *http.Transport <span class="cov8" title="1">{
+        return &amp;http.Transport{
+                TLSClientConfig: &amp;tls.Config{
+                        InsecureSkipVerify: "true" == os.Getenv("INSECURE_SKIP_VERIFY"),
+                },
+                DisableKeepAlives:     false,
+                MaxIdleConns:          10,
+                MaxIdleConnsPerHost:   2,
+                MaxConnsPerHost:       10,
+                IdleConnTimeout:       90 * time.Second,
+                ResponseHeaderTimeout: 30 * time.Second,
+                ExpectContinueTimeout: 1 * time.Second,
+                DisableCompression:    false,
+        }
+}</span>
+
+// getHealthCheckClient returns the shared health check client, creating it lazily if needed
+func getHealthCheckClient() *http.Client <span class="cov8" title="1">{
+        healthCheckOnce.Do(func() </span><span class="cov8" title="1">{
+                healthCheckClient = &amp;http.Client{
+                        Transport: createOptimizedTransport(),
+                        Timeout:   30 * time.Second,
+                }
+        }</span>)
+        <span class="cov8" title="1">return healthCheckClient</span>
+}
+
+// getProxyInstance returns the shared proxy instance, creating it lazily if needed
+func getProxyInstance() (*httputil.ReverseProxy, error) <span class="cov8" title="1">{
+        proxyOnce.Do(func() </span><span class="cov8" title="1">{
+                parsedURL, err := url.Parse(downstreamServiceURL)
+                if err != nil </span><span class="cov8" title="1">{
+                        proxyError = fmt.Errorf("could not parse downstream URL %s: %v", downstreamServiceURL, err)
+                        return
+                }</span>
+                <span class="cov8" title="1">proxyInstance = httputil.NewSingleHostReverseProxy(parsedURL)
+                proxyInstance.Transport = createOptimizedTransport()</span>
+        })
+        <span class="cov8" title="1">return proxyInstance, proxyError</span>
+}
+
+// forwardHandler needs to find the correct channel to signal success.
+func forwardHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        // Check for health check header first (fast path)
+        if healthCheckID := r.Header.Get("X-Health-Check-ID"); healthCheckID != "" </span><span class="cov8" title="1">{
+                // Always drain request body to prevent connection reuse issues
+                _, _ = io.Copy(io.Discard, r.Body)
+
+                // Force connection closure for health checks to prevent connection pooling
+                w.Header().Set("Connection", "close")
+
+                mutex.Lock()
+                resultChan, exists := healthChecks[healthCheckID]
+                mutex.Unlock()
+
+                if exists </span><span class="cov8" title="1">{
+                        // Signal that we received the health check event
+                        select </span>{
+                        case resultChan &lt;- true:<span class="cov8" title="1"></span>
+                        default:<span class="cov0" title="0"></span>
+                                // Channel is full or closed, ignore
+                        }
+                }
+
+                <span class="cov8" title="1">w.WriteHeader(http.StatusOK)
+                return</span>
+        }
+
+        // Forward real webhook events directly - no need to read body into memory
+
+        // Use the shared proxy instance
+        <span class="cov8" title="1">proxy, err := getProxyInstance()
+        if err != nil </span><span class="cov8" title="1">{
+                http.Error(w, "internal server error: failed to create proxy", http.StatusInternalServerError)
+                return
+        }</span>
+
+        // Only count actual forwarding attempts (after successful proxy creation)
+        <span class="cov8" title="1">forwardAttempts.Inc()
+        proxy.ServeHTTP(w, r)</span>
+}
+
+// writeScriptsToVolume writes the embedded probe scripts to the shared volume
+func writeScriptsToVolume(sharedPath string) error <span class="cov8" title="1">{
+        scripts := map[string][]byte{
+                "check-smee-health.sh":    smeeHealthScript,
+                "check-sidecar-health.sh": sidecarHealthScript,
+                "check-file-age.sh":       fileAgeScript,
+        }
+
+        for filename, content := range scripts </span><span class="cov8" title="1">{
+                scriptPath := filepath.Join(sharedPath, filename)
+
+                // Check if file exists and make it writable before overwriting
+                // This handles container restarts where the volume persists with read-only files
+                if _, err := os.Stat(scriptPath); err == nil </span><span class="cov8" title="1">{
+                        if err := os.Chmod(scriptPath, 0755); err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to make %s writable: %v", filename, err)
+                        }</span>
+                }
+
+                <span class="cov8" title="1">if err := os.WriteFile(scriptPath, content, 0755); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to write %s: %v", filename, err)
+                }</span>
+
+                // Make script read-only to prevent accidental modification
+                <span class="cov8" title="1">if err := os.Chmod(scriptPath, 0555); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to make %s read-only: %v", filename, err)
+                }</span>
+
+                <span class="cov8" title="1">log.Printf("Wrote read-only probe script: %s", scriptPath)</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+// writeHealthStatus writes health status to file atomically
+func writeHealthStatus(status *HealthStatus, filePath string) error <span class="cov8" title="1">{
+        // Simple format with only fields used by probe scripts
+        content := fmt.Sprintf("status=%s\nmessage=%s\n",
+                status.Status,
+                status.Message,
+        )
+
+        // Atomic write: write to temp file, then rename
+        tmpPath := filePath + ".tmp"
+        if err := os.WriteFile(tmpPath, []byte(content), 0644); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to write temp file: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">if err := os.Rename(tmpPath, filePath); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to rename temp file: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// performHealthCheck executes a single end-to-end health check
+func performHealthCheck(smeeChannelURL string, timeoutSeconds int) *HealthStatus <span class="cov8" title="1">{
+        ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSeconds)*time.Second)
+        defer cancel()
+
+        testID := uuid.New().String()
+        status := &amp;HealthStatus{
+                Status:  "failure",
+                Message: "Health check failed",
+        }
+
+        payload := HealthCheckPayload{Type: "health-check", ID: testID}
+        payloadBytes, _ := json.Marshal(payload)
+
+        // Create a channel for this specific request and register it.
+        resultChan := make(chan bool, 1)
+        mutex.Lock()
+        healthChecks[testID] = resultChan
+        mutex.Unlock()
+
+        // Ensure we always clean up the map entry for this ID.
+        defer func() </span><span class="cov8" title="1">{
+                mutex.Lock()
+                delete(healthChecks, testID)
+                mutex.Unlock()
+        }</span>()
+
+        // Create and send the POST request.
+        <span class="cov8" title="1">req, err := http.NewRequestWithContext(ctx, "POST", smeeChannelURL, bytes.NewBuffer(payloadBytes))
+        if err != nil </span><span class="cov0" title="0">{
+                status.Message = fmt.Sprintf("Failed to create request: %v", err)
+                return status
+        }</span>
+
+        // Send health check ID in header for fast detection AND JSON body for server compatibility
+        <span class="cov8" title="1">req.Header.Set("X-Health-Check-ID", testID)
+        req.Header.Set("Content-Type", "application/json")
+
+        // Ensure connection is closed after use
+        req.Close = true
+
+        // Use the shared HTTP client
+        client := getHealthCheckClient()
+
+        resp, err := client.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
+                status.Message = fmt.Sprintf("Failed to POST to smee server: %v", err)
+                return status
+        }</span>
+
+        // Always close response body to prevent resource leaks
+        <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{
+                if resp != nil &amp;&amp; resp.Body != nil </span><span class="cov8" title="1">{
+                        // Drain and close the body to ensure resources are freed
+                        _, _ = io.Copy(io.Discard, resp.Body)
+                        resp.Body.Close()
+                }</span>
+        }()
+
+        // Wait for the forwardHandler to receive the event, or for the timeout.
+        <span class="cov8" title="1">select </span>{
+        case &lt;-resultChan:<span class="cov8" title="1">
+                status.Status = "success"
+                status.Message = "Health check completed successfully"</span>
+        case &lt;-ctx.Done():<span class="cov8" title="1">
+                status.Message = "Health check timed out waiting for event round-trip"</span>
+        }
+
+        <span class="cov8" title="1">return status</span>
+}
+
+// runHealthChecker runs the background health checker
+func runHealthChecker(ctx context.Context, smeeChannelURL, healthFilePath string, intervalSeconds, timeoutSeconds int) <span class="cov8" title="1">{
+        ticker := time.NewTicker(time.Duration(intervalSeconds) * time.Second)
+        defer ticker.Stop()
+
+        log.Printf("Starting background health checker (interval: %ds, timeout: %ds)", intervalSeconds, timeoutSeconds)
+
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case &lt;-ctx.Done():<span class="cov8" title="1">
+                        log.Println("Health checker stopped")
+                        return</span>
+                case &lt;-ticker.C:<span class="cov8" title="1">
+                        status := performHealthCheck(smeeChannelURL, timeoutSeconds)
+
+                        if err := writeHealthStatus(status, healthFilePath); err != nil </span><span class="cov0" title="0">{
+                                log.Printf("Failed to write health status: %v", err)
+                        }</span> else<span class="cov8" title="1"> {
+                                log.Printf("Health check completed: %s (%s)", status.Status, status.Message)
+                        }</span>
+
+                        // Update Prometheus metric
+                        <span class="cov8" title="1">if status.Status == "success" </span><span class="cov8" title="1">{
+                                health_check.Set(1)
+                        }</span> else<span class="cov8" title="1"> {
+                                health_check.Set(0)
+                        }</span>
+                }
+        }
+}
+
+func main() <span class="cov0" title="0">{
+        log.Println("Starting Smee instrumentation sidecar...")
+
+        // Environment variables
+        downstreamServiceURL = os.Getenv("DOWNSTREAM_SERVICE_URL")
+        if downstreamServiceURL == "" </span><span class="cov0" title="0">{
+                log.Fatal("FATAL: DOWNSTREAM_SERVICE_URL environment variable must be set.")
+        }</span>
+
+        <span class="cov0" title="0">smeeChannelURL := os.Getenv("SMEE_CHANNEL_URL")
+        if smeeChannelURL == "" </span><span class="cov0" title="0">{
+                log.Fatal("FATAL: SMEE_CHANNEL_URL environment variable must be set.")
+        }</span>
+
+        <span class="cov0" title="0">sharedPath := os.Getenv("SHARED_VOLUME_PATH")
+        if sharedPath == "" </span><span class="cov0" title="0">{
+                sharedPath = "/shared"
+        }</span>
+
+        <span class="cov0" title="0">healthFilePath := os.Getenv("HEALTH_FILE_PATH")
+        if healthFilePath == "" </span><span class="cov0" title="0">{
+                healthFilePath = filepath.Join(sharedPath, "health-status.txt")
+        }</span>
+
+        // Parse configuration
+        <span class="cov0" title="0">healthCheckInterval := 30
+        if intervalStr := os.Getenv("HEALTH_CHECK_INTERVAL_SECONDS"); intervalStr != "" </span><span class="cov0" title="0">{
+                if val, err := strconv.Atoi(intervalStr); err == nil &amp;&amp; val &gt; 0 </span><span class="cov0" title="0">{
+                        healthCheckInterval = val
+                }</span>
+        }
+
+        <span class="cov0" title="0">healthCheckTimeout := 20
+        if timeoutStr := os.Getenv("HEALTH_CHECK_TIMEOUT_SECONDS"); timeoutStr != "" </span><span class="cov0" title="0">{
+                if val, err := strconv.Atoi(timeoutStr); err == nil &amp;&amp; val &gt; 0 </span><span class="cov0" title="0">{
+                        healthCheckTimeout = val
+                }</span>
+        }
+
+        // Check if pprof endpoints should be enabled (disabled by default for security)
+        <span class="cov0" title="0">enablePprof := "true" == os.Getenv("ENABLE_PPROF")
+
+        // HTTP clients will be initialized lazily when first needed
+
+        // Write probe scripts to shared volume
+        if err := writeScriptsToVolume(sharedPath); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("FATAL: Failed to write probe scripts: %v", err)
+        }</span>
+
+        // Register metrics with Prometheus.
+        <span class="cov0" title="0">prometheus.MustRegister(forwardAttempts)
+        prometheus.MustRegister(health_check)
+
+        // Start background health checker
+        ctx, cancel := context.WithCancel(context.Background())
+        defer cancel()
+        go runHealthChecker(ctx, smeeChannelURL, healthFilePath, healthCheckInterval, healthCheckTimeout)
+
+        // --- Relay Server (on port 8080) ---
+        relayMux := http.NewServeMux()
+        relayMux.HandleFunc("/", forwardHandler)
+
+        // Configure relay server with timeouts to prevent goroutine leaks
+        // while maintaining transparency (timeouts longer than any realistic client)
+        relayServer := &amp;http.Server{
+                Addr:         ":8080",
+                Handler:      relayMux,
+                ReadTimeout:  180 * time.Second, // 3 min - longer than any client timeout
+                WriteTimeout: 60 * time.Second,  // 1 min - safe response timeout
+                IdleTimeout:  600 * time.Second, // 10 min - generous keep-alive cleanup
+        }
+
+        go func() </span><span class="cov0" title="0">{
+                log.Printf("Relay server listening on %s with timeouts (read: %.0fs, write: %.0fs, idle: %.0fs)",
+                        relayServer.Addr,
+                        relayServer.ReadTimeout.Seconds(),
+                        relayServer.WriteTimeout.Seconds(),
+                        relayServer.IdleTimeout.Seconds())
+                if err := relayServer.ListenAndServe(); err != nil </span><span class="cov0" title="0">{
+                        log.Fatalf("FATAL: Relay server failed: %v", err)
+                }</span>
+        }()
+
+        // --- Management Server (on port 9100) ---
+        <span class="cov0" title="0">mgmtMux := http.NewServeMux()
+        mgmtMux.Handle("/metrics", promhttp.Handler())
+
+        // Add pprof endpoints for memory profiling
+        if enablePprof </span><span class="cov0" title="0">{
+                log.Println("Enabling pprof endpoints for debugging")
+                mgmtMux.HandleFunc("/debug/pprof/", pprof.Index)
+                mgmtMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+                mgmtMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+                mgmtMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+                mgmtMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+                mgmtMux.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+                mgmtMux.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+                mgmtMux.Handle("/debug/pprof/allocs", pprof.Handler("allocs"))
+                mgmtMux.Handle("/debug/pprof/block", pprof.Handler("block"))
+                mgmtMux.Handle("/debug/pprof/mutex", pprof.Handler("mutex"))
+        }</span> else<span class="cov0" title="0"> {
+                log.Println("pprof endpoints disabled (set ENABLE_PPROF=true to enable)")
+        }</span>
+
+        <span class="cov0" title="0">go func() </span><span class="cov0" title="0">{
+                if enablePprof </span><span class="cov0" title="0">{
+                        log.Println("Management server (metrics &amp; pprof) listening on :9100")
+                }</span> else<span class="cov0" title="0"> {
+                        log.Println("Management server (metrics) listening on :9100")
+                }</span>
+                <span class="cov0" title="0">if err := http.ListenAndServe(":9100", mgmtMux); err != nil </span><span class="cov0" title="0">{
+                        log.Fatalf("FATAL: Management server failed: %v", err)
+                }</span>
+        }()
+
+        <span class="cov0" title="0">select </span>{}
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
