@@ -1,7 +1,10 @@
-name: Generate Tekton Coverage Dashboard
+name: Generate Konflux Coverage Dashboard
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
   schedule:
@@ -13,15 +16,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: read  # Allow reading PR information
 
     steps:
       - name: Checkout this repo (dashboard)
         uses: actions/checkout@v4
+        with:
+          # For pull requests, this will checkout the PR branch with merge commit
+          # For push events, this will checkout the pushed branch
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
+          cache: false  # Disable caching since this isn't a Go project
 
       - name: Install tools
         run: |
@@ -32,7 +41,7 @@ jobs:
       - name: Prepare workspace
         run: mkdir workspace
 
-      - name: Checkout gh-pages to access old coverage.json
+      - name: Checkout gh-pages
         uses: actions/checkout@v4
         with:
           ref: gh-pages
@@ -128,32 +137,50 @@ jobs:
             STATUS="ok"
             COVERAGE="0.0"
 
-            if [ -n "$INCLUDED_PACKAGES" ] && go test -coverprofile=coverage_raw.out $INCLUDED_PACKAGES; then
-              cp coverage_raw.out coverage.out
-
-              # Remove excluded files from coverage
-              FILE_COUNT=$(echo "$EXCLUDE_FILES" | yq 'length')
-              for j in $(seq 0 $((FILE_COUNT - 1))); do
-                FILE=$(echo "$EXCLUDE_FILES" | yq ".[$j]" | tr -d '"')
-                echo "    Removing $FILE from coverage"
-                sed -i "/$FILE/d" coverage.out || true
+            if [ -n "$INCLUDED_PACKAGES" ]; then
+              echo "    Running tests with coverage..."
+              # Fail fast - let test failures fail the workflow for visibility
+              # Filter out packages with no test files to avoid covdata errors
+              TESTABLE_PACKAGES=""
+              for pkg in $INCLUDED_PACKAGES; do
+                if go list -f '{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}' $pkg 2>/dev/null | grep -q .; then
+                  TESTABLE_PACKAGES="$TESTABLE_PACKAGES $pkg"
+                fi
               done
 
-              COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
-              # Generate HTML report
-              go tool cover -html=coverage.out -o coverage.html
-              mkdir -p ../../gh-pages/coverage/$REPO
-              cp coverage.html ../../gh-pages/coverage/$REPO/index.html
-            else
-              echo "    ❌ Coverage failed or no testable packages"
-              STATUS="failed"
-
-              OLD_ENTRY=$(echo "$OLD_COVERAGE_JSON" | jq -r --arg repo "$REPO" '.data[]? | select(.repo == $repo)')
-              if [ -n "$OLD_ENTRY" ]; then
-                COVERAGE=$(echo "$OLD_ENTRY" | jq -r '.coverage')
+              if [ -z "$TESTABLE_PACKAGES" ]; then
+                echo "    ❌ No packages with test files found"
+                STATUS="failed"
+                COVERAGE=null
               else
+                go test -coverprofile=coverage_raw.out $TESTABLE_PACKAGES
+              fi
+
+              if [ -f coverage_raw.out ]; then
+                cp coverage_raw.out coverage.out
+
+                # Remove excluded files from coverage
+                FILE_COUNT=$(echo "$EXCLUDE_FILES" | yq 'length')
+                for j in $(seq 0 $((FILE_COUNT - 1))); do
+                  FILE=$(echo "$EXCLUDE_FILES" | yq ".[$j]" | tr -d '"')
+                  echo "    Removing $FILE from coverage"
+                  sed -i "/$FILE/d" coverage.out || true
+                done
+
+                COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+                # Generate HTML report
+                go tool cover -html=coverage.out -o coverage.html
+                mkdir -p ../../gh-pages/coverage/$REPO
+                cp coverage.html ../../gh-pages/coverage/$REPO/index.html
+              else
+                echo "    ❌ No coverage file generated - tests may not have run properly"
+                STATUS="failed"
                 COVERAGE=null
               fi
+            else
+              echo "    ❌ No testable packages found"
+              STATUS="failed"
+              COVERAGE=null
             fi
 
             echo "    → $REPO coverage: $COVERAGE% (status: $STATUS)"
@@ -176,6 +203,8 @@ jobs:
             '{run_url: $run_url, data: $data}' > coverage.json
 
       - name: Commit and push updated coverage.json
+        # Only push to gh-pages from main branch pushes and scheduled runs (not on PRs)
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
           cp coverage.json gh-pages/coverage.json
           cd gh-pages
