@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Konflux Coverage Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f9fafb;
+      padding: 2em;
+      color: #1f2937;
+    }
+
+    h1 {
+      color: #2563eb;
+      margin-bottom: 1em;
+      font-weight: 600;
+    }
+
+    #run-link {
+      margin-bottom: 2em;
+      font-size: 0.9rem;
+    }
+
+    a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* Grid for cards */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5em;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      padding: 1.2em;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+
+    .repo {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 0.8em;
+      color: #111827;
+    }
+
+    .bar-container {
+      background: #e5e7eb;
+      height: 14px;
+      border-radius: 7px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .bar {
+      height: 100%;
+      border-radius: 7px;
+      transition: width 0.8s ease;
+    }
+
+    .green { background: linear-gradient(90deg,#22c55e,#16a34a); }
+    .orange { background: linear-gradient(90deg,#f59e0b,#d97706); }
+    .red { background: linear-gradient(90deg,#ef4444,#dc2626); }
+
+    .percentage {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-left: 6px;
+      color: #374151;
+    }
+
+    .status {
+      margin-top: 0.8em;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.3em 0.6em;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .badge-ok {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .badge-failed {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .packages {
+      margin-top: 1em;
+      padding: 1em;
+      background: #f9fafb;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #6b7280;
+      border-left: 3px solid #2563eb;
+      display: none;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+    }
+
+    .packages.visible {
+      display: block;
+      max-height: 500px;
+    }
+
+    .package-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5em;
+      padding: 0.3em 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .package-item:last-child {
+      border-bottom: none;
+    }
+
+    .package-name {
+      font-family: 'Courier New', monospace;
+      color: #374151;
+      font-size: 0.9em;
+    }
+
+    .package-coverage {
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .percentage {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+    }
+
+    .percentage:hover {
+      text-decoration: underline;
+    }
+
+    .percentage::after {
+      content: ' ▼';
+      font-size: 0.7em;
+      opacity: 0.5;
+      transition: transform 0.3s ease;
+    }
+
+    .percentage.expanded::after {
+      transform: rotate(180deg);
+      display: inline-block;
+    }
+
+    .detail-link {
+      margin-top: 1em;
+      font-size: 0.9rem;
+    }
+
+    .detail-link a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .detail-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Konflux Coverage Dashboard</h1>
+  <div id="run-link"></div>
+  <div class="card-grid" id="dashboard"></div>
+
+  <script>
+    d3.json("coverage.json").then(json => {
+      const runUrl = json.run_url;
+      const data = json.data;
+
+      // Show GitHub Actions run link
+      if (runUrl) {
+        d3.select("#run-link").append("a")
+          .attr("href", runUrl)
+          .attr("target", "_blank")
+          .text("🔗 Last updated via GitHub Actions run");
+      }
+
+      // Sort: OK first, then by coverage descending
+      data.sort((a, b) => {
+        if (a.status !== b.status) return a.status === 'ok' ? -1 : 1;
+        return (b.coverage || 0) - (a.coverage || 0);
+      });
+
+      const cards = d3.select("#dashboard")
+        .selectAll(".card")
+        .data(data)
+        .enter()
+        .append("div")
+        .attr("class", "card");
+
+      // Repo name with link
+      cards.append("div")
+        .attr("class", "repo")
+        .append("a")
+        .attr("href", d => `https://github.com/${d.repo}`)
+        .attr("target", "_blank")
+        .text(d => d.repo);
+
+      // Coverage bar + percentage
+      const coverageDiv = cards.append("div");
+
+      coverageDiv.html(d => {
+        if (isNaN(d.coverage)) return "N/A";
+
+        const cov = parseFloat(d.coverage).toFixed(1);
+        let color = "red";
+        if (cov >= 80) color = "green";
+        else if (cov >= 50) color = "orange";
+
+        return `
+          <div class="bar-container">
+            <div class="bar ${color}" style="width:0%"></div>
+          </div>
+          <span class="percentage" title="Click to view package breakdown">${cov}%</span>
+        `;
+      });
+
+      // Animate bars
+      d3.selectAll(".bar").transition()
+        .duration(800)
+        .style("width", function(_, i) {
+          const cov = data[i].coverage.toFixed(1);
+          return cov + "%";
+        });
+
+      // Package breakdown (hidden by default)
+      const packagesDiv = cards.append("div")
+        .attr("class", "packages")
+        .html(d => {
+          if (!d.packages || d.packages.length === 0) return '';
+
+          let html = '<div style="font-weight: 600; margin-bottom: 0.8em; color: #111827;">Package Breakdown:</div>';
+
+          d.packages.forEach(pkg => {
+            const shortPkg = pkg.package.replace(`github.com/${d.repo}/`, '');
+            html += `<div class="package-item">`;
+            html += `<span class="package-name">${shortPkg}</span>`;
+            html += `<span class="package-coverage">${pkg.coverage.toFixed(1)}%</span>`;
+            html += `</div>`;
+          });
+
+          return html;
+        });
+
+      // Add detailed coverage link
+      cards.append("div")
+        .attr("class", "detail-link")
+        .html(d => `<a href="coverage/${d.repo}/index.html" target="_blank">📊 View Detailed Coverage Report →</a>`);
+
+      // Add click handler to percentage to toggle package breakdown
+      cards.selectAll(".percentage").on("click", function(event, d) {
+        event.stopPropagation();
+        const percentageEl = d3.select(this);
+        const card = d3.select(this.closest('.card'));
+        const packagesDiv = card.select('.packages');
+
+        if (packagesDiv.classed('visible')) {
+          packagesDiv.classed('visible', false);
+          percentageEl.classed('expanded', false);
+        } else {
+          packagesDiv.classed('visible', true);
+          percentageEl.classed('expanded', true);
+        }
+      });
+
+      // Status badge
+      cards.append("div")
+        .attr("class", "status")
+        .html(d => {
+          return d.status === 'ok'
+            ? `<span class="badge badge-ok" title="All tests passed and coverage was collected successfully">✅ Tests Passed</span>`
+            : `<span class="badge badge-failed" title="Tests failed or no testable packages found">❌ Tests Failed</span>`;
+        });
+    }).catch(error => {
+      d3.select("#dashboard")
+        .append("div")
+        .attr("class", "card")
+        .text("⚠️ Failed to load coverage data.");
+      console.error("Failed to load coverage.json", error);
+    });
+  </script>
+</body>
+</html>
+
