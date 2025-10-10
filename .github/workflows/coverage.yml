@@ -168,6 +168,30 @@ jobs:
                 done
 
                 COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+
+                # Extract per-package coverage
+                PACKAGES_JSON=$(go tool cover -func=coverage.out | grep -v "^total:" | awk '{
+                  # Extract package path from file path (everything before last /)
+                  n=split($1, parts, "/")
+                  pkg=""
+                  for(i=1; i<n; i++) {
+                    if(i>1) pkg = pkg "/"
+                    pkg = pkg parts[i]
+                  }
+                  pkgs[pkg]+=$3
+                  counts[pkg]++
+                }
+                END {
+                  printf "["
+                  first=1
+                  for(pkg in pkgs) {
+                    if(!first) printf ","
+                    printf "{\"package\":\"%s\",\"coverage\":%.1f}", pkg, pkgs[pkg]/counts[pkg]
+                    first=0
+                  }
+                  printf "]"
+                }')
+
                 # Generate HTML report
                 go tool cover -html=coverage.out -o coverage.html
                 mkdir -p ../../gh-pages/coverage/$REPO
@@ -176,15 +200,17 @@ jobs:
                 echo "    ❌ No coverage file generated - tests may not have run properly"
                 STATUS="failed"
                 COVERAGE=null
+                PACKAGES_JSON="[]"
               fi
             else
               echo "    ❌ No testable packages found"
               STATUS="failed"
               COVERAGE=null
+              PACKAGES_JSON="[]"
             fi
 
             echo "    → $REPO coverage: $COVERAGE% (status: $STATUS)"
-            echo "  {\"repo\": \"$REPO\", \"coverage\": $COVERAGE, \"status\": \"$STATUS\" }," >> ../../_temp_coverage.json
+            echo "  {\"repo\": \"$REPO\", \"coverage\": $COVERAGE, \"status\": \"$STATUS\", \"packages\": $PACKAGES_JSON }," >> ../../_temp_coverage.json
 
             cd ..
           done
@@ -207,10 +233,11 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
           cp coverage.json gh-pages/coverage.json
+          cp index.html gh-pages/index.html
           cd gh-pages
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add coverage.json coverage/
+          git add coverage.json coverage/ index.html
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
