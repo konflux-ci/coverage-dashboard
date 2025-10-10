@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Tekton Coverage Dashboard</title>
+  <title>Konflux Coverage Dashboard</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
@@ -107,10 +107,89 @@
       background: #fee2e2;
       color: #b91c1c;
     }
+
+    .packages {
+      margin-top: 1em;
+      padding: 1em;
+      background: #f9fafb;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #6b7280;
+      border-left: 3px solid #2563eb;
+      display: none;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+    }
+
+    .packages.visible {
+      display: block;
+      max-height: 500px;
+    }
+
+    .package-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5em;
+      padding: 0.3em 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .package-item:last-child {
+      border-bottom: none;
+    }
+
+    .package-name {
+      font-family: 'Courier New', monospace;
+      color: #374151;
+      font-size: 0.9em;
+    }
+
+    .package-coverage {
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .percentage {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+    }
+
+    .percentage:hover {
+      text-decoration: underline;
+    }
+
+    .percentage::after {
+      content: ' ▼';
+      font-size: 0.7em;
+      opacity: 0.5;
+      transition: transform 0.3s ease;
+    }
+
+    .percentage.expanded::after {
+      transform: rotate(180deg);
+      display: inline-block;
+    }
+
+    .detail-link {
+      margin-top: 1em;
+      font-size: 0.9rem;
+    }
+
+    .detail-link a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .detail-link a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
-  <h1>Tekton Coverage Dashboard</h1>
+  <h1>Konflux Coverage Dashboard</h1>
   <div id="run-link"></div>
   <div class="card-grid" id="dashboard"></div>
 
@@ -137,10 +216,8 @@
         .selectAll(".card")
         .data(data)
         .enter()
-        .append("a")
-        .attr("class", "card")
-        .attr("href", d => `coverage/${d.repo}/index.html`)
-        .attr("target", "_blank");
+        .append("div")
+        .attr("class", "card");
 
       // Repo name with link
       cards.append("div")
@@ -151,7 +228,9 @@
         .text(d => d.repo);
 
       // Coverage bar + percentage
-      cards.append("div").html(d => {
+      const coverageDiv = cards.append("div");
+
+      coverageDiv.html(d => {
         if (isNaN(d.coverage)) return "N/A";
 
         const cov = parseFloat(d.coverage).toFixed(1);
@@ -163,7 +242,7 @@
           <div class="bar-container">
             <div class="bar ${color}" style="width:0%"></div>
           </div>
-          <span class="percentage">${cov}%</span>
+          <span class="percentage" title="Click to view package breakdown">${cov}%</span>
         `;
       });
 
@@ -175,13 +254,53 @@
           return cov + "%";
         });
 
+      // Package breakdown (hidden by default)
+      const packagesDiv = cards.append("div")
+        .attr("class", "packages")
+        .html(d => {
+          if (!d.packages || d.packages.length === 0) return '';
+
+          let html = '<div style="font-weight: 600; margin-bottom: 0.8em; color: #111827;">Package Breakdown:</div>';
+
+          d.packages.forEach(pkg => {
+            const shortPkg = pkg.package.replace(`github.com/${d.repo}/`, '');
+            html += `<div class="package-item">`;
+            html += `<span class="package-name">${shortPkg}</span>`;
+            html += `<span class="package-coverage">${pkg.coverage.toFixed(1)}%</span>`;
+            html += `</div>`;
+          });
+
+          return html;
+        });
+
+      // Add detailed coverage link
+      cards.append("div")
+        .attr("class", "detail-link")
+        .html(d => `<a href="coverage/${d.repo}/index.html" target="_blank">📊 View Detailed Coverage Report →</a>`);
+
+      // Add click handler to percentage to toggle package breakdown
+      cards.selectAll(".percentage").on("click", function(event, d) {
+        event.stopPropagation();
+        const percentageEl = d3.select(this);
+        const card = d3.select(this.closest('.card'));
+        const packagesDiv = card.select('.packages');
+
+        if (packagesDiv.classed('visible')) {
+          packagesDiv.classed('visible', false);
+          percentageEl.classed('expanded', false);
+        } else {
+          packagesDiv.classed('visible', true);
+          percentageEl.classed('expanded', true);
+        }
+      });
+
       // Status badge
       cards.append("div")
         .attr("class", "status")
         .html(d => {
           return d.status === 'ok'
-            ? `<span class="badge badge-ok">✅ OK</span>`
-            : `<span class="badge badge-failed">❌ Failed</span>`;
+            ? `<span class="badge badge-ok" title="All tests passed and coverage was collected successfully">✅ Tests Passed</span>`
+            : `<span class="badge badge-failed" title="Tests failed or no testable packages found">❌ Tests Failed</span>`;
         });
     }).catch(error => {
       d3.select("#dashboard")

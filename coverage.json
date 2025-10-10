@@ -1,30 +1,72 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/18395429429",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/18408900179",
   "data": [
     {
       "repo": "konflux-ci/caching",
       "coverage": 57.7,
-      "status": "ok"
+      "status": "ok",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/caching/cmd/squid-per-site-exporter",
+          "coverage": 47.6
+        },
+        {
+          "package": "github.com/konflux-ci/caching/cmd/squid-store-id",
+          "coverage": 75.0
+        },
+        {
+          "package": "github.com/konflux-ci/caching/cmd/icap-server",
+          "coverage": 66.7
+        }
+      ]
     },
     {
       "repo": "konflux-ci/konflux-ci",
       "coverage": 81.6,
-      "status": "ok"
+      "status": "ok",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/konflux-ci/pkg/konftool/filestore",
+          "coverage": 81.1
+        }
+      ]
     },
     {
       "repo": "konflux-ci/project-controller",
       "coverage": 52.1,
-      "status": "ok"
+      "status": "ok",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/project-controller/pkg/logr/eventr",
+          "coverage": 72.9
+        },
+        {
+          "package": "github.com/konflux-ci/project-controller/internal/template",
+          "coverage": 52.2
+        }
+      ]
     },
     {
       "repo": "konflux-ci/notification-service",
       "coverage": 94.7,
-      "status": "ok"
+      "status": "ok",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/notification-service/pkg/notifier",
+          "coverage": 90.0
+        }
+      ]
     },
     {
       "repo": "konflux-ci/smee-sidecar",
       "coverage": 58.4,
-      "status": "ok"
+      "status": "ok",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/smee-sidecar/cmd",
+          "coverage": 83.9
+        }
+      ]
     }
   ]
 }
