@@ -1,9 +1,9 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/18549252894",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/18574753500",
   "data": [
     {
       "repo": "konflux-ci/caching",
-      "coverage": 57.7,
+      "coverage": 62.7,
       "status": "ok",
       "packages": [
         {
@@ -12,7 +12,7 @@
         },
         {
           "package": "github.com/konflux-ci/caching/cmd/squid-store-id",
-          "coverage": 75.0
+          "coverage": 78.8
         },
         {
           "package": "github.com/konflux-ci/caching/cmd/icap-server",
@@ -33,7 +33,7 @@
     },
     {
       "repo": "konflux-ci/project-controller",
-      "coverage": 52.1,
+      "coverage": 56.4,
       "status": "ok",
       "packages": [
         {
@@ -43,28 +43,36 @@
         {
           "package": "github.com/konflux-ci/project-controller/internal/template",
           "coverage": 52.2
+        },
+        {
+          "package": "github.com/konflux-ci/project-controller/internal/controller",
+          "coverage": 50.6
         }
       ]
     },
     {
       "repo": "konflux-ci/notification-service",
-      "coverage": 94.7,
+      "coverage": 85.0,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/notification-service/pkg/notifier",
           "coverage": 90.0
+        },
+        {
+          "package": "github.com/konflux-ci/notification-service/internal/controller",
+          "coverage": 91.8
         }
       ]
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 57.1,
+      "coverage": 58.4,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 81.5
+          "coverage": 83.9
         }
       ]
     }
