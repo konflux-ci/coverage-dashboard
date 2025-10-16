@@ -38,6 +38,16 @@ jobs:
           sudo apt-get install -y jq
           pip install yq
 
+      - name: Install and setup envtest
+        run: |
+          # Install setup-envtest
+          go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+          # Setup envtest binaries and get the path
+          ENVTEST_ASSETS_DIR=$(setup-envtest use -p path)
+          echo "KUBEBUILDER_ASSETS=$ENVTEST_ASSETS_DIR" >> $GITHUB_ENV
+          echo "Envtest assets installed at: $ENVTEST_ASSETS_DIR"
+
       - name: Prepare workspace
         run: mkdir workspace
 
