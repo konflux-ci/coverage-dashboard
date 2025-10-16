@@ -29,7 +29,6 @@ repositories:
      - hack/
      - proto/
      - test/
-     - internal/controller
      - /fake(/|$)
    exclude_files:
      - zz_generated.deepcopy.go
@@ -42,7 +41,6 @@ repositories:
      - hack/
      - proto/
      - test/
-     - internal/controller/
      - /fake(/|$)
    exclude_files:
      - zz_generated.deepcopy.go
