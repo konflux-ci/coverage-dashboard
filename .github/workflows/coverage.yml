@@ -179,28 +179,40 @@ jobs:
 
                 COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
 
-                # Extract per-package coverage
-                PACKAGES_JSON=$(go tool cover -func=coverage.out | grep -v "^total:" | awk '{
-                  # Extract package path from file path (everything before last /)
-                  n=split($1, parts, "/")
+                # Extract per-package coverage by parsing coverage profile directly
+                # This gives statement-weighted coverage, not function-count average
+                PACKAGES_JSON=$(awk '
+                NR==1 { next }  # Skip "mode: set" line
+                {
+                  # Parse: file.go:start.col,end.col numStmts covered
+                  split($1, parts, ":")
+                  file = parts[1]
+                  numStmts = $2
+                  covered = ($3 > 0) ? numStmts : 0
+
+                  # Extract package path (everything before last /)
+                  n=split(file, pathParts, "/")
                   pkg=""
                   for(i=1; i<n; i++) {
                     if(i>1) pkg = pkg "/"
-                    pkg = pkg parts[i]
+                    pkg = pkg pathParts[i]
                   }
-                  pkgs[pkg]+=$3
-                  counts[pkg]++
+
+                  # Accumulate covered and total statements per package
+                  pkgTotal[pkg] += numStmts
+                  pkgCovered[pkg] += covered
                 }
                 END {
                   printf "["
                   first=1
-                  for(pkg in pkgs) {
+                  for(pkg in pkgTotal) {
                     if(!first) printf ","
-                    printf "{\"package\":\"%s\",\"coverage\":%.1f}", pkg, pkgs[pkg]/counts[pkg]
+                    cov = (pkgTotal[pkg] > 0) ? (pkgCovered[pkg] / pkgTotal[pkg] * 100) : 0
+                    printf "{\"package\":\"%s\",\"coverage\":%.1f}", pkg, cov
                     first=0
                   }
                   printf "]"
-                }')
+                }' coverage.out)
 
                 # Generate HTML report
                 go tool cover -html=coverage.out -o coverage.html
