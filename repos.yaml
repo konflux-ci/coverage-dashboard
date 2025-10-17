@@ -47,6 +47,26 @@ repositories:
      - openapi_generated.go
 
 
+ - name: konflux-ci/release-service
+   exclude_dirs:
+     - .github/
+     - .tekton/
+     - hack/
+     - integration-tests/
+   exclude_files:
+     - zz_generated.deepcopy.go
+
+
+ - name: konflux-ci/internal-services
+   exclude_dirs:
+     - .github/
+     - .tekton/
+     - hack/
+     - integration-tests/
+   exclude_files:
+     - zz_generated.deepcopy.go
+
+
  - name: konflux-ci/smee-sidecar
    exclude_dirs:
      - vendor/
