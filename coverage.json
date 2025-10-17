@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/18593819368",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/18604717368",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -8,15 +8,15 @@
       "packages": [
         {
           "package": "github.com/konflux-ci/caching/cmd/squid-per-site-exporter",
-          "coverage": 47.6
+          "coverage": 51.2
         },
         {
           "package": "github.com/konflux-ci/caching/cmd/squid-store-id",
-          "coverage": 78.8
+          "coverage": 83.3
         },
         {
           "package": "github.com/konflux-ci/caching/cmd/icap-server",
-          "coverage": 66.7
+          "coverage": 75.0
         }
       ]
     },
@@ -27,7 +27,7 @@
       "packages": [
         {
           "package": "github.com/konflux-ci/konflux-ci/pkg/konftool/filestore",
-          "coverage": 81.1
+          "coverage": 81.6
         }
       ]
     },
@@ -38,15 +38,15 @@
       "packages": [
         {
           "package": "github.com/konflux-ci/project-controller/pkg/logr/eventr",
-          "coverage": 72.9
+          "coverage": 85.7
         },
         {
           "package": "github.com/konflux-ci/project-controller/internal/template",
-          "coverage": 52.2
+          "coverage": 48.8
         },
         {
           "package": "github.com/konflux-ci/project-controller/internal/controller",
-          "coverage": 50.6
+          "coverage": 64.8
         }
       ]
     },
@@ -57,74 +57,74 @@
       "packages": [
         {
           "package": "github.com/konflux-ci/notification-service/pkg/notifier",
-          "coverage": 90.0
+          "coverage": 94.7
         },
         {
           "package": "github.com/konflux-ci/notification-service/internal/controller",
-          "coverage": 91.8
+          "coverage": 83.5
         }
       ]
     },
     {
       "repo": "konflux-ci/release-service",
-      "coverage": 87.0,
+      "coverage": 87.1,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1",
-          "coverage": 99.2
+          "coverage": 98.5
         },
         {
           "package": "github.com/konflux-ci/release-service/controllers/releaseplan",
-          "coverage": 73.3
+          "coverage": 78.4
         },
         {
           "package": "github.com/konflux-ci/release-service/git",
-          "coverage": 92.6
+          "coverage": 81.2
         },
         {
           "package": "github.com/konflux-ci/release-service/controllers/utils/handlers",
-          "coverage": 80.0
+          "coverage": 100.0
         },
         {
           "package": "github.com/konflux-ci/release-service/controllers/releaseplanadmission",
-          "coverage": 71.5
+          "coverage": 79.2
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
-          "coverage": 97.2
+          "coverage": 96.0
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan",
-          "coverage": 95.0
+          "coverage": 94.1
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/author",
-          "coverage": 89.5
+          "coverage": 89.3
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/controllers/release",
+          "coverage": 83.1
         },
         {
           "package": "github.com/konflux-ci/release-service/metadata",
           "coverage": 100.0
         },
         {
-          "package": "github.com/konflux-ci/release-service/controllers/release",
-          "coverage": 84.4
-        },
-        {
-          "package": "github.com/konflux-ci/release-service/tekton/utils",
-          "coverage": 95.4
+          "package": "github.com/konflux-ci/release-service/loader",
+          "coverage": 81.8
         },
         {
           "package": "github.com/konflux-ci/release-service/syncer",
-          "coverage": 96.4
+          "coverage": 90.0
         },
         {
-          "package": "github.com/konflux-ci/release-service/loader",
-          "coverage": 79.2
+          "package": "github.com/konflux-ci/release-service/tekton/utils",
+          "coverage": 92.9
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release",
-          "coverage": 96.4
+          "coverage": 92.6
         },
         {
           "package": "github.com/konflux-ci/release-service/metrics",
@@ -132,11 +132,11 @@
         },
         {
           "package": "github.com/konflux-ci/release-service/controllers/utils/predicates",
-          "coverage": 95.2
+          "coverage": 94.7
         },
         {
           "package": "github.com/konflux-ci/release-service/tekton",
-          "coverage": 86.7
+          "coverage": 88.9
         }
       ]
     },
@@ -146,28 +146,28 @@
       "status": "ok",
       "packages": [
         {
+          "package": "github.com/konflux-ci/internal-services/controllers/internalrequest",
+          "coverage": 72.9
+        },
+        {
           "package": "github.com/konflux-ci/internal-services/metrics",
           "coverage": 100.0
         },
         {
-          "package": "github.com/konflux-ci/internal-services/controllers/internalrequest",
-          "coverage": 75.4
+          "package": "github.com/konflux-ci/internal-services/loader",
+          "coverage": 84.0
+        },
+        {
+          "package": "github.com/konflux-ci/internal-services/tekton",
+          "coverage": 97.7
         },
         {
           "package": "github.com/konflux-ci/internal-services/tekton/utils",
           "coverage": 0.0
         },
         {
-          "package": "github.com/konflux-ci/internal-services/tekton",
-          "coverage": 98.6
-        },
-        {
-          "package": "github.com/konflux-ci/internal-services/loader",
-          "coverage": 86.7
-        },
-        {
           "package": "github.com/konflux-ci/internal-services/api/v1alpha1",
-          "coverage": 97.5
+          "coverage": 94.9
         }
       ]
     },
@@ -178,7 +178,7 @@
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 83.9
+          "coverage": 58.4
         }
       ]
     }
