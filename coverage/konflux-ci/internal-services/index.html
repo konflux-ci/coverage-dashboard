@@ -1,0 +1,1394 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>v1alpha1: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/konflux-ci/internal-services/api/v1alpha1/internalrequest_types.go (94.7%)</option>
+				
+				<option value="file1">github.com/konflux-ci/internal-services/api/v1alpha1/internalservicesconfig_types.go (100.0%)</option>
+				
+				<option value="file2">github.com/konflux-ci/internal-services/controllers/internalrequest/adapter.go (86.1%)</option>
+				
+				<option value="file3">github.com/konflux-ci/internal-services/controllers/internalrequest/controller.go (0.0%)</option>
+				
+				<option value="file4">github.com/konflux-ci/internal-services/loader/loader.go (100.0%)</option>
+				
+				<option value="file5">github.com/konflux-ci/internal-services/loader/loader_mock.go (69.2%)</option>
+				
+				<option value="file6">github.com/konflux-ci/internal-services/metrics/internalrequest.go (100.0%)</option>
+				
+				<option value="file7">github.com/konflux-ci/internal-services/tekton/pipeline_run.go (100.0%)</option>
+				
+				<option value="file8">github.com/konflux-ci/internal-services/tekton/predicates.go (100.0%)</option>
+				
+				<option value="file9">github.com/konflux-ci/internal-services/tekton/utils.go (93.8%)</option>
+				
+				<option value="file10">github.com/konflux-ci/internal-services/tekton/utils/pipeline.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">/*
+Copyright 2022.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package v1alpha1
+
+import (
+        "time"
+
+        "github.com/konflux-ci/operator-toolkit/conditions"
+
+        "github.com/konflux-ci/internal-services/metrics"
+        tektonutils "github.com/konflux-ci/internal-services/tekton/utils"
+        tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+        "k8s.io/apimachinery/pkg/api/meta"
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// InternalRequestSpec defines the desired state of InternalRequest.
+type InternalRequestSpec struct {
+        // Pipeline contains the details of the pipeline to execute for the InternalRequest
+        // +required
+        Pipeline *tektonutils.ParameterizedPipeline `json:"pipeline"`
+
+        // Params is the list of optional parameters to pass to the Tekton pipeline
+        // kubebuilder:pruning:PreserveUnknownFields
+        // +optional
+        Params map[string]string `json:"params,omitempty"`
+
+        // Timeouts defines the different Timeouts to use in the InternalRequest PipelineRun execution
+        // +optional
+        Timeouts tektonv1.TimeoutFields `json:"timeouts,omitempty"`
+
+        // ServiceAccount defines the serviceAccount to use in the InternalRequest PipelineRun execution.
+        // If none is passed, the default Tekton ServiceAccount will be used
+        // +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+        // +optional
+        ServiceAccount string `json:"serviceAccount,omitempty"`
+}
+
+// InternalRequestStatus defines the observed state of InternalRequest.
+type InternalRequestStatus struct {
+        // StartTime is the time when the InternalRequest PipelineRun was created and set to run
+        // +optional
+        StartTime *metav1.Time `json:"startTime,omitempty"`
+
+        // CompletionTime is the time the InternalRequest PipelineRun completed
+        // +optional
+        CompletionTime *metav1.Time `json:"completionTime,omitempty"`
+
+        // PipelineRun contains the namespaced name of the PipelineRun executed for this InternalRequest
+        // +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?\/[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+        // +optional
+        PipelineRun string `json:"pipelineRun,omitempty"`
+
+        // Conditions represent the latest available observations for the internalrequest
+        // +optional
+        Conditions []metav1.Condition `json:"conditions"`
+
+        // Results is the list of optional results as seen in the Tekton PipelineRun
+        // kubebuilder:pruning:PreserveUnknownFields
+        // +optional
+        Results map[string]string `json:"results,omitempty"`
+}
+
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Succeeded",type=string,JSONPath=`.status.conditions[?(@.type=="Succeeded")].status`
+// +kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type=="Succeeded")].reason`
+
+// InternalRequest is the Schema for the internalrequests API.
+type InternalRequest struct {
+        metav1.TypeMeta   `json:",inline"`
+        metav1.ObjectMeta `json:"metadata,omitempty"`
+
+        Spec   InternalRequestSpec   `json:"spec,omitempty"`
+        Status InternalRequestStatus `json:"status,omitempty"`
+}
+
+// HasCompleted checks whether the InternalRequest has been completed.
+func (ir *InternalRequest) HasCompleted() bool <span class="cov8" title="1">{
+        condition := meta.FindStatusCondition(ir.Status.Conditions, SucceededConditionType.String())
+
+        switch </span>{
+        case condition == nil:<span class="cov8" title="1">
+                return false</span>
+        case condition.Status == metav1.ConditionTrue:<span class="cov8" title="1">
+                return true</span>
+        default:<span class="cov8" title="1">
+                return condition.Status == metav1.ConditionFalse &amp;&amp; condition.Reason != RunningReason.String()</span>
+        }
+}
+
+// HasFailed checks whether the InternalRequest has failed.
+func (ir *InternalRequest) HasFailed() bool <span class="cov8" title="1">{
+        condition := meta.FindStatusCondition(ir.Status.Conditions, SucceededConditionType.String())
+
+        switch </span>{
+        case condition == nil:<span class="cov8" title="1">
+                return false</span>
+        case condition.Status == metav1.ConditionTrue:<span class="cov8" title="1">
+                return false</span>
+        default:<span class="cov8" title="1">
+                return condition.Status == metav1.ConditionFalse &amp;&amp; condition.Reason != RunningReason.String()</span>
+        }
+}
+
+// HasSucceeded checks whether the InternalRequest has succeeded.
+func (ir *InternalRequest) HasSucceeded() bool <span class="cov8" title="1">{
+        return meta.IsStatusConditionTrue(ir.Status.Conditions, SucceededConditionType.String())
+}</span>
+
+func (ir *InternalRequest) IsRunning() bool <span class="cov8" title="1">{
+        condition := meta.FindStatusCondition(ir.Status.Conditions, SucceededConditionType.String())
+        return condition != nil &amp;&amp; condition.Status != metav1.ConditionTrue &amp;&amp; condition.Reason == RunningReason.String()
+}</span>
+
+// MarkFailed registers the completion time and changes the Succeeded condition to False with the provided message.
+func (ir *InternalRequest) MarkFailed(message string) <span class="cov8" title="1">{
+        if ir.HasCompleted() </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">ir.Status.CompletionTime = &amp;metav1.Time{Time: time.Now()}
+        conditions.SetConditionWithMessage(&amp;ir.Status.Conditions, SucceededConditionType, metav1.ConditionFalse, FailedReason, message)
+
+        pipelineName := ""
+        if ir.Spec.Pipeline != nil </span><span class="cov0" title="0">{
+                pipelineName = ir.Spec.Pipeline.GetPipelineNameFromGitResolver()
+        }</span>
+        <span class="cov8" title="1">go metrics.RegisterCompletedInternalRequest(pipelineName, ir.Namespace, FailedReason.String(),
+                ir.Status.StartTime, ir.Status.CompletionTime, false)</span>
+}
+
+// MarkRejected changes the Succeeded condition to False with the provided reason and message.
+func (ir *InternalRequest) MarkRejected(message string) <span class="cov8" title="1">{
+        if ir.HasCompleted() </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">conditions.SetConditionWithMessage(&amp;ir.Status.Conditions, SucceededConditionType, metav1.ConditionFalse, RejectedReason, message)</span>
+
+}
+
+// MarkRunning registers the start time and changes the Succeeded condition to Unknown.
+func (ir *InternalRequest) MarkRunning() <span class="cov8" title="1">{
+        if ir.HasCompleted() </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">if !ir.IsRunning() </span><span class="cov8" title="1">{
+                ir.Status.StartTime = &amp;metav1.Time{Time: time.Now()}
+        }</span>
+
+        <span class="cov8" title="1">conditions.SetCondition(&amp;ir.Status.Conditions, SucceededConditionType, metav1.ConditionFalse, RunningReason)</span>
+}
+
+// MarkSucceeded registers the completion time and changes the Succeeded condition to True.
+func (ir *InternalRequest) MarkSucceeded() <span class="cov8" title="1">{
+        if ir.HasCompleted() </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">ir.Status.CompletionTime = &amp;metav1.Time{Time: time.Now()}
+        conditions.SetCondition(&amp;ir.Status.Conditions, SucceededConditionType, metav1.ConditionTrue, SucceededReason)
+
+        pipelineName := ""
+        if ir.Spec.Pipeline != nil </span><span class="cov0" title="0">{
+                pipelineName = ir.Spec.Pipeline.GetPipelineNameFromGitResolver()
+        }</span>
+        <span class="cov8" title="1">go metrics.RegisterCompletedInternalRequest(pipelineName, ir.Namespace, SucceededReason.String(), ir.Status.StartTime, ir.Status.CompletionTime, true)</span>
+}
+
+// +kubebuilder:object:root=true
+
+// InternalRequestList contains a list of InternalRequest.
+type InternalRequestList struct {
+        metav1.TypeMeta `json:",inline"`
+        metav1.ListMeta `json:"metadata,omitempty"`
+        Items           []InternalRequest `json:"items"`
+}
+
+func init() <span class="cov8" title="1">{
+        SchemeBuilder.Register(&amp;InternalRequest{}, &amp;InternalRequestList{})
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">/*
+Copyright 2022.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package v1alpha1
+
+import (
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const InternalServicesConfigResourceName string = "config"
+
+// InternalServicesConfigSpec defines the desired state of InternalServicesConfig.
+type InternalServicesConfigSpec struct {
+        // AllowList is the list of remote namespaces that are allowed to execute InternalRequests
+        // +optional
+        AllowList []string `json:"allowList,omitempty"`
+
+        // Debug sets the operator to run in debug mode. In this mode, PipelineRuns and PVCs will not be removed
+        // +optional
+        Debug bool `json:"debug,omitempty"`
+
+        // VolumeClaim holds information about the volume to request for Pipelines requiring a workspace
+        // +kubebuilder:default={name:"workspace", size:"1Gi"}
+        VolumeClaim VolumeClaim `json:"volumeClaim,omitempty"`
+}
+
+type VolumeClaim struct {
+        // Name is the workspace name
+        // +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+        // +kubebuilder:default="workspace"
+        // +optional
+        Name string `json:"name,omitempty"`
+
+        // Size is the size that will be requested when a workspace is required by a Pipeline
+        // +kubebuilder:validation:Pattern=^[1-9][0-9]*(K|M|G)i$
+        // +kubebuilder:default="1Gi"
+        Size string `json:"size,omitempty"`
+}
+
+// InternalServicesConfigStatus defines the observed state of InternalServicesConfig.
+type InternalServicesConfigStatus struct {
+}
+
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+
+// InternalServicesConfig is the Schema for the internalservicesconfigs API
+type InternalServicesConfig struct {
+        metav1.TypeMeta   `json:",inline"`
+        metav1.ObjectMeta `json:"metadata,omitempty"`
+
+        Spec   InternalServicesConfigSpec   `json:"spec,omitempty"`
+        Status InternalServicesConfigStatus `json:"status,omitempty"`
+}
+
+// +kubebuilder:object:root=true
+
+// InternalServicesConfigList contains a list of InternalServicesConfig.
+type InternalServicesConfigList struct {
+        metav1.TypeMeta `json:",inline"`
+        metav1.ListMeta `json:"metadata,omitempty"`
+        Items           []InternalServicesConfig `json:"items"`
+}
+
+func init() <span class="cov8" title="1">{
+        SchemeBuilder.Register(&amp;InternalServicesConfig{}, &amp;InternalServicesConfigList{})
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">/*
+Copyright 2022.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package internalrequest
+
+import (
+        "context"
+        "fmt"
+        "os"
+
+        "github.com/go-logr/logr"
+        "github.com/konflux-ci/internal-services/api/v1alpha1"
+        "github.com/konflux-ci/internal-services/loader"
+        "github.com/konflux-ci/internal-services/tekton"
+        "github.com/konflux-ci/operator-toolkit/controller"
+        tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+        "k8s.io/apimachinery/pkg/api/errors"
+        v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        "k8s.io/apimachinery/pkg/types"
+        "knative.dev/pkg/apis"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+// Adapter holds the objects needed to reconcile an InternalRequest.
+type Adapter struct {
+        client                  client.Client
+        internalServicesConfig  *v1alpha1.InternalServicesConfig
+        ctx                     context.Context
+        internalClient          client.Client
+        internalRequest         *v1alpha1.InternalRequest
+        internalRequestPipeline *tektonv1.Pipeline
+        loader                  loader.ObjectLoader
+        logger                  logr.Logger
+}
+
+// NewAdapter creates and returns an Adapter instance.
+func NewAdapter(ctx context.Context, client, internalClient client.Client, internalRequest *v1alpha1.InternalRequest, loader loader.ObjectLoader, logger logr.Logger) *Adapter <span class="cov8" title="1">{
+        return &amp;Adapter{
+                client:          client,
+                ctx:             ctx,
+                internalRequest: internalRequest,
+                internalClient:  internalClient,
+                loader:          loader,
+                logger:          logger,
+        }
+}</span>
+
+// EnsureConfigIsLoaded is an operation that will load the service InternalServicesConfig from the manager namespace. If not found,
+// a new InternalServicesConfig resource will be generated and attached to the adapter.
+//
+// Note: This operation sets values in the adapter to be used by other operations, so it should be always enabled.
+func (a *Adapter) EnsureConfigIsLoaded() (controller.OperationResult, error) <span class="cov8" title="1">{
+        namespace := os.Getenv("SERVICE_NAMESPACE")
+        if namespace == "" </span><span class="cov8" title="1">{
+                namespace = "default"
+        }</span>
+
+        <span class="cov8" title="1">var err error
+        a.internalServicesConfig, err = a.loader.GetInternalServicesConfig(a.ctx, a.internalClient, v1alpha1.InternalServicesConfigResourceName, namespace)
+        if err != nil &amp;&amp; !errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                return controller.RequeueWithError(err)
+        }</span>
+
+        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
+                a.internalServicesConfig = a.getDefaultInternalServicesConfig(namespace)
+        }</span>
+
+        <span class="cov8" title="1">return controller.ContinueProcessing()</span>
+}
+
+// EnsurePipelineRunIsCreated is an operation that will ensure that the InternalRequest is handled by creating a new
+// PipelineRun for the Pipeline referenced in the Request field.
+func (a *Adapter) EnsurePipelineRunIsCreated() (controller.OperationResult, error) <span class="cov8" title="1">{
+        pipelineRun, err := a.loader.GetInternalRequestPipelineRun(a.ctx, a.internalClient, a.internalRequest)
+        if err != nil &amp;&amp; !errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                return controller.RequeueWithError(err)
+        }</span>
+
+        <span class="cov8" title="1">if pipelineRun == nil || !a.internalRequest.IsRunning() </span><span class="cov8" title="1">{
+                if pipelineRun == nil </span><span class="cov8" title="1">{
+                        pipelineRun, err = a.createInternalRequestPipelineRun()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return controller.RequeueWithError(err)
+                        }</span>
+
+                        <span class="cov8" title="1">a.logger.Info("Created PipelineRun to handle request",
+                                "PipelineRun.Name", pipelineRun.Name, "PipelineRun.Namespace", pipelineRun.Namespace)</span>
+                }
+
+                <span class="cov8" title="1">return controller.RequeueOnErrorOrContinue(a.registerInternalRequestStatus(pipelineRun))</span>
+        }
+
+        <span class="cov0" title="0">return controller.ContinueProcessing()</span>
+}
+
+// EnsurePipelineRunIsDeleted is an operation that will ensure that the PipelineRun created to handle the InternalRequest
+// is deleted once it finishes.
+func (a *Adapter) EnsurePipelineRunIsDeleted() (controller.OperationResult, error) <span class="cov8" title="1">{
+        if !a.internalRequest.HasCompleted() </span><span class="cov8" title="1">{
+                return controller.ContinueProcessing()
+        }</span>
+
+        <span class="cov8" title="1">if a.internalServicesConfig.Spec.Debug </span><span class="cov0" title="0">{
+                a.logger.Info("Running in debug mode. Skipping PipelineRun deletion")
+
+                return controller.ContinueProcessing()
+        }</span>
+
+        <span class="cov8" title="1">pipelineRun, err := a.loader.GetInternalRequestPipelineRun(a.ctx, a.internalClient, a.internalRequest)
+        if err != nil </span><span class="cov8" title="1">{
+                return controller.RequeueWithError(err)
+        }</span>
+
+        <span class="cov8" title="1">return controller.RequeueOnErrorOrContinue(a.internalClient.Delete(a.ctx, pipelineRun))</span>
+}
+
+// EnsureRequestIsAllowed is an operation that will ensure that the request is coming from a namespace allowed
+// to execute InternalRequests. If the InternalServicesConfig spec.allowList is empty, any request will be allowed regardless of the
+// remote namespace.
+func (a *Adapter) EnsureRequestIsAllowed() (controller.OperationResult, error) <span class="cov8" title="1">{
+        for _, namespace := range a.internalServicesConfig.Spec.AllowList </span><span class="cov8" title="1">{
+                if namespace == a.internalRequest.Namespace </span><span class="cov8" title="1">{
+                        return controller.ContinueProcessing()
+                }</span>
+        }
+
+        <span class="cov8" title="1">patch := client.MergeFrom(a.internalRequest.DeepCopy())
+        a.internalRequest.MarkRejected(
+                fmt.Sprintf("the internal request namespace (%s) is not in the allow list", a.internalRequest.Namespace),
+        )
+        return controller.RequeueOnErrorOrStop(a.client.Status().Patch(a.ctx, a.internalRequest, patch))</span>
+}
+
+// EnsureRequestINotCompleted is an operation that will stop processing a request if it was completed already.
+func (a *Adapter) EnsureRequestINotCompleted() (controller.OperationResult, error) <span class="cov8" title="1">{
+        if a.internalRequest.HasCompleted() </span><span class="cov8" title="1">{
+                return controller.StopProcessing()
+        }</span>
+
+        <span class="cov8" title="1">return controller.ContinueProcessing()</span>
+}
+
+// EnsureStatusIsTracked is an operation that will ensure that the InternalRequest PipelineRun status is tracked
+// in the InternalRequest being processed.
+func (a *Adapter) EnsureStatusIsTracked() (controller.OperationResult, error) <span class="cov8" title="1">{
+        pipelineRun, err := a.loader.GetInternalRequestPipelineRun(a.ctx, a.internalClient, a.internalRequest)
+        if err != nil &amp;&amp; !errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                return controller.RequeueWithError(err)
+        }</span>
+
+        <span class="cov8" title="1">if pipelineRun != nil </span><span class="cov8" title="1">{
+                return controller.RequeueOnErrorOrContinue(a.registerInternalRequestPipelineRunStatus(pipelineRun))
+        }</span>
+
+        <span class="cov0" title="0">return controller.ContinueProcessing()</span>
+}
+
+// createInternalRequestPipelineRun creates and returns a new InternalRequest PipelineRun. The new PipelineRun will
+// include owner annotations, so it triggers InternalRequest reconciles whenever it changes. The Pipeline information
+// and its parameters will be extracted from the InternalRequest.
+func (a *Adapter) createInternalRequestPipelineRun() (*tektonv1.PipelineRun, error) <span class="cov8" title="1">{
+        pipelineRun := tekton.NewInternalRequestPipelineRun(a.internalServicesConfig).
+                WithInternalRequest(a.internalRequest).
+                WithOwner(a.internalRequest).
+                WithPipelineRef(a.internalRequest, a.internalServicesConfig).
+                AsPipelineRun()
+
+        err := a.internalClient.Create(a.ctx, pipelineRun)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return pipelineRun, nil</span>
+}
+
+// getDefaultInternalServicesConfig creates and returns a InternalServicesConfig resource in the given namespace with default values.
+func (a *Adapter) getDefaultInternalServicesConfig(namespace string) *v1alpha1.InternalServicesConfig <span class="cov8" title="1">{
+        return &amp;v1alpha1.InternalServicesConfig{
+                ObjectMeta: v1.ObjectMeta{
+                        Name:      v1alpha1.InternalServicesConfigResourceName,
+                        Namespace: namespace,
+                },
+        }
+}</span>
+
+// registerInternalRequestStatus sets the InternalRequest to Running.
+func (a *Adapter) registerInternalRequestStatus(pipelineRun *tektonv1.PipelineRun) error <span class="cov8" title="1">{
+        if pipelineRun == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">patch := client.MergeFrom(a.internalRequest.DeepCopy())
+
+        a.internalRequest.MarkRunning()
+
+        return a.client.Status().Patch(a.ctx, a.internalRequest, patch)</span>
+}
+
+// registerInternalRequestPipelineRunStatus keeps track of the PipelineRun status in the InternalRequest being processed.
+func (a *Adapter) registerInternalRequestPipelineRunStatus(pipelineRun *tektonv1.PipelineRun) error <span class="cov8" title="1">{
+        if pipelineRun == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">patch := client.MergeFrom(a.internalRequest.DeepCopy())
+
+        a.internalRequest.Status.PipelineRun = fmt.Sprintf("%s%c%s",
+                pipelineRun.Namespace, types.Separator, pipelineRun.Name)
+
+        if pipelineRun.IsDone() </span><span class="cov8" title="1">{
+                condition := pipelineRun.Status.GetCondition(apis.ConditionSucceeded)
+                if condition.IsTrue() </span><span class="cov8" title="1">{
+                        a.internalRequest.Status.Results = tekton.GetResultsFromPipelineRun(pipelineRun)
+                        a.internalRequest.MarkSucceeded()
+                }</span> else<span class="cov8" title="1"> {
+                        a.internalRequest.MarkFailed(condition.Message)
+                }</span>
+                <span class="cov8" title="1">a.logger.Info("Request execution finished", "Succeeded", a.internalRequest.HasSucceeded())</span>
+        }
+
+        <span class="cov8" title="1">err := a.client.Status().Patch(a.ctx, a.internalRequest, patch)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">/*
+Copyright 2022.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package internalrequest
+
+import (
+        "context"
+
+        "github.com/go-logr/logr"
+        "github.com/konflux-ci/internal-services/api/v1alpha1"
+        "github.com/konflux-ci/internal-services/loader"
+        "github.com/konflux-ci/internal-services/tekton"
+        "github.com/konflux-ci/operator-toolkit/controller"
+        "github.com/konflux-ci/operator-toolkit/predicates"
+        libhandler "github.com/operator-framework/operator-lib/handler"
+        tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+        "k8s.io/apimachinery/pkg/api/errors"
+        "k8s.io/apimachinery/pkg/runtime"
+        "k8s.io/apimachinery/pkg/runtime/schema"
+        ctrl "sigs.k8s.io/controller-runtime"
+        "sigs.k8s.io/controller-runtime/pkg/builder"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+        "sigs.k8s.io/controller-runtime/pkg/cluster"
+        "sigs.k8s.io/controller-runtime/pkg/handler"
+        "sigs.k8s.io/controller-runtime/pkg/predicate"
+        "sigs.k8s.io/controller-runtime/pkg/source"
+)
+
+// Reconciler reconciles an InternalRequest object
+type Reconciler struct {
+        Client         client.Client
+        Log            logr.Logger
+        InternalClient client.Client
+        Scheme         *runtime.Scheme
+}
+
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=internalrequests,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=internalrequests/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=internalrequests/finalizers,verbs=update
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=internalservicesconfigs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=tekton.dev,resources=pipelines,verbs=get;list;watch
+// +kubebuilder:rbac:groups=tekton.dev,resources=pipelineruns,verbs=get;list;watch;create;delete
+// +kubebuilder:rbac:groups=tekton.dev,resources=pipelineruns/status,verbs=get
+
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) <span class="cov0" title="0">{
+        logger := r.Log.WithValues("InternalRequest", req.NamespacedName)
+
+        internalRequest := &amp;v1alpha1.InternalRequest{}
+        err := r.Client.Get(ctx, req.NamespacedName, internalRequest)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                        return ctrl.Result{}, nil
+                }</span>
+
+                <span class="cov0" title="0">return ctrl.Result{}, err</span>
+        }
+
+        <span class="cov0" title="0">adapter := NewAdapter(ctx, r.Client, r.InternalClient, internalRequest, loader.NewLoader(), logger)
+
+        return controller.ReconcileHandler([]controller.Operation{
+                adapter.EnsureRequestINotCompleted,
+                adapter.EnsureConfigIsLoaded, // This operation sets the config in the adapter to be used in other operations.
+                adapter.EnsureRequestIsAllowed,
+                adapter.EnsurePipelineRunIsCreated,
+                adapter.EnsureStatusIsTracked,
+                adapter.EnsurePipelineRunIsDeleted,
+        })</span>
+}
+
+// Register registers the controller with the passed manager and log. This controller monitors new InternalRequests and
+// filters out status updates. It also watches for PipelineRuns created by this controller and owned by the
+// InternalRequests so the owner gets reconciled on PipelineRun changes.
+func (r *Reconciler) Register(mgr ctrl.Manager, log *logr.Logger, remoteCluster cluster.Cluster) error <span class="cov0" title="0">{
+        r.Client = remoteCluster.GetClient()
+        r.InternalClient = mgr.GetClient()
+        r.Log = log.WithName("internalRequest")
+
+        return ctrl.NewControllerManagedBy(mgr).
+                For(
+                        &amp;v1alpha1.InternalRequest{},
+                        builder.WithPredicates(predicate.GenerationChangedPredicate{}, predicates.IgnoreAllPredicate{}),
+                ).
+                WatchesRawSource(
+                        source.TypedKind(remoteCluster.GetCache(), &amp;v1alpha1.InternalRequest{},
+                                &amp;handler.TypedEnqueueRequestForObject[*v1alpha1.InternalRequest]{},
+                                predicates.TypedGenerationChangedPredicate[*v1alpha1.InternalRequest]{},
+                                predicates.TypedNewObjectsPredicate[*v1alpha1.InternalRequest]{},
+                        ),
+                ).
+                Watches(&amp;tektonv1.PipelineRun{}, &amp;libhandler.EnqueueRequestForAnnotation[client.Object]{
+                        Type: schema.GroupKind{
+                                Kind:  "InternalRequest",
+                                Group: "appstudio.redhat.com",
+                        },
+                }, builder.WithPredicates(tekton.InternalRequestPipelineRunSucceededPredicate())).
+                Complete(r)
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package loader
+
+import (
+        "context"
+
+        "github.com/konflux-ci/internal-services/api/v1alpha1"
+        "github.com/konflux-ci/internal-services/tekton"
+        toolkit "github.com/konflux-ci/operator-toolkit/loader"
+        v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+type ObjectLoader interface {
+        GetInternalRequest(ctx context.Context, cli client.Client, name, namespace string) (*v1alpha1.InternalRequest, error)
+        GetInternalRequestPipeline(ctx context.Context, cli client.Client, name, namespace string) (*v1.Pipeline, error)
+        GetInternalRequestPipelineRun(ctx context.Context, cli client.Client, internalRequest *v1alpha1.InternalRequest) (*v1.PipelineRun, error)
+        GetInternalServicesConfig(ctx context.Context, cli client.Client, name, namespace string) (*v1alpha1.InternalServicesConfig, error)
+}
+
+type loader struct{}
+
+func NewLoader() ObjectLoader <span class="cov8" title="1">{
+        return &amp;loader{}
+}</span>
+
+// GetInternalRequest returns the InternalRequest with the given name and namespace. If the InternalRequest is not
+// found or the Get operation fails, an error will be returned.
+func (l *loader) GetInternalRequest(ctx context.Context, cli client.Client, name, namespace string) (*v1alpha1.InternalRequest, error) <span class="cov8" title="1">{
+        internalRequest := &amp;v1alpha1.InternalRequest{}
+        return internalRequest, toolkit.GetObject(name, namespace, cli, ctx, internalRequest)
+}</span>
+
+// GetInternalRequestPipeline returns the Pipeline with the given name and namespace. If the Pipeline is not
+// found or the Get operation fails, an error will be returned.
+func (l *loader) GetInternalRequestPipeline(ctx context.Context, cli client.Client, name, namespace string) (*v1.Pipeline, error) <span class="cov8" title="1">{
+        pipeline := &amp;v1.Pipeline{}
+        return pipeline, toolkit.GetObject(name, namespace, cli, ctx, pipeline)
+}</span>
+
+// GetInternalRequestPipelineRun returns the PipelineRun referenced by the given InternalRequest or nil if it's not
+// found. In the case the List operation fails, an error will be returned.
+func (l *loader) GetInternalRequestPipelineRun(ctx context.Context, cli client.Client, internalRequest *v1alpha1.InternalRequest) (*v1.PipelineRun, error) <span class="cov8" title="1">{
+        pipelineRuns := &amp;v1.PipelineRunList{}
+        err := cli.List(ctx, pipelineRuns,
+                client.Limit(1),
+                client.MatchingLabels{
+                        tekton.InternalRequestNameLabel:      internalRequest.Name,
+                        tekton.InternalRequestNamespaceLabel: internalRequest.Namespace,
+                })
+
+        if err == nil &amp;&amp; len(pipelineRuns.Items) &gt; 0 </span><span class="cov8" title="1">{
+                return &amp;pipelineRuns.Items[0], nil
+        }</span>
+
+        <span class="cov8" title="1">return nil, err</span>
+}
+
+// GetInternalServicesConfig returns the InternalServicesConfig with the given name and namespace. If the
+// InternalServicesConfig is not found or the Get operation fails, an error will be returned.
+func (l *loader) GetInternalServicesConfig(ctx context.Context, cli client.Client, name, namespace string) (*v1alpha1.InternalServicesConfig, error) <span class="cov8" title="1">{
+        internalServicesConfig := &amp;v1alpha1.InternalServicesConfig{}
+        return internalServicesConfig, toolkit.GetObject(name, namespace, cli, ctx, internalServicesConfig)
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package loader
+
+import (
+        "context"
+
+        "github.com/konflux-ci/internal-services/api/v1alpha1"
+        toolkit "github.com/konflux-ci/operator-toolkit/loader"
+        v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+        InternalRequestContextKey            toolkit.ContextKey = iota
+        InternalRequestPipelineContextKey    toolkit.ContextKey = iota
+        InternalRequestPipelineRunContextKey toolkit.ContextKey = iota
+        InternalServicesConfigContextKey     toolkit.ContextKey = iota
+)
+
+type mockLoader struct {
+        loader ObjectLoader
+}
+
+func NewMockLoader() ObjectLoader <span class="cov8" title="1">{
+        return &amp;mockLoader{
+                loader: NewLoader(),
+        }
+}</span>
+
+// GetInternalRequest returns the resource and error passed as values of the context.
+func (l *mockLoader) GetInternalRequest(ctx context.Context, cli client.Client, name, namespace string) (*v1alpha1.InternalRequest, error) <span class="cov8" title="1">{
+        if ctx.Value(InternalRequestContextKey) == nil </span><span class="cov0" title="0">{
+                return l.loader.GetInternalRequest(ctx, cli, name, namespace)
+        }</span>
+        <span class="cov8" title="1">return toolkit.GetMockedResourceAndErrorFromContext(ctx, InternalRequestContextKey, &amp;v1alpha1.InternalRequest{})</span>
+}
+
+// GetInternalRequestPipeline returns the resource and error passed as values of the context.
+func (l *mockLoader) GetInternalRequestPipeline(ctx context.Context, cli client.Client, name, namespace string) (*v1.Pipeline, error) <span class="cov8" title="1">{
+        if ctx.Value(InternalRequestPipelineContextKey) == nil </span><span class="cov0" title="0">{
+                return l.loader.GetInternalRequestPipeline(ctx, cli, name, namespace)
+        }</span>
+        <span class="cov8" title="1">return toolkit.GetMockedResourceAndErrorFromContext(ctx, InternalRequestPipelineContextKey, &amp;v1.Pipeline{})</span>
+}
+
+// GetInternalRequestPipelineRun returns the resource and error passed as values of the context.
+func (l *mockLoader) GetInternalRequestPipelineRun(ctx context.Context, cli client.Client, internalRequest *v1alpha1.InternalRequest) (*v1.PipelineRun, error) <span class="cov8" title="1">{
+        if ctx.Value(InternalRequestPipelineRunContextKey) == nil </span><span class="cov0" title="0">{
+                return l.loader.GetInternalRequestPipelineRun(ctx, cli, internalRequest)
+        }</span>
+        <span class="cov8" title="1">return toolkit.GetMockedResourceAndErrorFromContext(ctx, InternalRequestPipelineRunContextKey, &amp;v1.PipelineRun{})</span>
+}
+
+// GetInternalServicesConfig returns the resource and error passed as values of the context.
+func (l *mockLoader) GetInternalServicesConfig(ctx context.Context, cli client.Client, name, namespace string) (*v1alpha1.InternalServicesConfig, error) <span class="cov8" title="1">{
+        if ctx.Value(InternalServicesConfigContextKey) == nil </span><span class="cov0" title="0">{
+                return l.loader.GetInternalServicesConfig(ctx, cli, name, namespace)
+        }</span>
+        <span class="cov8" title="1">return toolkit.GetMockedResourceAndErrorFromContext(ctx, InternalServicesConfigContextKey, &amp;v1alpha1.InternalServicesConfig{})</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">/*
+Copyright 2022.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package metrics
+
+import (
+        "strconv"
+
+        "github.com/prometheus/client_golang/prometheus"
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        "sigs.k8s.io/controller-runtime/pkg/metrics"
+)
+
+var (
+        InternalRequestAttemptConcurrentTotal = prometheus.NewGauge(
+                prometheus.GaugeOpts{
+                        Name: "internal_request_attempt_concurrent_requests",
+                        Help: "Total number of concurrent InternalRequest attempts",
+                },
+        )
+
+        InternalRequestAttemptDurationSeconds = prometheus.NewHistogramVec(
+                prometheus.HistogramOpts{
+                        Name:    "internal_request_attempt_duration_seconds",
+                        Help:    "Time from the moment the InternalRequest starts being processed until it completes",
+                        Buckets: []float64{10, 20, 40, 60, 150, 300, 450, 900, 1800, 3600},
+                },
+                []string{"request", "namespace", "reason", "succeeded"},
+        )
+
+        InternalRequestAttemptTotal = prometheus.NewCounterVec(
+                prometheus.CounterOpts{
+                        Name: "internal_request_attempt_total",
+                        Help: "Total number of InternalRequests processed by the operator",
+                },
+                []string{"request", "namespace", "reason", "succeeded"},
+        )
+)
+
+// RegisterCompletedInternalRequest decrements the 'internal_request_attempt_concurrent_total' metric, increments `internal_request_attempt_total`
+// and registers a new observation for 'internal_request_attempt_duration_seconds' with the elapsed time from the moment the
+// InternalRequest attempt started (InternalRequest marked as 'Running').
+func RegisterCompletedInternalRequest(request, namespace, reason string, startTime, completionTime *metav1.Time, succeeded bool) <span class="cov8" title="1">{
+        labels := prometheus.Labels{
+                "request":   request,
+                "namespace": namespace,
+                "reason":    reason,
+                "succeeded": strconv.FormatBool(succeeded),
+        }
+        InternalRequestAttemptConcurrentTotal.Dec()
+        InternalRequestAttemptDurationSeconds.With(labels).Observe(completionTime.Sub(startTime.Time).Seconds())
+        InternalRequestAttemptTotal.With(labels).Inc()
+}</span>
+
+// RegisterNewInternalRequest increments the number of the 'internal_request_attempt_concurrent_total' metric which represents the number of concurrent running InternalRequests.
+func RegisterNewInternalRequest(creationTime metav1.Time, startTime *metav1.Time) <span class="cov8" title="1">{
+        InternalRequestAttemptConcurrentTotal.Inc()
+}</span>
+
+func init() <span class="cov8" title="1">{
+        metrics.Registry.MustRegister(
+                InternalRequestAttemptConcurrentTotal,
+                InternalRequestAttemptDurationSeconds,
+                InternalRequestAttemptTotal,
+        )
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">/*
+Copyright 2022.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package tekton
+
+import (
+        "fmt"
+        "reflect"
+        "strings"
+
+        "github.com/konflux-ci/internal-services/api/v1alpha1"
+        "github.com/konflux-ci/internal-services/metadata"
+        libhandler "github.com/operator-framework/operator-lib/handler"
+        tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+        corev1 "k8s.io/api/core/v1"
+        "k8s.io/apimachinery/pkg/api/resource"
+        v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+        // internalRequestLabelPrefix is the prefix of the internal request labels
+        internalRequestLabelPrefix = "internal-services.appstudio.openshift.io"
+
+        // PipelineTypeRelease is the type for PipelineRuns created to run a release Pipeline
+        PipelineTypeRelease = "release"
+)
+
+var (
+        // InternalRequestNameLabel is the label used to specify the name of the internal request associated with the PipelineRun
+        InternalRequestNameLabel = fmt.Sprintf("%s/%s", internalRequestLabelPrefix, "name")
+
+        // InternalRequestNamespaceLabel is the label used to specify the namespace of the internal request associated with the PipelineRun
+        InternalRequestNamespaceLabel = fmt.Sprintf("%s/%s", internalRequestLabelPrefix, "namespace")
+)
+
+// InternalRequestPipelineRun is a PipelineRun alias, so we can add new methods to it in this file.
+type InternalRequestPipelineRun struct {
+        tektonv1.PipelineRun
+}
+
+// NewInternalRequestPipelineRun creates a PipelineRun for the given InternalRequest. The name will be autogenerated,
+// using the name of the request as the prefix. The Pipeline information and namespace for the PipelineRun will be
+// extracted from the given InternalServicesConfig.
+func NewInternalRequestPipelineRun(internalServicesConfig *v1alpha1.InternalServicesConfig) *InternalRequestPipelineRun <span class="cov8" title="1">{
+        pipelineRun := tektonv1.PipelineRun{
+                ObjectMeta: v1.ObjectMeta{
+                        GenerateName: strings.ToLower(reflect.TypeOf(v1alpha1.InternalRequest{}).Name()) + "-",
+                        Namespace:    internalServicesConfig.Namespace,
+                },
+        }
+
+        return &amp;InternalRequestPipelineRun{pipelineRun}
+}</span>
+
+// AsPipelineRun casts the InternalRequestPipelineRun to PipelineRun, so it can be used in the Kubernetes client.
+func (i *InternalRequestPipelineRun) AsPipelineRun() *tektonv1.PipelineRun <span class="cov8" title="1">{
+        return &amp;i.PipelineRun
+}</span>
+
+// WithInternalRequest appends the InternalRequest parameters to the PipelineRun passed as an argument and set labels
+// referencing the InternalRequest.
+func (i *InternalRequestPipelineRun) WithInternalRequest(internalRequest *v1alpha1.InternalRequest) *InternalRequestPipelineRun <span class="cov8" title="1">{
+        for param, value := range internalRequest.Spec.Params </span><span class="cov8" title="1">{
+                i.Spec.Params = append(i.Spec.Params, tektonv1.Param{
+                        Name: param,
+                        Value: tektonv1.ParamValue{
+                                Type:      tektonv1.ParamTypeString,
+                                StringVal: value,
+                        },
+                })
+        }</span>
+
+        <span class="cov8" title="1">i.ObjectMeta.Labels = map[string]string{
+                InternalRequestNameLabel:      internalRequest.Name,
+                InternalRequestNamespaceLabel: internalRequest.Namespace,
+                metadata.PipelinesTypeLabel:   PipelineTypeRelease,
+        }
+
+        if internalRequest.Spec.Timeouts != (tektonv1.TimeoutFields{}) </span><span class="cov8" title="1">{
+                i.Spec.Timeouts = &amp;internalRequest.Spec.Timeouts
+        }</span>
+
+        <span class="cov8" title="1">i.Spec.TaskRunTemplate.ServiceAccountName = internalRequest.Spec.ServiceAccount
+
+        return i</span>
+}
+
+// WithOwner set's owner annotations to the InternalRequest PipelineRun.
+func (i *InternalRequestPipelineRun) WithOwner(internalRequest *v1alpha1.InternalRequest) *InternalRequestPipelineRun <span class="cov8" title="1">{
+        _ = libhandler.SetOwnerAnnotations(internalRequest, i)
+
+        return i
+}</span>
+
+// WithPipeline sets a PipelineRef to point to the specified pipeline. It will also add a Workspace if the Pipeline
+// requires one with a name matching the name of the VolumeClaim defined in the InternalServicesConfig.
+func (i *InternalRequestPipelineRun) WithPipeline(pipeline *tektonv1.Pipeline, internalServicesConfig *v1alpha1.InternalServicesConfig) *InternalRequestPipelineRun <span class="cov8" title="1">{
+        i.Spec.PipelineRef = &amp;tektonv1.PipelineRef{
+                Name: pipeline.Name,
+        }
+
+        for _, workspace := range pipeline.Spec.Workspaces </span><span class="cov8" title="1">{
+                if workspace.Name == internalServicesConfig.Spec.VolumeClaim.Name </span><span class="cov8" title="1">{
+                        i.Spec.Workspaces = []tektonv1.WorkspaceBinding{
+                                {
+                                        Name: internalServicesConfig.Spec.VolumeClaim.Name,
+                                        VolumeClaimTemplate: &amp;corev1.PersistentVolumeClaim{
+                                                Spec: corev1.PersistentVolumeClaimSpec{
+                                                        AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+                                                        Resources: corev1.VolumeResourceRequirements{
+                                                                Requests: corev1.ResourceList{
+                                                                        corev1.ResourceStorage: resource.MustParse(internalServicesConfig.Spec.VolumeClaim.Size),
+                                                                },
+                                                        },
+                                                },
+                                        },
+                                },
+                        }
+                        break</span>
+                }
+        }
+
+        <span class="cov8" title="1">return i</span>
+}
+
+// WithPipelineRef sets a PipelineRef to point to the specified pipeline. It will also add a Workspace to the Pipeline
+// with a name matching the name of the VolumeClaim defined in the InternalServicesConfig.
+func (i *InternalRequestPipelineRun) WithPipelineRef(internalRequest *v1alpha1.InternalRequest, internalServicesConfig *v1alpha1.InternalServicesConfig) *InternalRequestPipelineRun <span class="cov8" title="1">{
+        i.Spec.PipelineRef = internalRequest.Spec.Pipeline.PipelineRef.ToTektonPipelineRef()
+        if i.Spec.PipelineRef.Resolver == "cluster" </span><span class="cov8" title="1">{
+                i.Spec.PipelineRef.Params = append(i.Spec.PipelineRef.Params,
+                        tektonv1.Param{
+                                Name: "namespace",
+                                Value: tektonv1.ParamValue{
+                                        Type:      tektonv1.ParamTypeString,
+                                        StringVal: internalRequest.Namespace,
+                                },
+                        },
+                        tektonv1.Param{
+                                Name: "kind",
+                                Value: tektonv1.ParamValue{
+                                        Type:      tektonv1.ParamTypeString,
+                                        StringVal: "pipeline",
+                                },
+                        },
+                )
+        }</span>
+
+        <span class="cov8" title="1">i.Spec.Workspaces = []tektonv1.WorkspaceBinding{
+                {
+                        Name: internalServicesConfig.Spec.VolumeClaim.Name,
+                        VolumeClaimTemplate: &amp;corev1.PersistentVolumeClaim{
+                                Spec: corev1.PersistentVolumeClaimSpec{
+                                        AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+                                        Resources: corev1.VolumeResourceRequirements{
+                                                Requests: corev1.ResourceList{
+                                                        corev1.ResourceStorage: resource.MustParse(internalServicesConfig.Spec.VolumeClaim.Size),
+                                                },
+                                        },
+                                },
+                        },
+                },
+        }
+
+        return i</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">/*
+Copyright 2022.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package tekton
+
+import (
+        "sigs.k8s.io/controller-runtime/pkg/event"
+        "sigs.k8s.io/controller-runtime/pkg/predicate"
+)
+
+// InternalRequestPipelineRunSucceededPredicate returns a predicate which filters out all objects except
+// internal requests PipelineRuns which have just succeeded.
+func InternalRequestPipelineRunSucceededPredicate() predicate.Predicate <span class="cov8" title="1">{
+        return predicate.Funcs{
+                CreateFunc: func(createEvent event.CreateEvent) bool </span><span class="cov8" title="1">{
+                        return false
+                }</span>,
+                DeleteFunc: func(deleteEvent event.DeleteEvent) bool <span class="cov8" title="1">{
+                        return false
+                }</span>,
+                GenericFunc: func(genericEvent event.GenericEvent) bool <span class="cov8" title="1">{
+                        return false
+                }</span>,
+                UpdateFunc: func(e event.UpdateEvent) bool <span class="cov8" title="1">{
+                        return isInternalRequestsPipelineRun(e.ObjectNew) &amp;&amp; hasPipelineSucceeded(e.ObjectOld, e.ObjectNew)
+                }</span>,
+        }
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">/*
+Copyright 2022.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package tekton
+
+import (
+        "reflect"
+        "strings"
+
+        "github.com/konflux-ci/internal-services/api/v1alpha1"
+        libhandler "github.com/operator-framework/operator-lib/handler"
+        tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+// GetResultsFromPipelineRun returns a map with all the results emitted by the given PipelineRun. Only string results
+// are supported. Other type of results will be silently omitted.
+func GetResultsFromPipelineRun(pipelineRun *tektonv1.PipelineRun) map[string]string <span class="cov8" title="1">{
+        results := map[string]string{}
+
+        for _, pipelineResult := range pipelineRun.Status.Results </span><span class="cov8" title="1">{
+                if pipelineResult.Value.Type == tektonv1.ParamTypeString </span><span class="cov8" title="1">{
+                        results[pipelineResult.Name] = pipelineResult.Value.StringVal
+                }</span>
+        }
+
+        <span class="cov8" title="1">return results</span>
+}
+
+// isInternalRequestsPipelineRun returns a boolean indicating whether the object passed is an internal request
+// PipelineRun or not.
+func isInternalRequestsPipelineRun(object client.Object) bool <span class="cov8" title="1">{
+        _, ok := object.(*tektonv1.PipelineRun)
+        if !ok </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov8" title="1">internalRequestKind := reflect.TypeOf(v1alpha1.InternalRequest{}).Name()
+
+        if ownerType, ok := object.GetAnnotations()[libhandler.TypeAnnotation]; ok </span><span class="cov8" title="1">{
+                return strings.Contains(ownerType, internalRequestKind)
+        }</span>
+
+        <span class="cov8" title="1">return false</span>
+}
+
+// hasPipelineSucceeded returns a boolean that is true if objectOld has not yet succeeded and objectNew has.
+// If any of the objects passed to this function are not a PipelineRun, the function will return false.
+func hasPipelineSucceeded(objectOld, objectNew client.Object) bool <span class="cov8" title="1">{
+        if oldPipelineRun, ok := objectOld.(*tektonv1.PipelineRun); ok </span><span class="cov8" title="1">{
+                if newPipelineRun, ok := objectNew.(*tektonv1.PipelineRun); ok </span><span class="cov8" title="1">{
+                        return !oldPipelineRun.IsDone() &amp;&amp; newPipelineRun.IsDone()
+                }</span>
+        }
+
+        <span class="cov8" title="1">return false</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package utils
+
+import (
+        "path/filepath"
+        "strings"
+
+        tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+)
+
+// Param defines the parameters for a given resolver in PipelineRef
+type Param struct {
+        // Name is the name of the parameter
+        Name string `json:"name"`
+
+        // Value is the value of the parameter
+        Value string `json:"value"`
+}
+
+// PipelineRef represents a reference to a Pipeline using a resolver.
+// +kubebuilder:object:generate=true
+type PipelineRef struct {
+        // Resolver is the name of a Tekton resolver to be used (e.g. git)
+        Resolver string `json:"resolver"`
+
+        // Params is a slice of parameters for a given resolver
+        Params []Param `json:"params"`
+}
+
+// Pipeline contains a reference to a Pipeline and the name of the service account to use while executing it.
+// +kubebuilder:object:generate=true
+type Pipeline struct {
+        // PipelineRef is the reference to the Pipeline
+        PipelineRef PipelineRef `json:"pipelineRef"`
+
+        // ServiceAccountName is the ServiceAccount to use during the execution of the Pipeline
+        // +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+        // +optional
+        ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+        // Timeouts defines the different Timeouts to use in the PipelineRun execution
+        // +optional
+        Timeouts tektonv1.TimeoutFields `json:"timeouts,omitempty"`
+}
+
+// ParameterizedPipeline is an extension of the Pipeline struct, adding an array of parameters that will be passed to
+// the Pipeline.
+// +kubebuilder:object:generate=true
+type ParameterizedPipeline struct {
+        Pipeline `json:",inline"`
+
+        // Params is a slice of parameters for a given resolver
+        // +optional
+        Params []Param `json:"params,omitempty"`
+}
+
+// ToTektonPipelineRef converts a PipelineRef object to Tekton's own PipelineRef type and returns it.
+func (pr *PipelineRef) ToTektonPipelineRef() *tektonv1.PipelineRef <span class="cov0" title="0">{
+        var params []tektonv1.Param
+
+        for _, p := range pr.Params </span><span class="cov0" title="0">{
+                params = append(params, tektonv1.Param{
+                        Name: p.Name,
+                        Value: tektonv1.ParamValue{
+                                Type:      tektonv1.ParamTypeString,
+                                StringVal: p.Value,
+                        },
+                })
+        }</span>
+
+        <span class="cov0" title="0">tektonPipelineRef := &amp;tektonv1.PipelineRef{
+                ResolverRef: tektonv1.ResolverRef{
+                        Resolver: tektonv1.ResolverName(pr.Resolver),
+                        Params:   params,
+                },
+        }
+
+        return tektonPipelineRef</span>
+}
+
+// GetPipelineNameFromGitResolver returns the filename as a string from the pathInRepo
+// param used in a git resolver. This is commonly the pipeline name.
+func (prp *ParameterizedPipeline) GetPipelineNameFromGitResolver() string <span class="cov0" title="0">{
+        name := ""
+
+        for _, param := range prp.Params </span><span class="cov0" title="0">{
+                if param.Name == "pathInRepo" </span><span class="cov0" title="0">{
+                        filename := filepath.Base(param.Value)
+                        name = strings.TrimSuffix(filename, filepath.Ext(filename))
+                }</span>
+        }
+
+        <span class="cov0" title="0">return name</span>
+}
+
+// GetTektonParams returns the ParameterizedPipeline []Param as []tektonv1.Param.
+func (prp *ParameterizedPipeline) GetTektonParams() []tektonv1.Param <span class="cov0" title="0">{
+        params := []tektonv1.Param{}
+
+        for _, param := range prp.Params </span><span class="cov0" title="0">{
+                params = append(params, tektonv1.Param{
+                        Name: param.Name,
+                        Value: tektonv1.ParamValue{
+                                Type:      tektonv1.ParamTypeString,
+                                StringVal: param.Value,
+                        },
+                })
+        }</span>
+
+        <span class="cov0" title="0">return params</span>
+}
+
+// IsClusterScoped returns whether the PipelineRef uses a cluster resolver or not.
+func (pr *PipelineRef) IsClusterScoped() bool <span class="cov0" title="0">{
+        return pr.Resolver == "cluster"
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
