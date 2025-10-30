@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/18896149450",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/18928868926",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -33,7 +33,7 @@
     },
     {
       "repo": "konflux-ci/project-controller",
-      "coverage": 56.4,
+      "coverage": 61.6,
       "status": "ok",
       "packages": [
         {
@@ -46,7 +46,7 @@
         },
         {
           "package": "github.com/konflux-ci/project-controller/internal/controller",
-          "coverage": 64.8
+          "coverage": 75.3
         }
       ]
     },
