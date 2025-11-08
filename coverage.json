@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/19157182126",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/19187219069",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -111,12 +111,12 @@
           "coverage": 100.0
         },
         {
-          "package": "github.com/konflux-ci/release-service/loader",
-          "coverage": 81.2
-        },
-        {
           "package": "github.com/konflux-ci/release-service/syncer",
           "coverage": 90.0
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/loader",
+          "coverage": 81.2
         },
         {
           "package": "github.com/konflux-ci/release-service/tekton/utils",
