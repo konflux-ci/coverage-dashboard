@@ -1,0 +1,8 @@
+name: konflux-ci/release-service
+exclude_dirs:
+  - .github/
+  - .tekton/
+  - hack/
+  - integration-tests/
+exclude_files:
+  - zz_generated.deepcopy.go

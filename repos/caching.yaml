@@ -1,0 +1,10 @@
+name: konflux-ci/caching
+exclude_dirs:
+  - vendor/
+  - hack/
+  - proto/
+  - tests/
+  - /fake(/|$)
+exclude_files:
+  - zz_generated.deepcopy.go
+  - openapi_generated.go

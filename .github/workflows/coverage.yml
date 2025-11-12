@@ -62,21 +62,23 @@ jobs:
           cd workspace
           echo "[" > ../_temp_coverage.json
 
-          COUNT=$(yq '.repositories | length' ../repos.yaml)
-
           OLD_COVERAGE_JSON=$(cat ../gh-pages/coverage.json || echo "[]")
 
-          for i in $(seq 0 $((COUNT - 1))); do
-            REPO=$(yq ".repositories[$i].name" ../repos.yaml | tr -d '"')
+          # Iterate through all repository configuration files
+          for config_file in ../repos/*.yaml; do
+
+            REPO=$(yq -r '.name' "$config_file")
             REPO_NAME=$(basename "$REPO")
+
+            echo "→ Processing $REPO (from $(basename "$config_file"))..."
+
+            # Get exclude patterns BEFORE entering repo directory
+            EXCLUDE_DIRS_ARRAY=$(yq '.exclude_dirs // []' "$config_file")
+            EXCLUDE_FILES=$(yq '.exclude_files // []' "$config_file")
 
             echo "→ Cloning $REPO..."
             git clone --depth 1 "https://github.com/$REPO.git"
             cd "$REPO_NAME"
-
-            # Get exclude patterns and build proper regex
-            EXCLUDE_DIRS_ARRAY=$(yq ".repositories[$i].exclude_dirs // []" ../../repos.yaml)
-            EXCLUDE_FILES=$(yq ".repositories[$i].exclude_files // []" ../../repos.yaml)
 
             # Build the exclude pattern more carefully
             EXCLUDE_PATTERN=""
