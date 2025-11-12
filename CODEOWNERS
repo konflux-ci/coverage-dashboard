@@ -1,0 +1,22 @@
+# Coverage Dashboard CODEOWNERS
+# Each repository configuration file is owned by the respective repository team
+# Repository owners can approve changes to their own coverage configuration
+
+# Dashboard infrastructure owned by Vanguard team
+/.github/ @konflux-ci/Vanguard
+/index.html @konflux-ci/Vanguard
+/README.md @konflux-ci/Vanguard
+
+# Repository configurations - owned by respective teams/contributors
+# Based on actual CODEOWNERS files or top contributors from each repository
+
+# Repositories with @konflux-ci/Vanguard team ownership
+/repos/caching.yaml @konflux-ci/Vanguard
+/repos/project-controller.yaml @konflux-ci/Vanguard
+/repos/smee-sidecar.yaml @konflux-ci/Vanguard
+
+# Repositories without CODEOWNERS - assigned to top contributors
+/repos/konflux-ci.yaml @yftacherzog
+/repos/notification-service.yaml @yftacherzog
+/repos/release-service.yaml @querti @mmalina @elenagerman
+/repos/internal-services.yaml @querti @mmalina

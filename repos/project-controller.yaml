@@ -1,0 +1,10 @@
+name: konflux-ci/project-controller
+exclude_dirs:
+  - vendor/
+  - hack/
+  - proto/
+  - test/
+  - /fake(/|$)
+exclude_files:
+  - zz_generated.deepcopy.go
+  - openapi_generated.go
