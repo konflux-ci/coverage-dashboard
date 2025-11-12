@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/19285364857",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/19312061002",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -21,6 +21,37 @@
       ]
     },
     {
+      "repo": "konflux-ci/internal-services",
+      "coverage": 78.6,
+      "status": "ok",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/internal-services/controllers/internalrequest",
+          "coverage": 72.9
+        },
+        {
+          "package": "github.com/konflux-ci/internal-services/metrics",
+          "coverage": 100.0
+        },
+        {
+          "package": "github.com/konflux-ci/internal-services/loader",
+          "coverage": 84.0
+        },
+        {
+          "package": "github.com/konflux-ci/internal-services/tekton",
+          "coverage": 97.7
+        },
+        {
+          "package": "github.com/konflux-ci/internal-services/tekton/utils",
+          "coverage": 0.0
+        },
+        {
+          "package": "github.com/konflux-ci/internal-services/api/v1alpha1",
+          "coverage": 94.9
+        }
+      ]
+    },
+    {
       "repo": "konflux-ci/konflux-ci",
       "coverage": 81.6,
       "status": "ok",
@@ -28,6 +59,21 @@
         {
           "package": "github.com/konflux-ci/konflux-ci/pkg/konftool/filestore",
           "coverage": 81.6
+        }
+      ]
+    },
+    {
+      "repo": "konflux-ci/notification-service",
+      "coverage": 85.0,
+      "status": "ok",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/notification-service/pkg/notifier",
+          "coverage": 94.7
+        },
+        {
+          "package": "github.com/konflux-ci/notification-service/internal/controller",
+          "coverage": 83.5
         }
       ]
     },
@@ -47,21 +93,6 @@
         {
           "package": "github.com/konflux-ci/project-controller/internal/controller",
           "coverage": 75.3
-        }
-      ]
-    },
-    {
-      "repo": "konflux-ci/notification-service",
-      "coverage": 85.0,
-      "status": "ok",
-      "packages": [
-        {
-          "package": "github.com/konflux-ci/notification-service/pkg/notifier",
-          "coverage": 94.7
-        },
-        {
-          "package": "github.com/konflux-ci/notification-service/internal/controller",
-          "coverage": 83.5
         }
       ]
     },
@@ -137,37 +168,6 @@
         {
           "package": "github.com/konflux-ci/release-service/tekton",
           "coverage": 88.9
-        }
-      ]
-    },
-    {
-      "repo": "konflux-ci/internal-services",
-      "coverage": 78.6,
-      "status": "ok",
-      "packages": [
-        {
-          "package": "github.com/konflux-ci/internal-services/controllers/internalrequest",
-          "coverage": 72.9
-        },
-        {
-          "package": "github.com/konflux-ci/internal-services/metrics",
-          "coverage": 100.0
-        },
-        {
-          "package": "github.com/konflux-ci/internal-services/tekton",
-          "coverage": 97.7
-        },
-        {
-          "package": "github.com/konflux-ci/internal-services/loader",
-          "coverage": 84.0
-        },
-        {
-          "package": "github.com/konflux-ci/internal-services/tekton/utils",
-          "coverage": 0.0
-        },
-        {
-          "package": "github.com/konflux-ci/internal-services/api/v1alpha1",
-          "coverage": 94.9
         }
       ]
     },
