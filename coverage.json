@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/19417446478",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/19452987316",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -146,12 +146,12 @@
           "coverage": 81.8
         },
         {
-          "package": "github.com/konflux-ci/release-service/syncer",
-          "coverage": 90.0
-        },
-        {
           "package": "github.com/konflux-ci/release-service/tekton/utils",
           "coverage": 92.9
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/syncer",
+          "coverage": 90.0
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release",
