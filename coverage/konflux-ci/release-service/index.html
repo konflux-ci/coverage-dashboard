@@ -89,7 +89,7 @@
 				
 				<option value="file16">github.com/konflux-ci/release-service/git/references.go (81.2%)</option>
 				
-				<option value="file17">github.com/konflux-ci/release-service/loader/loader.go (88.7%)</option>
+				<option value="file17">github.com/konflux-ci/release-service/loader/loader.go (89.1%)</option>
 				
 				<option value="file18">github.com/konflux-ci/release-service/loader/loader_mock.go (63.0%)</option>
 				
@@ -4794,6 +4794,14 @@ func (l *loader) GetPreviousRelease(ctx context.Context, cli client.Client, rele
                         possiblePreviousRelease.CreationTimestamp.After(release.CreationTimestamp.Time) </span><span class="cov8" title="1">{
                         continue</span>
                 }
+                // Ignore a release that failed previously
+                <span class="cov8" title="1">if possiblePreviousRelease.IsFailed() </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+                // Ignore a release that has the same snapshot as the current release
+                <span class="cov8" title="1">if possiblePreviousRelease.Spec.Snapshot == release.Spec.Snapshot </span><span class="cov8" title="1">{
+                        continue</span>
+                }
                 <span class="cov8" title="1">if previousRelease == nil || possiblePreviousRelease.CreationTimestamp.After(previousRelease.CreationTimestamp.Time) </span><span class="cov8" title="1">{
                         previousRelease = &amp;releases.Items[i]
                 }</span>
@@ -5335,7 +5343,7 @@ import (
 
 var (
         hourlyBuckets = []float64{5, 10, 30, 60, 90, 180, 300, 450, 900, 1800, 3600}
-        dailyBuckets  = []float64{3600, 7200, 14400, 21600, 28800, 36000, 43200, 57600, 72000, 86400}
+        dailyBuckets  = []float64{60, 300, 600, 1800, 3600, 7200, 14400, 21600, 28800, 36000, 43200, 57600, 72000, 86400}
 
         ReleaseConcurrentTotal = prometheus.NewGaugeVec(
                 prometheus.GaugeOpts{
