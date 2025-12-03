@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/19881364851",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/19897309982",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -98,7 +98,7 @@
     },
     {
       "repo": "konflux-ci/release-service",
-      "coverage": 86.9,
+      "coverage": 87.0,
       "status": "ok",
       "packages": [
         {
@@ -122,12 +122,12 @@
           "coverage": 79.2
         },
         {
-          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
-          "coverage": 96.0
-        },
-        {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan",
           "coverage": 94.1
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
+          "coverage": 96.0
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/author",
@@ -143,15 +143,15 @@
         },
         {
           "package": "github.com/konflux-ci/release-service/loader",
-          "coverage": 81.6
-        },
-        {
-          "package": "github.com/konflux-ci/release-service/syncer",
-          "coverage": 90.0
+          "coverage": 82.2
         },
         {
           "package": "github.com/konflux-ci/release-service/tekton/utils",
           "coverage": 92.9
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/syncer",
+          "coverage": 90.0
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release",
@@ -173,12 +173,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.4,
+      "coverage": 57.1,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.4
+          "coverage": 57.1
         }
       ]
     }
