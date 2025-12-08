@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/19998384558",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20015821163",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -173,12 +173,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 57.1,
+      "coverage": 58.4,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 57.1
+          "coverage": 58.4
         }
       ]
     }
