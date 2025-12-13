@@ -1,14 +1,14 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20155392831",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20186107790",
   "data": [
     {
       "repo": "konflux-ci/caching",
-      "coverage": 62.7,
+      "coverage": 63.2,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/caching/cmd/squid-per-site-exporter",
-          "coverage": 51.2
+          "coverage": 52.0
         },
         {
           "package": "github.com/konflux-ci/caching/cmd/squid-store-id",
@@ -34,12 +34,12 @@
           "coverage": 100.0
         },
         {
-          "package": "github.com/konflux-ci/internal-services/loader",
-          "coverage": 84.0
-        },
-        {
           "package": "github.com/konflux-ci/internal-services/tekton",
           "coverage": 97.7
+        },
+        {
+          "package": "github.com/konflux-ci/internal-services/loader",
+          "coverage": 84.0
         },
         {
           "package": "github.com/konflux-ci/internal-services/tekton/utils",
@@ -173,12 +173,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 57.1,
+      "coverage": 58.4,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 57.1
+          "coverage": 58.4
         }
       ]
     }
