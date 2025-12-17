@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20255583930",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20290675275",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -107,7 +107,7 @@
         },
         {
           "package": "github.com/konflux-ci/release-service/controllers/releaseplan",
-          "coverage": 78.4
+          "coverage": 81.8
         },
         {
           "package": "github.com/konflux-ci/release-service/git",
@@ -135,7 +135,7 @@
         },
         {
           "package": "github.com/konflux-ci/release-service/controllers/release",
-          "coverage": 82.9
+          "coverage": 82.4
         },
         {
           "package": "github.com/konflux-ci/release-service/metadata",
@@ -143,15 +143,15 @@
         },
         {
           "package": "github.com/konflux-ci/release-service/loader",
-          "coverage": 81.6
-        },
-        {
-          "package": "github.com/konflux-ci/release-service/tekton/utils",
-          "coverage": 92.9
+          "coverage": 82.2
         },
         {
           "package": "github.com/konflux-ci/release-service/syncer",
           "coverage": 90.0
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/tekton/utils",
+          "coverage": 93.2
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release",
@@ -173,12 +173,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.4,
+      "coverage": 57.1,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.4
+          "coverage": 57.1
         }
       ]
     }
