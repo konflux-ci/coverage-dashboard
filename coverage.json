@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20290675275",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20325126027",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -53,14 +53,9 @@
     },
     {
       "repo": "konflux-ci/konflux-ci",
-      "coverage": 81.6,
-      "status": "ok",
-      "packages": [
-        {
-          "package": "github.com/konflux-ci/konflux-ci/pkg/konftool/filestore",
-          "coverage": 81.6
-        }
-      ]
+      "coverage": null,
+      "status": "failed",
+      "packages": []
     },
     {
       "repo": "konflux-ci/notification-service",
@@ -173,12 +168,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 57.1,
+      "coverage": 58.4,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 57.1
+          "coverage": 58.4
         }
       ]
     }
