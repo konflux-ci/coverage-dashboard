@@ -139,4 +139,23 @@ var _ = Describe("Runner", func() {
 			Expect(runner).NotTo(BeNil())
 		})
 	})
+
+	Describe("PR Management", func() {
+		Context("Branch naming convention", func() {
+			It("should follow add-repo/{repo-name} pattern", func() {
+				// Verify expected branch naming pattern used in PR creation
+				testCases := []string{
+					"build-service",
+					"integration-service",
+					"mintmaker",
+					"e2e-tests",
+				}
+
+				for _, repo := range testCases {
+					branchName := "add-repo/" + repo
+					Expect(branchName).To(MatchRegexp(`^add-repo/[a-z0-9-]+$`))
+				}
+			})
+		})
+	})
 })

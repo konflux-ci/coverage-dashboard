@@ -345,18 +345,17 @@ func (r *Runner) createPullRequests(ctx context.Context, configs []config.Reposi
 }
 
 func (r *Runner) getCurrentRepoName(ctx context.Context) (string, error) {
-	workDir, _ := os.Getwd()
+	workDir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get working directory: %w", err)
+	}
 
 	remoteURL, err := getGitRemoteURL(ctx, workDir)
 	if err != nil {
-		// Default to "coverage-dashboard" if we can't determine
-		return "coverage-dashboard", nil
+		return "", err
 	}
 
 	// Parse repository name from URL
-	// Examples:
-	//   https://github.com/konflux-ci/coverage-dashboard.git -> coverage-dashboard
-	//   git@github.com:konflux-ci/coverage-dashboard.git -> coverage-dashboard
 	parts := strings.Split(remoteURL, "/")
 	if len(parts) > 0 {
 		repoName := parts[len(parts)-1]
@@ -364,7 +363,7 @@ func (r *Runner) getCurrentRepoName(ctx context.Context) (string, error) {
 		return repoName, nil
 	}
 
-	return "coverage-dashboard", nil
+	return "", fmt.Errorf("failed to parse repository name from remote URL: %s", remoteURL)
 }
 
 func (r *Runner) printSummary(totalRepos, newRepos, created int) {
