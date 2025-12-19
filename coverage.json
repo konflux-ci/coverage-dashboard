@@ -1,9 +1,9 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20348759637",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20358945055",
   "data": [
     {
       "repo": "konflux-ci/caching",
-      "coverage": 62.7,
+      "coverage": 62.2,
       "status": "ok",
       "packages": [
         {
@@ -12,7 +12,7 @@
         },
         {
           "package": "github.com/konflux-ci/caching/cmd/squid-store-id",
-          "coverage": 83.3
+          "coverage": 81.2
         },
         {
           "package": "github.com/konflux-ci/caching/cmd/icap-server",
@@ -138,7 +138,7 @@
         },
         {
           "package": "github.com/konflux-ci/release-service/loader",
-          "coverage": 81.6
+          "coverage": 82.2
         },
         {
           "package": "github.com/konflux-ci/release-service/tekton/utils",
