@@ -65,7 +65,7 @@
 				
 				<option value="file4">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/author/webhook.go (89.3%)</option>
 				
-				<option value="file5">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release/webhook.go (92.6%)</option>
+				<option value="file5">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release/webhook.go (94.6%)</option>
 				
 				<option value="file6">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan/webhook.go (94.1%)</option>
 				
@@ -1553,6 +1553,7 @@ import (
         "reflect"
 
         "github.com/konflux-ci/release-service/loader"
+        "github.com/konflux-ci/release-service/metadata"
 
         "github.com/go-logr/logr"
         "github.com/konflux-ci/release-service/api/v1alpha1"
@@ -1573,6 +1574,15 @@ type Webhook struct {
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
 func (w *Webhook) Default(ctx context.Context, obj runtime.Object) error <span class="cov8" title="1">{
         release := obj.(*v1alpha1.Release)
+
+        // Initialize labels map if nil
+        if release.Labels == nil </span><span class="cov8" title="1">{
+                release.Labels = make(map[string]string)
+        }</span>
+
+        // Set snapshot and releasePlan labels from spec fields
+        <span class="cov8" title="1">release.Labels[metadata.SnapshotLabel] = release.Spec.Snapshot
+        release.Labels[metadata.ReleasePlanLabel] = release.Spec.ReleasePlan
 
         if release.Spec.GracePeriodDays != 0 </span><span class="cov0" title="0">{
                 return nil
@@ -1619,6 +1629,9 @@ func (w *Webhook) ValidateCreate(ctx context.Context, obj runtime.Object) (warni
         <span class="cov8" title="1">if len(release.Spec.Snapshot) &gt; 63 </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("snapshot name must be no more than 63 characters, got %d characters", len(release.Spec.Snapshot))
         }</span>
+        <span class="cov8" title="1">if len(release.Spec.ReleasePlan) &gt; 63 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("releasePlan name must be no more than 63 characters, got %d characters", len(release.Spec.ReleasePlan))
+        }</span>
 
         <span class="cov8" title="1">return nil, nil</span>
 }
@@ -1630,6 +1643,16 @@ func (w *Webhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Obj
 
         if !reflect.DeepEqual(newRelease.Spec, oldRelease.Spec) </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("release resources spec cannot be updated")
+        }</span>
+
+        // Validate snapshot label immutability
+        <span class="cov8" title="1">if oldRelease.Labels[metadata.SnapshotLabel] != newRelease.Labels[metadata.SnapshotLabel] </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("release snapshot label cannot be updated")
+        }</span>
+
+        // Validate releasePlan label immutability
+        <span class="cov8" title="1">if oldRelease.Labels[metadata.ReleasePlanLabel] != newRelease.Labels[metadata.ReleasePlanLabel] </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("release releasePlan label cannot be updated")
         }</span>
 
         <span class="cov8" title="1">return nil, nil</span>
@@ -5163,6 +5186,12 @@ var (
 
         // ReleasePlanAdmissionLabel is the ReleasePlan label for the name of the ReleasePlanAdmission to use
         ReleasePlanAdmissionLabel = fmt.Sprintf("release.%s/releasePlanAdmission", RhtapDomain)
+
+        // SnapshotLabel is the label used to specify the snapshot associated with the Release
+        SnapshotLabel = fmt.Sprintf("release.%s/snapshot", RhtapDomain)
+
+        // ReleasePlanLabel is the label used to specify the releasePlan associated with the Release
+        ReleasePlanLabel = fmt.Sprintf("release.%s/releasePlan", RhtapDomain)
 )
 
 // Labels to be used within Release PipelineRuns
