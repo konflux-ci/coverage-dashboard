@@ -1,0 +1,61 @@
+name: Auto-Discover Go Repositories
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '0 2 * * 2'  # Weekly on Mondays at 9pm EST (Tuesday 02:00 UTC)
+  workflow_dispatch:
+
+jobs:
+  discover-repos:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # For pull requests, checkout the PR branch
+          # For push events, checkout the pushed branch
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Generate GitHub App Token
+        id: app-token
+        # Only generate token for scheduled/manual runs or pushes to main
+        # PRs from forks don't have access to secrets
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      - name: Run repository discovery
+        env:
+          # Use GitHub App token for reading (teams/collaborators)
+          GITHUB_READ_TOKEN: ${{ steps.app-token.outputs.token }}
+          # Use default workflow token for writing (creating PRs)
+          GITHUB_WRITE_TOKEN: ${{ github.token }}
+        run: |
+          # Build the Go binary
+          go build -o bin/discover-repos cmd/discover-repos/main.go
+
+          # Only create PRs on scheduled or manual runs, otherwise dry-run for validation
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Running with --apply (will create PRs)"
+            ./bin/discover-repos --apply
+          else
+            echo "Running in dry-run mode (validation only)"
+            ./bin/discover-repos
+          fi
