@@ -231,7 +231,7 @@
       const coverageDiv = cards.append("div");
 
       coverageDiv.html(d => {
-        if (isNaN(d.coverage)) return "N/A";
+        if (d.coverage === null || isNaN(d.coverage)) return "N/A";
 
         const cov = parseFloat(d.coverage).toFixed(1);
         let color = "red";
@@ -250,7 +250,9 @@
       d3.selectAll(".bar").transition()
         .duration(800)
         .style("width", function(_, i) {
-          const cov = data[i].coverage.toFixed(1);
+          const coverage = data[i].coverage;
+          if (coverage === null || isNaN(coverage)) return "0%";
+          const cov = parseFloat(coverage).toFixed(1);
           return cov + "%";
         });
 

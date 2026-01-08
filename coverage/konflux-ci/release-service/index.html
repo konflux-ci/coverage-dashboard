@@ -71,7 +71,7 @@
 				
 				<option value="file7">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission/webhook.go (96.0%)</option>
 				
-				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (82.7%)</option>
+				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (83.5%)</option>
 				
 				<option value="file9">github.com/konflux-ci/release-service/controllers/release/controller.go (70.6%)</option>
 				
@@ -89,7 +89,7 @@
 				
 				<option value="file16">github.com/konflux-ci/release-service/git/references.go (81.2%)</option>
 				
-				<option value="file17">github.com/konflux-ci/release-service/loader/loader.go (89.1%)</option>
+				<option value="file17">github.com/konflux-ci/release-service/loader/loader.go (83.8%)</option>
 				
 				<option value="file18">github.com/konflux-ci/release-service/loader/loader_mock.go (63.0%)</option>
 				
@@ -2594,15 +2594,8 @@ func (a *adapter) EnsureCollectorsProcessingResourcesAreCleanedUp() (controller.
 
         <span class="cov8" title="1">var cleanupErrors []error
 
-        defer func() </span><span class="cov8" title="1">{
-                if len(cleanupErrors) &gt; 0 </span><span class="cov0" title="0">{
-                        a.logger.Error(fmt.Errorf("collector pipeline cleanup errors: %v", cleanupErrors),
-                                "Some collector pipeline cleanups failed, but Release will continue")
-                }</span>
-        }()
-
         // Cleanup Tenant Collector PipelineRun and RoleBinding resources.
-        <span class="cov8" title="1">tenantCollectorsPipelineRun, err := a.loader.GetReleasePipelineRun(a.ctx, a.client, a.release, metadata.TenantCollectorsPipelineType)
+        tenantCollectorsPipelineRun, err := a.loader.GetReleasePipelineRun(a.ctx, a.client, a.release, metadata.TenantCollectorsPipelineType)
         if err != nil &amp;&amp; !errors.IsNotFound(err) </span><span class="cov0" title="0">{
                 cleanupErrors = append(cleanupErrors, fmt.Errorf("failed to get tenant collectors pipeline: %w", err))
         }</span>
@@ -2648,6 +2641,10 @@ func (a *adapter) EnsureCollectorsProcessingResourcesAreCleanedUp() (controller.
                 cleanupErrors = append(cleanupErrors, fmt.Errorf("managed collectors cleanup failed: %w", err))
         }</span>
 
+        <span class="cov8" title="1">if len(cleanupErrors) &gt; 0 </span><span class="cov0" title="0">{
+                return controller.RequeueWithError(fmt.Errorf("cleanup failed: %v", cleanupErrors))
+        }</span>
+
         <span class="cov8" title="1">return controller.ContinueProcessing()</span>
 }
 
@@ -2657,14 +2654,7 @@ func (a *adapter) EnsureCollectorsProcessingResourcesAreCleanedUp() (controller.
 func (a *adapter) EnsureReleaseProcessingResourcesAreCleanedUp() (controller.OperationResult, error) <span class="cov8" title="1">{
         var cleanupErrors []error
 
-        defer func() </span><span class="cov8" title="1">{
-                if len(cleanupErrors) &gt; 0 </span><span class="cov0" title="0">{
-                        a.logger.Error(fmt.Errorf("pipeline cleanup errors: %v", cleanupErrors),
-                                "Some pipeline cleanups failed, but Release will continue")
-                }</span>
-        }()
-
-        <span class="cov8" title="1">if !a.release.HasTenantPipelineProcessingFinished() </span><span class="cov8" title="1">{
+        if !a.release.HasTenantPipelineProcessingFinished() </span><span class="cov8" title="1">{
                 return controller.ContinueProcessing()
         }</span>
 
@@ -2686,6 +2676,10 @@ func (a *adapter) EnsureReleaseProcessingResourcesAreCleanedUp() (controller.Ope
 
         <span class="cov8" title="1">if err := a.cleanupPipeline(metadata.FinalPipelineType); err != nil </span><span class="cov0" title="0">{
                 cleanupErrors = append(cleanupErrors, fmt.Errorf("final pipeline cleanup failed: %w", err))
+        }</span>
+
+        <span class="cov8" title="1">if len(cleanupErrors) &gt; 0 </span><span class="cov0" title="0">{
+                return controller.RequeueWithError(fmt.Errorf("cleanup failed: %v", cleanupErrors))
         }</span>
 
         <span class="cov8" title="1">return controller.ContinueProcessing()</span>
@@ -3531,21 +3525,13 @@ func (a *adapter) registerFinalProcessingStatus(pipelineRun *tektonv1.PipelineRu
 func (a *adapter) validateApplication() *controller.ValidationResult <span class="cov8" title="1">{
         releasePlan, err := a.loader.GetReleasePlan(a.ctx, a.client, a.release)
         if err != nil </span><span class="cov8" title="1">{
-                if errors.IsNotFound(err) </span><span class="cov8" title="1">{
-                        a.release.MarkValidationFailed(err.Error())
-                        return &amp;controller.ValidationResult{Valid: false}
-                }</span>
-                <span class="cov0" title="0">return &amp;controller.ValidationResult{Err: err}</span>
-        }
+                return a.validationError(err)
+        }</span>
 
         <span class="cov8" title="1">snapshot, err := a.loader.GetSnapshot(a.ctx, a.client, a.release)
         if err != nil </span><span class="cov8" title="1">{
-                if errors.IsNotFound(err) </span><span class="cov8" title="1">{
-                        a.release.MarkValidationFailed(err.Error())
-                        return &amp;controller.ValidationResult{Valid: false}
-                }</span>
-                <span class="cov0" title="0">return &amp;controller.ValidationResult{Err: err}</span>
-        }
+                return a.validationError(err)
+        }</span>
 
         <span class="cov8" title="1">if releasePlan.Spec.Application != snapshot.Spec.Application </span><span class="cov8" title="1">{
                 a.release.MarkValidationFailed("different Application referenced in ReleasePlan and Snapshot")
@@ -3574,12 +3560,8 @@ func (a *adapter) validateAuthor() *controller.ValidationResult <span class="cov
 
         <span class="cov8" title="1">releasePlan, err := a.loader.GetReleasePlan(a.ctx, a.client, a.release)
         if err != nil </span><span class="cov8" title="1">{
-                if errors.IsNotFound(err) </span><span class="cov8" title="1">{
-                        a.release.MarkValidationFailed(err.Error())
-                        return &amp;controller.ValidationResult{Valid: false}
-                }</span>
-                <span class="cov0" title="0">return &amp;controller.ValidationResult{Err: err}</span>
-        }
+                return a.validationError(err)
+        }</span>
 
         <span class="cov8" title="1">var author string
 
@@ -3606,23 +3588,14 @@ func (a *adapter) validateAuthor() *controller.ValidationResult <span class="cov
 func (a *adapter) validateProcessingResources() *controller.ValidationResult <span class="cov8" title="1">{
         releasePlan, err := a.loader.GetReleasePlan(a.ctx, a.client, a.release)
         if err != nil </span><span class="cov0" title="0">{
-                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
-                        a.release.MarkValidationFailed(err.Error())
-                        return &amp;controller.ValidationResult{Valid: false}
-                }</span>
-                <span class="cov0" title="0">return &amp;controller.ValidationResult{Err: err}</span>
-        }
+                return a.validationError(err)
+        }</span>
 
         <span class="cov8" title="1">if releasePlan.Spec.TenantPipeline == nil </span><span class="cov8" title="1">{
-                resources, err := a.loader.GetProcessingResources(a.ctx, a.client, a.release)
+                _, err := a.loader.GetProcessingResources(a.ctx, a.client, a.release)
                 if err != nil </span><span class="cov8" title="1">{
-                        if resources == nil || resources.ReleasePlan == nil || resources.ReleasePlanAdmission == nil || errors.IsNotFound(err) </span><span class="cov8" title="1">{
-                                a.release.MarkValidationFailed(err.Error())
-                                return &amp;controller.ValidationResult{Valid: false}
-                        }</span>
-
-                        <span class="cov8" title="1">return &amp;controller.ValidationResult{Err: err}</span>
-                }
+                        return a.validationError(err)
+                }</span>
         }
         <span class="cov8" title="1">return &amp;controller.ValidationResult{Valid: true}</span>
 }
@@ -3673,13 +3646,8 @@ func (a *adapter) validatePipelineSource() *controller.ValidationResult <span cl
 func (a *adapter) validatePipelineDefined() *controller.ValidationResult <span class="cov8" title="1">{
         releasePlan, err := a.loader.GetReleasePlan(a.ctx, a.client, a.release)
         if err != nil </span><span class="cov0" title="0">{
-                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
-                        a.release.MarkValidationFailed(err.Error())
-                        return &amp;controller.ValidationResult{Valid: false}
-                }</span>
-
-                <span class="cov0" title="0">return &amp;controller.ValidationResult{Err: err}</span>
-        }
+                return a.validationError(err)
+        }</span>
 
         <span class="cov8" title="1">if releasePlan.Spec.Target == "" </span><span class="cov8" title="1">{
                 a.release.Status.Target = releasePlan.Namespace
@@ -3695,14 +3663,8 @@ func (a *adapter) validatePipelineDefined() *controller.ValidationResult <span c
                 }</span>
                 <span class="cov8" title="1">releasePlanAdmission, err := a.loader.GetActiveReleasePlanAdmissionFromRelease(a.ctx, a.client, a.release)
                 if err != nil </span><span class="cov8" title="1">{
-                        if errors.IsNotFound(err) || strings.Contains(err.Error(), "with auto-release label set to false") ||
-                                strings.Contains(err.Error(), "Origin of the releasePlanAdmission") </span><span class="cov8" title="1">{
-                                a.release.MarkValidationFailed(err.Error())
-                                return &amp;controller.ValidationResult{Valid: false}
-                        }</span>
-
-                        <span class="cov0" title="0">return &amp;controller.ValidationResult{Err: err}</span>
-                }
+                        return a.validationError(err)
+                }</span>
                 <span class="cov8" title="1">if releasePlanAdmission.Spec.Pipeline == nil </span><span class="cov8" title="1">{
                         errString := "releasePlan and releasePlanAdmission both have no pipeline. Each Release should define a tenant pipeline, managed pipeline, or both"
                         a.release.MarkValidationFailed(errString)
@@ -3716,11 +3678,13 @@ func (a *adapter) validatePipelineDefined() *controller.ValidationResult <span c
 // validationError checks the error type, marks the release as failed when the error for known errors, and returns the
 // ValidationResult for the error found.
 func (a *adapter) validationError(err error) *controller.ValidationResult <span class="cov8" title="1">{
-        if errors.IsNotFound(err) </span><span class="cov8" title="1">{
-                a.release.MarkValidationFailed(err.Error())
-                return &amp;controller.ValidationResult{Valid: false}
+        // Retriable errors should trigger requeue, not validation failure
+        if loader.IsRetriable(err) </span><span class="cov8" title="1">{
+                return &amp;controller.ValidationResult{Err: err}
         }</span>
-        <span class="cov8" title="1">return &amp;controller.ValidationResult{Err: err}</span>
+        // All other errors (NotFound, config errors, etc.) are permanent validation failures
+        <span class="cov8" title="1">a.release.MarkValidationFailed(err.Error())
+        return &amp;controller.ValidationResult{Valid: false}</span>
 }
 </pre>
 		
@@ -3805,6 +3769,8 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
         return controller.ReconcileHandler([]controller.Operation{
                 adapter.EnsureFinalizersAreCalled,
                 adapter.EnsureConfigIsLoaded, // This operation sets the config in the adapter to be used in other operations.
+                adapter.EnsureCollectorsProcessingResourcesAreCleanedUp,
+                adapter.EnsureReleaseProcessingResourcesAreCleanedUp,
                 adapter.EnsureReleaseIsRunning,
                 adapter.EnsureReleaseIsValid,
                 adapter.EnsureApplicationMetadataIsSet,
@@ -3814,14 +3780,12 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
                 adapter.EnsureTenantCollectorsPipelineIsTracked,
                 adapter.EnsureManagedCollectorsPipelineIsProcessed,
                 adapter.EnsureManagedCollectorsPipelineIsTracked,
-                adapter.EnsureCollectorsProcessingResourcesAreCleanedUp,
                 adapter.EnsureTenantPipelineIsProcessed,
                 adapter.EnsureTenantPipelineProcessingIsTracked,
                 adapter.EnsureManagedPipelineIsProcessed,
                 adapter.EnsureManagedPipelineProcessingIsTracked,
                 adapter.EnsureFinalPipelineIsProcessed,
                 adapter.EnsureFinalPipelineProcessingIsTracked,
-                adapter.EnsureReleaseProcessingResourcesAreCleanedUp,
                 adapter.EnsureReleaseIsCompleted,
         })</span>
 }
@@ -4541,26 +4505,26 @@ func ResolveBranchToSHA(repoURL, revision string) (string, error) <span class="c
 
 import (
         "context"
+        "errors"
         "fmt"
+        "net"
         "os"
         "strings"
 
-        "k8s.io/apimachinery/pkg/api/errors"
-        "k8s.io/apimachinery/pkg/runtime/schema"
-
-        "k8s.io/utils/strings/slices"
-
-        toolkit "github.com/konflux-ci/operator-toolkit/loader"
-
         ecapiv1alpha1 "github.com/conforma/crds/api/v1alpha1"
         applicationapiv1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
-        "github.com/konflux-ci/release-service/api/v1alpha1"
-        "github.com/konflux-ci/release-service/metadata"
+        toolkit "github.com/konflux-ci/operator-toolkit/loader"
         tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
         corev1 "k8s.io/api/core/v1"
         rbac "k8s.io/api/rbac/v1"
+        apierrors "k8s.io/apimachinery/pkg/api/errors"
+        "k8s.io/apimachinery/pkg/runtime/schema"
         "k8s.io/apimachinery/pkg/types"
+        "k8s.io/utils/strings/slices"
         "sigs.k8s.io/controller-runtime/pkg/client"
+
+        "github.com/konflux-ci/release-service/api/v1alpha1"
+        "github.com/konflux-ci/release-service/metadata"
 )
 
 // ErrInvalidRoleBindingRef is returned when PipelineInfo.RoleBindings does no parse as “namespace/name”.
@@ -4648,7 +4612,6 @@ func (l *loader) GetEnterpriseContractConfigMap(ctx context.Context, cli client.
         }</span>
 
         <span class="cov8" title="1">return nil, nil</span>
-
 }
 
 // GetMatchingReleasePlanAdmission returns the ReleasePlanAdmission targeted by the given ReleasePlan.
@@ -4711,7 +4674,6 @@ func (l *loader) GetMatchingReleasePlanAdmission(ctx context.Context, cli client
 // are in the namespace specified by the ReleasePlanAdmission's origin. optionally filter by the ReleasePlanAdmission
 // label (falling back to all). If the List operation fails, an error will be returned.
 func (l *loader) GetMatchingReleasePlans(ctx context.Context, cli client.Client, releasePlanAdmission *v1alpha1.ReleasePlanAdmission) (*v1alpha1.ReleasePlanList, error) <span class="cov8" title="1">{
-
         if releasePlanAdmission.Spec.Origin == "" </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("releasePlanAdmission has no origin, so no ReleasePlans can be found")
         }</span>
@@ -4786,7 +4748,7 @@ func (l *loader) GetPreviousRelease(ctx context.Context, cli client.Client, rele
         }
 
         <span class="cov8" title="1">if previousRelease == nil </span><span class="cov8" title="1">{
-                return nil, errors.NewNotFound(
+                return nil, apierrors.NewNotFound(
                         schema.GroupResource{
                                 Group:    v1alpha1.GroupVersion.Group,
                                 Resource: release.GetObjectKind().GroupVersionKind().Kind,
@@ -4920,6 +4882,31 @@ func (l *loader) GetProcessingResources(ctx context.Context, cli client.Client, 
         }</span>
 
         <span class="cov8" title="1">return resources, nil</span>
+}
+
+// IsRetriable returns true if the error is transient, such as a
+// network hiccup, concurrency conflict, or server-side throttling,
+// indicating that the operation should be retried.
+func IsRetriable(err error) bool <span class="cov0" title="0">{
+        if err == nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">if apierrors.IsConflict(err) ||
+                apierrors.IsServerTimeout(err) ||
+                apierrors.IsServiceUnavailable(err) ||
+                apierrors.IsTimeout(err) ||
+                apierrors.IsTooManyRequests(err) ||
+                apierrors.IsInternalError(err) </span><span class="cov0" title="0">{
+                return true
+        }</span>
+
+        <span class="cov0" title="0">var netErr net.Error
+        if errors.As(err, &amp;netErr) </span><span class="cov0" title="0">{
+                return netErr.Timeout()
+        }</span>
+
+        <span class="cov0" title="0">return false</span>
 }
 </pre>
 		
