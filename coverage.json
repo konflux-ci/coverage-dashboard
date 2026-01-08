@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20769743040",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20804588653",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -117,12 +117,12 @@
           "coverage": 79.2
         },
         {
-          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
-          "coverage": 96.0
-        },
-        {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan",
           "coverage": 94.1
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
+          "coverage": 96.0
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/author",
@@ -168,12 +168,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.4,
+      "coverage": 57.1,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.4
+          "coverage": 57.1
         }
       ]
     }
