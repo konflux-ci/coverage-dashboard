@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20824542818",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20840302424",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -93,7 +93,7 @@
     },
     {
       "repo": "konflux-ci/release-service",
-      "coverage": 87.0,
+      "coverage": 86.9,
       "status": "ok",
       "packages": [
         {
@@ -138,7 +138,7 @@
         },
         {
           "package": "github.com/konflux-ci/release-service/loader",
-          "coverage": 78.6
+          "coverage": 78.0
         },
         {
           "package": "github.com/konflux-ci/release-service/syncer",
