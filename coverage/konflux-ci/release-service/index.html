@@ -71,7 +71,7 @@
 				
 				<option value="file7">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission/webhook.go (96.0%)</option>
 				
-				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (83.5%)</option>
+				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (84.6%)</option>
 				
 				<option value="file9">github.com/konflux-ci/release-service/controllers/release/controller.go (70.6%)</option>
 				
@@ -2596,7 +2596,7 @@ func (a *adapter) EnsureCollectorsProcessingResourcesAreCleanedUp() (controller.
 
         // Cleanup Tenant Collector PipelineRun and RoleBinding resources.
         tenantCollectorsPipelineRun, err := a.loader.GetReleasePipelineRun(a.ctx, a.client, a.release, metadata.TenantCollectorsPipelineType)
-        if err != nil &amp;&amp; !errors.IsNotFound(err) </span><span class="cov0" title="0">{
+        if err != nil &amp;&amp; !errors.IsNotFound(err) </span><span class="cov8" title="1">{
                 cleanupErrors = append(cleanupErrors, fmt.Errorf("failed to get tenant collectors pipeline: %w", err))
         }</span>
 
@@ -2617,7 +2617,7 @@ func (a *adapter) EnsureCollectorsProcessingResourcesAreCleanedUp() (controller.
 
         // Cleanup Managed Collector PipelineRun and RoleBinding resources.
         <span class="cov8" title="1">managedCollectorsPipelineRun, err := a.loader.GetReleasePipelineRun(a.ctx, a.client, a.release, metadata.ManagedCollectorsPipelineType)
-        if err != nil &amp;&amp; !errors.IsNotFound(err) </span><span class="cov0" title="0">{
+        if err != nil &amp;&amp; !errors.IsNotFound(err) </span><span class="cov8" title="1">{
                 cleanupErrors = append(cleanupErrors, fmt.Errorf("failed to get managed collectors pipeline: %w", err))
         }</span>
 
@@ -2641,9 +2641,15 @@ func (a *adapter) EnsureCollectorsProcessingResourcesAreCleanedUp() (controller.
                 cleanupErrors = append(cleanupErrors, fmt.Errorf("managed collectors cleanup failed: %w", err))
         }</span>
 
-        <span class="cov8" title="1">if len(cleanupErrors) &gt; 0 </span><span class="cov0" title="0">{
-                return controller.RequeueWithError(fmt.Errorf("cleanup failed: %v", cleanupErrors))
-        }</span>
+        <span class="cov8" title="1">if len(cleanupErrors) &gt; 0 </span><span class="cov8" title="1">{
+                for _, cleanupErr := range cleanupErrors </span><span class="cov8" title="1">{
+                        if loader.IsRetriable(cleanupErr) </span><span class="cov8" title="1">{
+                                return controller.RequeueWithError(fmt.Errorf("cleanup failed: %v", cleanupErrors))
+                        }</span>
+                }
+                <span class="cov8" title="1">a.logger.Error(fmt.Errorf("cleanup errors: %v", cleanupErrors),
+                        "Non-retriable collector cleanup errors occurred, continuing")</span>
+        }
 
         <span class="cov8" title="1">return controller.ContinueProcessing()</span>
 }
@@ -2658,7 +2664,7 @@ func (a *adapter) EnsureReleaseProcessingResourcesAreCleanedUp() (controller.Ope
                 return controller.ContinueProcessing()
         }</span>
 
-        <span class="cov8" title="1">if err := a.cleanupPipeline(metadata.TenantPipelineType); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := a.cleanupPipeline(metadata.TenantPipelineType); err != nil </span><span class="cov8" title="1">{
                 cleanupErrors = append(cleanupErrors, fmt.Errorf("tenant pipeline cleanup failed: %w", err))
         }</span>
 
@@ -2666,7 +2672,7 @@ func (a *adapter) EnsureReleaseProcessingResourcesAreCleanedUp() (controller.Ope
                 return controller.ContinueProcessing()
         }</span>
 
-        <span class="cov8" title="1">if err := a.cleanupPipeline(metadata.ManagedPipelineType); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := a.cleanupPipeline(metadata.ManagedPipelineType); err != nil </span><span class="cov8" title="1">{
                 cleanupErrors = append(cleanupErrors, fmt.Errorf("managed pipeline cleanup failed: %w", err))
         }</span>
 
@@ -2674,13 +2680,19 @@ func (a *adapter) EnsureReleaseProcessingResourcesAreCleanedUp() (controller.Ope
                 return controller.ContinueProcessing()
         }</span>
 
-        <span class="cov8" title="1">if err := a.cleanupPipeline(metadata.FinalPipelineType); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := a.cleanupPipeline(metadata.FinalPipelineType); err != nil </span><span class="cov8" title="1">{
                 cleanupErrors = append(cleanupErrors, fmt.Errorf("final pipeline cleanup failed: %w", err))
         }</span>
 
-        <span class="cov8" title="1">if len(cleanupErrors) &gt; 0 </span><span class="cov0" title="0">{
-                return controller.RequeueWithError(fmt.Errorf("cleanup failed: %v", cleanupErrors))
-        }</span>
+        <span class="cov8" title="1">if len(cleanupErrors) &gt; 0 </span><span class="cov8" title="1">{
+                for _, cleanupErr := range cleanupErrors </span><span class="cov8" title="1">{
+                        if loader.IsRetriable(cleanupErr) </span><span class="cov8" title="1">{
+                                return controller.RequeueWithError(fmt.Errorf("cleanup failed: %v", cleanupErrors))
+                        }</span>
+                }
+                <span class="cov8" title="1">a.logger.Error(fmt.Errorf("cleanup errors: %v", cleanupErrors),
+                        "Non-retriable pipeline cleanup errors occurred, continuing")</span>
+        }
 
         <span class="cov8" title="1">return controller.ContinueProcessing()</span>
 }
