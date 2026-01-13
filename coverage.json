@@ -1,14 +1,14 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20907285032",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/20943702178",
   "data": [
     {
       "repo": "konflux-ci/caching",
-      "coverage": 62.2,
+      "coverage": 62.7,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/caching/cmd/squid-per-site-exporter",
-          "coverage": 51.2
+          "coverage": 52.0
         },
         {
           "package": "github.com/konflux-ci/caching/cmd/squid-store-id",
@@ -141,12 +141,12 @@
           "coverage": 78.0
         },
         {
-          "package": "github.com/konflux-ci/release-service/syncer",
-          "coverage": 90.0
-        },
-        {
           "package": "github.com/konflux-ci/release-service/tekton/utils",
           "coverage": 93.2
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/syncer",
+          "coverage": 90.0
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release",
