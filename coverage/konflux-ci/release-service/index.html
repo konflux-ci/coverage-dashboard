@@ -71,7 +71,7 @@
 				
 				<option value="file7">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission/webhook.go (96.0%)</option>
 				
-				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (84.6%)</option>
+				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (84.8%)</option>
 				
 				<option value="file9">github.com/konflux-ci/release-service/controllers/release/controller.go (70.6%)</option>
 				
@@ -89,7 +89,7 @@
 				
 				<option value="file16">github.com/konflux-ci/release-service/git/references.go (81.2%)</option>
 				
-				<option value="file17">github.com/konflux-ci/release-service/loader/loader.go (83.8%)</option>
+				<option value="file17">github.com/konflux-ci/release-service/loader/loader.go (83.1%)</option>
 				
 				<option value="file18">github.com/konflux-ci/release-service/loader/loader_mock.go (63.0%)</option>
 				
@@ -2969,7 +2969,7 @@ func (a *adapter) createTenantCollectorsPipelineRun(releasePlan *v1alpha1.Releas
 // will be extracted from the given ReleasePlan. The Release's Snapshot will also be passed to the release
 // PipelineRun.
 func (a *adapter) createFinalPipelineRun(releasePlan *v1alpha1.ReleasePlan, snapshot *applicationapiv1alpha1.Snapshot) (*tektonv1.PipelineRun, error) <span class="cov8" title="1">{
-        pipelineRun, err := utils.NewPipelineRunBuilder(metadata.FinalPipelineType.String(), releasePlan.Namespace).
+        builder := utils.NewPipelineRunBuilder(metadata.FinalPipelineType.String(), releasePlan.Namespace).
                 WithAnnotations(metadata.GetAnnotationsWithPrefix(a.release, integrationgitops.PipelinesAsCodePrefix)).
                 WithFinalizer(metadata.ReleaseFinalizer).
                 WithLabels(map[string]string{
@@ -2986,12 +2986,22 @@ func (a *adapter) createFinalPipelineRun(releasePlan *v1alpha1.ReleasePlan, snap
                 WithPipelineRef(releasePlan.Spec.FinalPipeline.PipelineRef.ToTektonPipelineRef()).
                 WithServiceAccount(releasePlan.Spec.FinalPipeline.ServiceAccountName).
                 WithTaskRunSpecs(releasePlan.Spec.FinalPipeline.TaskRunSpecs...).
-                WithTimeouts(&amp;releasePlan.Spec.FinalPipeline.Timeouts, &amp;a.releaseServiceConfig.Spec.DefaultTimeouts).
-                WithWorkspaceFromVolumeTemplate(
+                WithTimeouts(&amp;releasePlan.Spec.FinalPipeline.Timeouts, &amp;a.releaseServiceConfig.Spec.DefaultTimeouts)
+
+        if releasePlan.Spec.FinalPipeline.PipelineRef.UseEmptyDir </span><span class="cov8" title="1">{
+                builder = builder.WithEmptyDirVolume(
                         os.Getenv("DEFAULT_RELEASE_WORKSPACE_NAME"),
                         os.Getenv("DEFAULT_RELEASE_WORKSPACE_SIZE"),
-                ).
-                Build()
+                )
+        }</span> else<span class="cov8" title="1"> {
+                builder = builder.WithWorkspaceFromVolumeTemplate(
+                        os.Getenv("DEFAULT_RELEASE_WORKSPACE_NAME"),
+                        os.Getenv("DEFAULT_RELEASE_WORKSPACE_SIZE"),
+                )
+        }</span>
+
+        <span class="cov8" title="1">var pipelineRun *tektonv1.PipelineRun
+        pipelineRun, err := builder.Build()
         if err != nil </span><span class="cov0" title="0">{
                 return nil, err
         }</span>
@@ -3064,7 +3074,7 @@ func (a *adapter) createManagedPipelineRun(resources *loader.ProcessingResources
 // will be extracted from the given ReleasePlan. The Release's Snapshot will also be passed to the release
 // PipelineRun.
 func (a *adapter) createTenantPipelineRun(releasePlan *v1alpha1.ReleasePlan, snapshot *applicationapiv1alpha1.Snapshot) (*tektonv1.PipelineRun, error) <span class="cov8" title="1">{
-        pipelineRun, err := utils.NewPipelineRunBuilder(metadata.TenantPipelineType.String(), releasePlan.Namespace).
+        builder := utils.NewPipelineRunBuilder(metadata.TenantPipelineType.String(), releasePlan.Namespace).
                 WithAnnotations(metadata.GetAnnotationsWithPrefix(a.release, integrationgitops.PipelinesAsCodePrefix)).
                 WithFinalizer(metadata.ReleaseFinalizer).
                 WithLabels(map[string]string{
@@ -3081,12 +3091,22 @@ func (a *adapter) createTenantPipelineRun(releasePlan *v1alpha1.ReleasePlan, sna
                 WithPipelineRef(releasePlan.Spec.TenantPipeline.PipelineRef.ToTektonPipelineRef()).
                 WithServiceAccount(releasePlan.Spec.TenantPipeline.ServiceAccountName).
                 WithTaskRunSpecs(releasePlan.Spec.TenantPipeline.TaskRunSpecs...).
-                WithTimeouts(&amp;releasePlan.Spec.TenantPipeline.Timeouts, &amp;a.releaseServiceConfig.Spec.DefaultTimeouts).
-                WithWorkspaceFromVolumeTemplate(
+                WithTimeouts(&amp;releasePlan.Spec.TenantPipeline.Timeouts, &amp;a.releaseServiceConfig.Spec.DefaultTimeouts)
+
+        if releasePlan.Spec.TenantPipeline.PipelineRef.UseEmptyDir </span><span class="cov8" title="1">{
+                builder = builder.WithEmptyDirVolume(
                         os.Getenv("DEFAULT_RELEASE_WORKSPACE_NAME"),
                         os.Getenv("DEFAULT_RELEASE_WORKSPACE_SIZE"),
-                ).
-                Build()
+                )
+        }</span> else<span class="cov8" title="1"> {
+                builder = builder.WithWorkspaceFromVolumeTemplate(
+                        os.Getenv("DEFAULT_RELEASE_WORKSPACE_NAME"),
+                        os.Getenv("DEFAULT_RELEASE_WORKSPACE_SIZE"),
+                )
+        }</span>
+
+        <span class="cov8" title="1">var pipelineRun *tektonv1.PipelineRun
+        pipelineRun, err := builder.Build()
         if err != nil </span><span class="cov0" title="0">{
                 return nil, err
         }</span>
@@ -4661,7 +4681,7 @@ func (l *loader) GetMatchingReleasePlanAdmission(ctx context.Context, cli client
         <span class="cov8" title="1">var foundReleasePlanAdmission *v1alpha1.ReleasePlanAdmission
 
         for i, releasePlanAdmission := range releasePlanAdmissions.Items </span><span class="cov8" title="1">{
-                if !slices.Contains(releasePlanAdmission.Spec.Applications, releasePlan.Spec.Application) </span><span class="cov8" title="1">{
+                if !slices.Contains(releasePlanAdmission.Spec.Applications, releasePlan.Spec.Application) </span><span class="cov0" title="0">{
                         continue</span>
                 }
 
@@ -5765,6 +5785,12 @@ type PipelineRef struct {
         // This field is intended for use in ReleasePlanAdmissions.
         // +optional
         OciStorage string `json:"ociStorage,omitempty"`
+
+        // UseEmptyDir specifies whether to use an empty dir volume for the workspace.
+        // When true, the PipelineRun will use an empty dir volume. Otherwise, it will
+        // use a volume claim template by default.
+        // +optional
+        UseEmptyDir bool `json:"useEmptyDir,omitempty"`
 }
 
 // Pipeline contains a reference to a Pipeline and the name of the service account to use while executing it.
