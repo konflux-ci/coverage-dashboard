@@ -4681,7 +4681,7 @@ func (l *loader) GetMatchingReleasePlanAdmission(ctx context.Context, cli client
         <span class="cov8" title="1">var foundReleasePlanAdmission *v1alpha1.ReleasePlanAdmission
 
         for i, releasePlanAdmission := range releasePlanAdmissions.Items </span><span class="cov8" title="1">{
-                if !slices.Contains(releasePlanAdmission.Spec.Applications, releasePlan.Spec.Application) </span><span class="cov0" title="0">{
+                if !slices.Contains(releasePlanAdmission.Spec.Applications, releasePlan.Spec.Application) </span><span class="cov8" title="1">{
                         continue</span>
                 }
 
@@ -4737,7 +4737,7 @@ func (l *loader) GetMatchingReleasePlans(ctx context.Context, cli client.Client,
                 }
 
                 <span class="cov8" title="1">labelValue, found := releasePlans.Items[i].GetLabels()[metadata.ReleasePlanAdmissionLabel]
-                if found &amp;&amp; labelValue != releasePlanAdmission.Name </span><span class="cov8" title="1">{
+                if found &amp;&amp; labelValue != releasePlanAdmission.Name </span><span class="cov0" title="0">{
                         // Remove ReleasePlans whose label doesn’t match the ReleasePlanAdmission name
                         releasePlans.Items = append(releasePlans.Items[:i], releasePlans.Items[i+1:]...)
                 }</span>
