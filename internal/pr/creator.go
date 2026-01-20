@@ -97,8 +97,8 @@ func (c *Creator) CreatePullRequest(ctx context.Context, cfg config.RepositoryCo
 		return fmt.Errorf("GitHub API error: %w", err)
 	}
 
-	// 5. Return to base branch
-	if _, err := RunGitCommand(ctx, c.workDir, "checkout", c.baseBranch); err != nil {
+	// 5. Return to base branch for next iteration (handles CI environment)
+	if _, err := RunGitCommand(ctx, c.workDir, "checkout", "-B", c.baseBranch, "origin/"+c.baseBranch); err != nil {
 		fmt.Printf("    ⚠️  Warning: failed to checkout %s: %v\n", c.baseBranch, err)
 	}
 
@@ -113,8 +113,9 @@ func (c *Creator) createBranch(ctx context.Context, branchName string) error {
 		}
 	}
 
-	// Checkout base branch first
-	if _, err := RunGitCommand(ctx, c.workDir, "checkout", c.baseBranch); err != nil {
+	// Checkout base branch - create/reset from origin if needed (handles CI environment)
+	// Using -B ensures the branch is created from origin/base if it doesn't exist locally
+	if _, err := RunGitCommand(ctx, c.workDir, "checkout", "-B", c.baseBranch, "origin/"+c.baseBranch); err != nil {
 		return err
 	}
 
