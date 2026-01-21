@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/21185213501",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/21196285099",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -93,7 +93,7 @@
     },
     {
       "repo": "konflux-ci/release-service",
-      "coverage": 87.6,
+      "coverage": 87.5,
       "status": "ok",
       "packages": [
         {
@@ -138,7 +138,7 @@
         },
         {
           "package": "github.com/konflux-ci/release-service/loader",
-          "coverage": 78.6
+          "coverage": 78.0
         },
         {
           "package": "github.com/konflux-ci/release-service/syncer",
@@ -168,12 +168,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.4,
+      "coverage": 57.1,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.4
+          "coverage": 57.1
         }
       ]
     }
