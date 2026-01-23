@@ -71,7 +71,7 @@
 				
 				<option value="file7">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission/webhook.go (96.0%)</option>
 				
-				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (84.8%)</option>
+				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (83.6%)</option>
 				
 				<option value="file9">github.com/konflux-ci/release-service/controllers/release/controller.go (70.6%)</option>
 				
@@ -1899,6 +1899,7 @@ import (
         "encoding/json"
         stderrors "errors"
         "fmt"
+        "io"
         "os"
         "strings"
         "time"
@@ -1914,11 +1915,15 @@ import (
         "github.com/konflux-ci/release-service/syncer"
         "github.com/konflux-ci/release-service/tekton/utils"
         tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+        corev1 "k8s.io/api/core/v1"
         rbac "k8s.io/api/rbac/v1"
         "k8s.io/apimachinery/pkg/api/errors"
         metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
         "k8s.io/apimachinery/pkg/types"
+        "k8s.io/client-go/kubernetes"
+        "k8s.io/utils/ptr"
         "knative.dev/pkg/apis"
+        ctrl "sigs.k8s.io/controller-runtime"
         "sigs.k8s.io/controller-runtime/pkg/client"
         "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -3461,9 +3466,16 @@ func (a *adapter) registerTenantCollectorsProcessingStatus(pipelineRun *tektonv1
         if condition.IsTrue() </span><span class="cov8" title="1">{
                 a.release.MarkTenantCollectorsPipelineProcessed()
         }</span> else<span class="cov8" title="1"> {
-                a.release.MarkTenantCollectorsPipelineProcessingFailed(condition.Message)
-                a.release.MarkReleaseFailed("Release processing failed on tenant collectors pipelineRun")
-        }</span>
+                message, err := a.getFailedTaskRunLogs(pipelineRun)
+                if err != nil </span><span class="cov0" title="0">{
+                        a.logger.Error(err, "failed to get TaskRun logs for tenant collectors pipeline")
+                }</span>
+                <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
+                        message = condition.Message
+                }</span>
+                <span class="cov8" title="1">a.release.MarkTenantCollectorsPipelineProcessingFailed(message)
+                a.release.MarkReleaseFailed("Release processing failed on tenant collectors pipelineRun")</span>
+        }
 
         <span class="cov8" title="1">return a.client.Status().Patch(a.ctx, a.release, patch)</span>
 }
@@ -3482,9 +3494,16 @@ func (a *adapter) registerTenantProcessingStatus(pipelineRun *tektonv1.PipelineR
         if condition.IsTrue() </span><span class="cov8" title="1">{
                 a.release.MarkTenantPipelineProcessed()
         }</span> else<span class="cov8" title="1"> {
-                a.release.MarkTenantPipelineProcessingFailed(condition.Message)
-                a.release.MarkReleaseFailed("Release processing failed on tenant pipelineRun")
-        }</span>
+                message, err := a.getFailedTaskRunLogs(pipelineRun)
+                if err != nil </span><span class="cov0" title="0">{
+                        a.logger.Error(err, "failed to get TaskRun logs for tenant pipeline")
+                }</span>
+                <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
+                        message = condition.Message
+                }</span>
+                <span class="cov8" title="1">a.release.MarkTenantPipelineProcessingFailed(message)
+                a.release.MarkReleaseFailed("Release processing failed on tenant pipelineRun")</span>
+        }
 
         <span class="cov8" title="1">return a.client.Status().Patch(a.ctx, a.release, patch)</span>
 }
@@ -3503,9 +3522,16 @@ func (a *adapter) registerManagedCollectorsProcessingStatus(pipelineRun *tektonv
         if condition.IsTrue() </span><span class="cov8" title="1">{
                 a.release.MarkManagedCollectorsPipelineProcessed()
         }</span> else<span class="cov8" title="1"> {
-                a.release.MarkManagedCollectorsPipelineProcessingFailed(condition.Message)
-                a.release.MarkReleaseFailed("Release processing failed on managed collectors pipelineRun")
-        }</span>
+                message, err := a.getFailedTaskRunLogs(pipelineRun)
+                if err != nil </span><span class="cov0" title="0">{
+                        a.logger.Error(err, "failed to get TaskRun logs for managed collectors pipeline")
+                }</span>
+                <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
+                        message = condition.Message
+                }</span>
+                <span class="cov8" title="1">a.release.MarkManagedCollectorsPipelineProcessingFailed(message)
+                a.release.MarkReleaseFailed("Release processing failed on managed collectors pipelineRun")</span>
+        }
 
         <span class="cov8" title="1">return a.client.Status().Patch(a.ctx, a.release, patch)</span>
 }
@@ -3524,9 +3550,16 @@ func (a *adapter) registerManagedProcessingStatus(pipelineRun *tektonv1.Pipeline
         if condition.IsTrue() </span><span class="cov8" title="1">{
                 a.release.MarkManagedPipelineProcessed()
         }</span> else<span class="cov8" title="1"> {
-                a.release.MarkManagedPipelineProcessingFailed(condition.Message)
-                a.release.MarkReleaseFailed("Release processing failed on managed pipelineRun")
-        }</span>
+                message, err := a.getFailedTaskRunLogs(pipelineRun)
+                if err != nil </span><span class="cov0" title="0">{
+                        a.logger.Error(err, "failed to get TaskRun logs for managed pipeline")
+                }</span>
+                <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
+                        message = condition.Message
+                }</span>
+                <span class="cov8" title="1">a.release.MarkManagedPipelineProcessingFailed(message)
+                a.release.MarkReleaseFailed("Release processing failed on managed pipelineRun")</span>
+        }
 
         <span class="cov8" title="1">return a.client.Status().Patch(a.ctx, a.release, patch)</span>
 }
@@ -3545,9 +3578,16 @@ func (a *adapter) registerFinalProcessingStatus(pipelineRun *tektonv1.PipelineRu
         if condition.IsTrue() </span><span class="cov8" title="1">{
                 a.release.MarkFinalPipelineProcessed()
         }</span> else<span class="cov8" title="1"> {
-                a.release.MarkFinalPipelineProcessingFailed(condition.Message)
-                a.release.MarkReleaseFailed("Release processing failed on final pipelineRun")
-        }</span>
+                message, err := a.getFailedTaskRunLogs(pipelineRun)
+                if err != nil </span><span class="cov0" title="0">{
+                        a.logger.Error(err, "failed to get TaskRun logs for final pipeline")
+                }</span>
+                <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
+                        message = condition.Message
+                }</span>
+                <span class="cov8" title="1">a.release.MarkFinalPipelineProcessingFailed(message)
+                a.release.MarkReleaseFailed("Release processing failed on final pipelineRun")</span>
+        }
 
         <span class="cov8" title="1">return a.client.Status().Patch(a.ctx, a.release, patch)</span>
 }
@@ -3717,6 +3757,102 @@ func (a *adapter) validationError(err error) *controller.ValidationResult <span 
         // All other errors (NotFound, config errors, etc.) are permanent validation failures
         <span class="cov8" title="1">a.release.MarkValidationFailed(err.Error())
         return &amp;controller.ValidationResult{Valid: false}</span>
+}
+
+// maxConditionMessageLength is the maximum length for a Kubernetes condition message.
+// This limit is enforced by the API server validation (MaxLength=32768).
+const maxConditionMessageLength = 31000
+
+// getFailedTaskRunLogs returns the logs from the first failed TaskRun in the PipelineRun.
+// If no failed TaskRun is found, it returns an empty string and nil error.
+// If logs cannot be retrieved, an error is returned along with the condition message as fallback.
+func (a *adapter) getFailedTaskRunLogs(pipelineRun *tektonv1.PipelineRun) (string, error) <span class="cov8" title="1">{
+        if pipelineRun == nil </span><span class="cov8" title="1">{
+                return "", nil
+        }</span>
+
+        <span class="cov8" title="1">taskRunList := &amp;tektonv1.TaskRunList{}
+        err := a.client.List(a.ctx, taskRunList,
+                client.InNamespace(pipelineRun.Namespace),
+                client.MatchingLabels{
+                        "tekton.dev/pipelineRun": pipelineRun.Name,
+                },
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to list TaskRuns: %w", err)
+        }</span>
+
+        // Build a map for quick lookup by name
+        <span class="cov8" title="1">taskRunMap := make(map[string]*tektonv1.TaskRun, len(taskRunList.Items))
+        for i := range taskRunList.Items </span><span class="cov8" title="1">{
+                taskRunMap[taskRunList.Items[i].Name] = &amp;taskRunList.Items[i]
+        }</span>
+
+        // Iterate in the same order as ChildReferences to maintain consistent behavior
+        <span class="cov8" title="1">for _, childRef := range pipelineRun.Status.ChildReferences </span><span class="cov8" title="1">{
+                if childRef.Kind != "TaskRun" </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">taskRun, exists := taskRunMap[childRef.Name]
+                if !exists </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">condition := taskRun.Status.GetCondition(apis.ConditionSucceeded)
+                if condition != nil &amp;&amp; condition.IsFalse() </span><span class="cov8" title="1">{
+                        prefix := fmt.Sprintf("task %s failed: ", childRef.PipelineTaskName)
+                        maxLen := maxConditionMessageLength - len(prefix)
+                        truncationMarker := "...(truncated)\n"
+
+                        message, err := a.getTaskRunLogs(taskRun)
+                        if message == "" </span><span class="cov8" title="1">{
+                                message = condition.Message
+                        }</span>
+
+                        <span class="cov8" title="1">if len(message) &gt; maxLen </span><span class="cov8" title="1">{
+                                startIdx := len(message) - maxLen + len(truncationMarker)
+                                if startIdx &lt; 0 </span><span class="cov0" title="0">{
+                                        startIdx = 0
+                                }</span> else<span class="cov8" title="1"> if startIdx &gt;= len(message) </span><span class="cov0" title="0">{
+                                        startIdx = len(message)
+                                }</span>
+                                <span class="cov8" title="1">message = truncationMarker + message[startIdx:]</span>
+                        }
+                        <span class="cov8" title="1">return prefix + message, err</span>
+                }
+        }
+
+        <span class="cov8" title="1">return "", nil</span>
+}
+
+// getTaskRunLogs fetches the logs from the pod associated with the TaskRun.
+func (a *adapter) getTaskRunLogs(taskRun *tektonv1.TaskRun) (string, error) <span class="cov8" title="1">{
+        if taskRun.Status.PodName == "" </span><span class="cov8" title="1">{
+                return "", nil
+        }</span>
+
+        <span class="cov0" title="0">config := ctrl.GetConfigOrDie()
+        clientset, err := kubernetes.NewForConfig(config)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to create kubernetes client: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">req := clientset.CoreV1().Pods(taskRun.Namespace).GetLogs(taskRun.Status.PodName, &amp;corev1.PodLogOptions{
+                TailLines: ptr.To(int64(500)),
+        })
+        stream, err := req.Stream(a.ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to stream pod logs: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer stream.Close()
+
+        logs, err := io.ReadAll(stream)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to read pod logs: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return string(logs), nil</span>
 }
 </pre>
 		
