@@ -318,8 +318,11 @@ func (r *Runner) createPullRequests(ctx context.Context, configs []config.Reposi
 		return fmt.Errorf("failed to get current repository name: %w", err)
 	}
 
-	// Determine base branch (main or master)
-	baseBranch := "main"
+	// Get default branch from GitHub API
+	baseBranch, err := r.getDefaultBranch(ctx, currentRepo)
+	if err != nil {
+		return fmt.Errorf("failed to get default branch: %w", err)
+	}
 
 	// Use writeClient for PR creation (may have different permissions than readClient)
 	prCreator := pr.NewCreator(r.writeClient, workDir, r.config.Organization, currentRepo, baseBranch)
@@ -364,6 +367,21 @@ func (r *Runner) getCurrentRepoName(ctx context.Context) (string, error) {
 	}
 
 	return "", fmt.Errorf("failed to parse repository name from remote URL: %s", remoteURL)
+}
+
+func (r *Runner) getDefaultBranch(ctx context.Context, repoName string) (string, error) {
+	repo, _, err := r.writeClient.Repositories.Get(ctx, r.config.Organization, repoName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get repository info: %w", err)
+	}
+
+	defaultBranch := repo.GetDefaultBranch()
+	if defaultBranch == "" {
+		// Fallback to main if default branch is not set
+		return "main", nil
+	}
+
+	return defaultBranch, nil
 }
 
 func (r *Runner) printSummary(totalRepos, newRepos, created int) {
@@ -412,6 +430,13 @@ func (r *Runner) prAlreadyExists(ctx context.Context, repoName string) bool {
 		return false
 	}
 
+	// Get default branch
+	baseBranch, err := r.getDefaultBranch(ctx, currentRepo)
+	if err != nil {
+		// Fallback to main if we can't determine the default branch
+		baseBranch = "main"
+	}
+
 	// Branch name format matches pr/creator.go
 	branchName := fmt.Sprintf("add-repo/%s", repoName)
 
@@ -419,7 +444,7 @@ func (r *Runner) prAlreadyExists(ctx context.Context, repoName string) bool {
 	opts := &github.PullRequestListOptions{
 		State: "open",
 		Head:  fmt.Sprintf("%s:%s", r.config.Organization, branchName),
-		Base:  "main",
+		Base:  baseBranch,
 	}
 
 	prs, _, err := r.writeClient.PullRequests.List(ctx, r.config.Organization, currentRepo, opts)

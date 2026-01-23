@@ -97,8 +97,8 @@ func (c *Creator) CreatePullRequest(ctx context.Context, cfg config.RepositoryCo
 		return fmt.Errorf("GitHub API error: %w", err)
 	}
 
-	// 5. Return to base branch for next iteration (handles CI environment)
-	if _, err := RunGitCommand(ctx, c.workDir, "checkout", "-B", c.baseBranch, "origin/"+c.baseBranch); err != nil {
+	// 5. Return to base branch for next iteration
+	if _, err := RunGitCommand(ctx, c.workDir, "checkout", c.baseBranch); err != nil {
 		fmt.Printf("    ⚠️  Warning: failed to checkout %s: %v\n", c.baseBranch, err)
 	}
 
@@ -113,10 +113,33 @@ func (c *Creator) createBranch(ctx context.Context, branchName string) error {
 		}
 	}
 
-	// Checkout base branch - create/reset from origin if needed (handles CI environment)
-	// Using -B ensures the branch is created from origin/base if it doesn't exist locally
-	if _, err := RunGitCommand(ctx, c.workDir, "checkout", "-B", c.baseBranch, "origin/"+c.baseBranch); err != nil {
-		return err
+	// Try to fetch the base branch from origin
+	// If this fails, we'll try to use the local branch if it exists
+	fetchSucceeded := false
+	if _, err := RunGitCommand(ctx, c.workDir, "fetch", "origin", c.baseBranch); err == nil {
+		fetchSucceeded = true
+	}
+
+	// Check if base branch exists locally
+	baseExistsLocally := c.branchExists(ctx, c.baseBranch)
+
+	if !baseExistsLocally && !fetchSucceeded {
+		// Can't proceed without either local branch or successful fetch
+		return fmt.Errorf("base branch %s does not exist locally and fetch from origin failed", c.baseBranch)
+	}
+
+	if fetchSucceeded {
+		// Create/reset local branch to match FETCH_HEAD (latest from remote)
+		// -B creates the branch if it doesn't exist, or resets it if it does
+		if _, err := RunGitCommand(ctx, c.workDir, "checkout", "-B", c.baseBranch, "FETCH_HEAD"); err != nil {
+			return fmt.Errorf("failed to setup base branch %s from remote: %w", c.baseBranch, err)
+		}
+	} else {
+		// Fetch failed but local branch exists - use local copy
+		if _, err := RunGitCommand(ctx, c.workDir, "checkout", c.baseBranch); err != nil {
+			return fmt.Errorf("failed to checkout base branch %s: %w", c.baseBranch, err)
+		}
+		fmt.Printf("    ⚠️  Warning: using local %s branch (fetch failed)\n", c.baseBranch)
 	}
 
 	// Create and checkout new branch
