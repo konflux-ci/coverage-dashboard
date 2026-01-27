@@ -148,6 +148,14 @@ func (c *Creator) createBranch(ctx context.Context, branchName string) error {
 }
 
 func (c *Creator) commitChanges(ctx context.Context, configFile, repoFullName string) error {
+	// Configure git user identity
+	if _, err := RunGitCommand(ctx, c.workDir, "config", "user.name", "github-actions[bot]"); err != nil {
+		return fmt.Errorf("failed to set git user.name: %w", err)
+	}
+	if _, err := RunGitCommand(ctx, c.workDir, "config", "user.email", "github-actions[bot]@users.noreply.github.com"); err != nil {
+		return fmt.Errorf("failed to set git user.email: %w", err)
+	}
+
 	// Stage files
 	if _, err := RunGitCommand(ctx, c.workDir, "add", configFile, "CODEOWNERS"); err != nil {
 		return err
