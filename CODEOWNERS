@@ -20,3 +20,69 @@
 /repos/notification-service.yaml @yftacherzog
 /repos/release-service.yaml @querti @mmalina @elenagerman
 /repos/internal-services.yaml @querti @mmalina
+
+/repos/e2e-tests.yaml @konflux-ci/qe
+
+/repos/build-service.yaml @konflux-ci/build-maintainers
+
+/repos/integration-service.yaml @dirgim @hongweiliu17 @jsztuka @Josh-Everett @kasemAlem
+
+/repos/application-api.yaml @mmorhun
+
+/repos/image-controller.yaml @konflux-ci/build-maintainers
+
+/repos/operator-toolkit.yaml @konflux-ci/release-service-maintainers
+
+/repos/qe-tools.yaml @psturc @Dannyb48
+
+/repos/multi-platform-controller.yaml @konflux-ci/infrastructure
+
+/repos/build-trusted-artifacts.yaml @lcarva @joejstuart @scoheb @arewm @chmeliik
+
+/repos/ci-helper-app.yaml @dheerajodha
+
+/repos/sprayproxy.yaml @jkhelil
+
+/repos/repository-validator.yaml @gbenhaim
+
+/repos/workspace-manager.yaml @yftacherzog @gbenhaim @Omeramsc @avi-biton
+
+/repos/cli.yaml @konflux-ci/Vanguard
+
+/repos/mintmaker.yaml @konflux-ci/mintmaker-maintainers
+
+/repos/renovate-log-analyzer.yaml @konflux-ci/mintmaker-maintainers
+
+/repos/tektor.yaml @konflux-ci/Vanguard
+
+/repos/dockerfile-json.yaml @mkosiarc
+
+/repos/namespace-generator.yaml @konflux-ci/Vanguard
+
+/repos/namespace-lister.yaml @dperaza4dustbit @sadlerap @filariow
+
+/repos/test-data-sast.yaml @kdudka @sfowl @yftacherzog @jperezdealgaba
+
+/repos/tekton-kueue.yaml @pramodbindal
+
+/repos/kueue-external-admission.yaml @konflux-ci/Vanguard
+
+/repos/etcd-shield.yaml @sadlerap @filariow
+
+/repos/kite-bridge-operator.yaml @CryptoRodeo
+
+/repos/capo.yaml @konflux-ci/the-collective
+
+/repos/kargo.yaml @ifireball
+
+/repos/coverage-dashboard.yaml @konflux-ci/Vanguard @yftacherzog @querti @mmalina @elenagerman
+
+/repos/konflux-build-cli.yaml @konflux-ci/build-maintainers
+
+/repos/devlake.yaml @konflux-ci/konflux-devprod-team
+
+/repos/coverport.yaml @konflux-ci/qe
+
+/repos/image-rbac-proxy.yaml @konflux-ci/integration-service-maintainers
+
+/repos/segment-bridge.yaml @Omeramsc
