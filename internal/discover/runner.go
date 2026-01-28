@@ -143,13 +143,15 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	fmt.Println()
 
-	// Step 5: Write configuration files
-	if err := r.writeConfigurations(ctx, repoConfigs); err != nil {
-		return fmt.Errorf("failed to write configurations: %w", err)
-	}
-
-	// Step 6: Create PRs if applying changes
-	if !r.config.DryRun {
+	// Step 5: Write configuration files (or create PRs which will write them)
+	if r.config.DryRun {
+		// In dry-run mode, just write configs to discovered-repos/ directory
+		if err := r.writeConfigurations(ctx, repoConfigs); err != nil {
+			return fmt.Errorf("failed to write configurations: %w", err)
+		}
+	} else {
+		// In apply mode, write configs as part of PR creation
+		// (each config is written after its branch is created to avoid git reset issues)
 		if err := r.createPullRequests(ctx, repoConfigs); err != nil {
 			return fmt.Errorf("failed to create pull requests: %w", err)
 		}
@@ -330,7 +332,8 @@ func (r *Runner) createPullRequests(ctx context.Context, configs []config.Reposi
 	successCount := 0
 	for i, cfg := range configs {
 		fmt.Printf("  [%d/%d] %s... ", i+1, len(configs), extractRepoNameFromConfig(cfg.Name))
-		if err := prCreator.CreatePullRequest(ctx, cfg); err != nil {
+		// Pass configWriter so PR creation can write config after creating branch
+		if err := prCreator.CreatePullRequest(ctx, cfg, r.configWriter); err != nil {
 			fmt.Printf("failed (%v)\n", err)
 			continue
 		}
