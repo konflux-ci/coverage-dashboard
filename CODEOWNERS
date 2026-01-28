@@ -20,3 +20,5 @@
 /repos/notification-service.yaml @yftacherzog
 /repos/release-service.yaml @querti @mmalina @elenagerman
 /repos/internal-services.yaml @querti @mmalina
+
+/repos/namespace-lister.yaml @dperaza4dustbit @sadlerap @filariow
