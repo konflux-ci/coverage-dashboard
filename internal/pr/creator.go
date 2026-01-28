@@ -68,7 +68,7 @@ func NewCreator(client *github.Client, workDir, org, repo, baseBranch string) *C
 }
 
 // CreatePullRequest creates a pull request for a repository configuration
-func (c *Creator) CreatePullRequest(ctx context.Context, cfg config.RepositoryConfig) error {
+func (c *Creator) CreatePullRequest(ctx context.Context, cfg config.RepositoryConfig, configWriter *config.Writer) error {
 	repoName := extractRepoName(cfg.Name)
 	branchName := fmt.Sprintf("add-repo/%s", repoName)
 
@@ -77,18 +77,25 @@ func (c *Creator) CreatePullRequest(ctx context.Context, cfg config.RepositoryCo
 		return fmt.Errorf("failed to create branch: %w", err)
 	}
 
-	// 2. Commit changes (files were already written by config.Writer)
+	// 2. Write config and update CODEOWNERS on this branch
+	// IMPORTANT: Must write AFTER creating branch because createBranch resets
+	// the working directory to match remote (via checkout -B ... FETCH_HEAD)
+	if err := configWriter.Write(cfg, false); err != nil {
+		return fmt.Errorf("failed to write config: %w", err)
+	}
+
+	// 3. Commit changes
 	configFile := filepath.Join("repos", repoName+".yaml")
 	if err := c.commitChanges(ctx, configFile, cfg.Name); err != nil {
 		return fmt.Errorf("failed to commit changes: %w", err)
 	}
 
-	// 3. Push branch
+	// 4. Push branch
 	if _, err := RunGitCommand(ctx, c.workDir, "push", "-u", "origin", branchName, "--force"); err != nil {
 		return fmt.Errorf("failed to push branch: %w", err)
 	}
 
-	// 4. Create pull request
+	// 5. Create pull request
 	_, err := c.createGitHubPR(ctx, branchName, cfg)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
@@ -97,7 +104,7 @@ func (c *Creator) CreatePullRequest(ctx context.Context, cfg config.RepositoryCo
 		return fmt.Errorf("GitHub API error: %w", err)
 	}
 
-	// 5. Return to base branch for next iteration
+	// 6. Return to base branch for next iteration
 	if _, err := RunGitCommand(ctx, c.workDir, "checkout", c.baseBranch); err != nil {
 		fmt.Printf("    ⚠️  Warning: failed to checkout %s: %v\n", c.baseBranch, err)
 	}
