@@ -89,7 +89,7 @@
 				
 				<option value="file16">github.com/konflux-ci/release-service/git/references.go (81.2%)</option>
 				
-				<option value="file17">github.com/konflux-ci/release-service/loader/loader.go (83.1%)</option>
+				<option value="file17">github.com/konflux-ci/release-service/loader/loader.go (83.8%)</option>
 				
 				<option value="file18">github.com/konflux-ci/release-service/loader/loader_mock.go (63.0%)</option>
 				
@@ -4817,7 +4817,7 @@ func (l *loader) GetMatchingReleasePlanAdmission(ctx context.Context, cli client
         <span class="cov8" title="1">var foundReleasePlanAdmission *v1alpha1.ReleasePlanAdmission
 
         for i, releasePlanAdmission := range releasePlanAdmissions.Items </span><span class="cov8" title="1">{
-                if !slices.Contains(releasePlanAdmission.Spec.Applications, releasePlan.Spec.Application) </span><span class="cov0" title="0">{
+                if !slices.Contains(releasePlanAdmission.Spec.Applications, releasePlan.Spec.Application) </span><span class="cov8" title="1">{
                         continue</span>
                 }
 
