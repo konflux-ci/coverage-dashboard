@@ -67,9 +67,9 @@
 				
 				<option value="file5">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release/webhook.go (94.6%)</option>
 				
-				<option value="file6">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan/webhook.go (94.1%)</option>
+				<option value="file6">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan/webhook.go (90.9%)</option>
 				
-				<option value="file7">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission/webhook.go (96.0%)</option>
+				<option value="file7">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission/webhook.go (96.7%)</option>
 				
 				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (83.6%)</option>
 				
@@ -990,11 +990,21 @@ import (
 )
 
 // ReleasePlanSpec defines the desired state of ReleasePlan.
+// +kubebuilder:validation:XValidation:rule="has(self.application) != has(self.componentGroup)",message="exactly one of application or componentGroup must be specified"
 type ReleasePlanSpec struct {
-        // Application is a reference to the application to be released in the managed namespace
+        // Application is a reference to the application to be released in the managed namespace.
+        // Either application or componentGroup must be specified, but not both.
         // +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
-        // +required
-        Application string `json:"application"`
+        // +kubebuilder:validation:MaxLength=63
+        // +optional
+        Application string `json:"application,omitempty"`
+
+        // ComponentGroup is a reference to the component group to be released in the managed namespace.
+        // Either application or componentGroup must be specified, but not both.
+        // +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+        // +kubebuilder:validation:MaxLength=63
+        // +optional
+        ComponentGroup string `json:"componentGroup,omitempty"`
 
         // Collectors contains all the information of the collectors to be executed as part of the release workflow
         // +optional
@@ -1053,6 +1063,7 @@ type ReleasePlanStatus struct {
 // +kubebuilder:resource:shortName=rp
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Application",type=string,JSONPath=`.spec.application`
+// +kubebuilder:printcolumn:name="ComponentGroup",type=string,JSONPath=`.spec.componentGroup`
 // +kubebuilder:printcolumn:name="Target",type=string,JSONPath=`.spec.target`
 
 // ReleasePlan is the Schema for the ReleasePlans API.
@@ -1062,6 +1073,14 @@ type ReleasePlan struct {
 
         Spec   ReleasePlanSpec   `json:"spec,omitempty"`
         Status ReleasePlanStatus `json:"status,omitempty"`
+}
+
+// GetGroupName returns the application or componentGroup name.
+func (rp *ReleasePlan) GetGroupName() string <span class="cov8" title="1">{
+        if rp.Spec.Application != "" </span><span class="cov8" title="1">{
+                return rp.Spec.Application
+        }</span>
+        <span class="cov8" title="1">return rp.Spec.ComponentGroup</span>
 }
 
 // MarkMatched marks the ReleasePlan as matched to a given ReleasePlanAdmission.
@@ -1125,6 +1144,7 @@ package v1alpha1
 
 import (
         "fmt"
+        "slices"
         "sort"
 
         "github.com/konflux-ci/operator-toolkit/conditions"
@@ -1136,10 +1156,19 @@ import (
 )
 
 // ReleasePlanAdmissionSpec defines the desired state of ReleasePlanAdmission.
+// +kubebuilder:validation:XValidation:rule="has(self.applications) != has(self.componentGroups)",message="exactly one of applications or componentGroups must be specified"
 type ReleasePlanAdmissionSpec struct {
-        // Applications is a list of references to applications to be released in the managed namespace
-        // +required
-        Applications []string `json:"applications"`
+        // Applications is a list of references to applications to be released in the managed namespace.
+        // Either applications or componentGroups must be specified, but not both.
+        // +kubebuilder:validation:MinItems=1
+        // +optional
+        Applications []string `json:"applications,omitempty"`
+
+        // ComponentGroups is a list of references to component groups to be released in the managed namespace.
+        // Either applications or componentGroups must be specified, but not both.
+        // +kubebuilder:validation:MinItems=1
+        // +optional
+        ComponentGroups []string `json:"componentGroups,omitempty"`
 
         // Collectors contains all the information of the collectors to be executed as part of the release workflow
         // +optional
@@ -1208,6 +1237,12 @@ type ReleasePlanAdmission struct {
         Spec   ReleasePlanAdmissionSpec   `json:"spec,omitempty"`
         Status ReleasePlanAdmissionStatus `json:"status,omitempty"`
 }
+
+// MatchesReleasePlan returns true if the given name is in applications or componentGroups.
+func (rpa *ReleasePlanAdmission) MatchesReleasePlan(releasePlan *ReleasePlan) bool <span class="cov8" title="1">{
+        name := releasePlan.GetGroupName()
+        return slices.Contains(rpa.Spec.Applications, name) || slices.Contains(rpa.Spec.ComponentGroups, name)
+}</span>
 
 // ClearMatchingInfo marks the ReleasePlanAdmission as no longer matched to any ReleasePlan.
 func (rpa *ReleasePlanAdmission) ClearMatchingInfo() <span class="cov8" title="1">{
@@ -1684,7 +1719,6 @@ package releaseplan
 
 import (
         "context"
-        "fmt"
 
         "github.com/go-logr/logr"
         "github.com/konflux-ci/release-service/api/v1alpha1"
@@ -1732,28 +1766,16 @@ func (w *Webhook) Register(mgr ctrl.Manager, log *logr.Logger) error <span class
 }</span>
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
+// Validation is handled by CRD schema (maxLength, pattern) and CEL rules (mutual exclusivity).
 func (w *Webhook) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
-        releasePlan := obj.(*v1alpha1.ReleasePlan)
-
-        // Validate that the Application field doesn't exceed Kubernetes label value limit (63 characters)
-        if len(releasePlan.Spec.Application) &gt; 63 </span><span class="cov8" title="1">{
-                return nil, fmt.Errorf("application name must be no more than 63 characters, got %d characters", len(releasePlan.Spec.Application))
-        }</span>
-
-        <span class="cov8" title="1">return nil, nil</span>
-}
+        return nil, nil
+}</span>
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (w *Webhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
-        releasePlan := newObj.(*v1alpha1.ReleasePlan)
-
-        // Validate that the Application field doesn't exceed Kubernetes label value limit (63 characters)
-        if len(releasePlan.Spec.Application) &gt; 63 </span><span class="cov8" title="1">{
-                return nil, fmt.Errorf("application name must be no more than 63 characters, got %d characters", len(releasePlan.Spec.Application))
-        }</span>
-
-        <span class="cov0" title="0">return nil, nil</span>
-}
+// Validation is handled by CRD schema (maxLength, pattern) and CEL rules (mutual exclusivity).
+func (w *Webhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) <span class="cov0" title="0">{
+        return nil, nil
+}</span>
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
 func (w *Webhook) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
@@ -1832,30 +1854,38 @@ func (w *Webhook) Register(mgr ctrl.Manager, log *logr.Logger) error <span class
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
 func (w *Webhook) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
-        releasePlanAdmission := obj.(*v1alpha1.ReleasePlanAdmission)
-
-        // Validate that application names don't exceed Kubernetes label value limit (63 characters)
-        for _, app := range releasePlanAdmission.Spec.Applications </span><span class="cov8" title="1">{
-                if len(app) &gt; 63 </span><span class="cov8" title="1">{
-                        return nil, fmt.Errorf("application name '%s' must be no more than 63 characters, got %d characters", app, len(app))
-                }</span>
-        }
-
+        rpa := obj.(*v1alpha1.ReleasePlanAdmission)
+        if err := w.validateSpec(rpa); err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
         <span class="cov8" title="1">return w.validateBlockReleasesLabel(obj)</span>
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
 func (w *Webhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
-        releasePlanAdmission := newObj.(*v1alpha1.ReleasePlanAdmission)
+        rpa := newObj.(*v1alpha1.ReleasePlanAdmission)
+        if err := w.validateSpec(rpa); err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return w.validateBlockReleasesLabel(newObj)</span>
+}
 
-        // Validate that application names don't exceed Kubernetes label value limit (63 characters)
-        for _, app := range releasePlanAdmission.Spec.Applications </span><span class="cov8" title="1">{
+// validateSpec validates the length of application and componentGroup names.
+// Mutual exclusivity is handled by CRD CEL rules.
+func (w *Webhook) validateSpec(rpa *v1alpha1.ReleasePlanAdmission) error <span class="cov8" title="1">{
+        for _, app := range rpa.Spec.Applications </span><span class="cov8" title="1">{
                 if len(app) &gt; 63 </span><span class="cov8" title="1">{
-                        return nil, fmt.Errorf("application name '%s' must be no more than 63 characters, got %d characters", app, len(app))
+                        return fmt.Errorf("application name '%s' must be no more than 63 characters, got %d characters", app, len(app))
                 }</span>
         }
 
-        <span class="cov8" title="1">return w.validateBlockReleasesLabel(newObj)</span>
+        <span class="cov8" title="1">for _, cg := range rpa.Spec.ComponentGroups </span><span class="cov8" title="1">{
+                if len(cg) &gt; 63 </span><span class="cov8" title="1">{
+                        return fmt.Errorf("componentGroup name '%s' must be no more than 63 characters, got %d characters", cg, len(cg))
+                }</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
@@ -4502,20 +4532,19 @@ func hasBehaviorLabelChanged(objectOld, objectNew client.Object) bool <span clas
 }
 
 // haveApplicationsChanged returns true if passed objects are of the same kind and the
-// Spec.Application(s) values between them is different.
+// Spec.Application/ComponentGroup or Spec.Applications/ComponentGroups values between them is different.
 func haveApplicationsChanged(objectOld, objectNew client.Object) bool <span class="cov8" title="1">{
         if releasePlanOld, ok := objectOld.(*v1alpha1.ReleasePlan); ok </span><span class="cov8" title="1">{
                 if releasePlanNew, ok := objectNew.(*v1alpha1.ReleasePlan); ok </span><span class="cov8" title="1">{
-                        return releasePlanOld.Spec.Application != releasePlanNew.Spec.Application
+                        return releasePlanOld.Spec.Application != releasePlanNew.Spec.Application ||
+                                releasePlanOld.Spec.ComponentGroup != releasePlanNew.Spec.ComponentGroup
                 }</span>
         }
 
         <span class="cov8" title="1">if releasePlanAdmissionOld, ok := objectOld.(*v1alpha1.ReleasePlanAdmission); ok </span><span class="cov8" title="1">{
                 if releasePlanAdmissionNew, ok := objectNew.(*v1alpha1.ReleasePlanAdmission); ok </span><span class="cov8" title="1">{
-                        return !reflect.DeepEqual(
-                                releasePlanAdmissionOld.Spec.Applications,
-                                releasePlanAdmissionNew.Spec.Applications,
-                        )
+                        return !reflect.DeepEqual(releasePlanAdmissionOld.Spec.Applications, releasePlanAdmissionNew.Spec.Applications) ||
+                                !reflect.DeepEqual(releasePlanAdmissionOld.Spec.ComponentGroups, releasePlanAdmissionNew.Spec.ComponentGroups)
                 }</span>
         }
 
@@ -4688,7 +4717,6 @@ import (
         apierrors "k8s.io/apimachinery/pkg/api/errors"
         "k8s.io/apimachinery/pkg/runtime/schema"
         "k8s.io/apimachinery/pkg/types"
-        "k8s.io/utils/strings/slices"
         "sigs.k8s.io/controller-runtime/pkg/client"
 
         "github.com/konflux-ci/release-service/api/v1alpha1"
@@ -4817,21 +4845,21 @@ func (l *loader) GetMatchingReleasePlanAdmission(ctx context.Context, cli client
         <span class="cov8" title="1">var foundReleasePlanAdmission *v1alpha1.ReleasePlanAdmission
 
         for i, releasePlanAdmission := range releasePlanAdmissions.Items </span><span class="cov8" title="1">{
-                if !slices.Contains(releasePlanAdmission.Spec.Applications, releasePlan.Spec.Application) </span><span class="cov8" title="1">{
+                if !releasePlanAdmission.MatchesReleasePlan(releasePlan) </span><span class="cov8" title="1">{
                         continue</span>
                 }
 
                 <span class="cov8" title="1">if foundReleasePlanAdmission != nil </span><span class="cov0" title="0">{
-                        return nil, fmt.Errorf("multiple ReleasePlanAdmissions found in namespace (%+s) with the origin (%+s) for application '%s'",
-                                releasePlan.Spec.Target, releasePlan.Namespace, releasePlan.Spec.Application)
+                        return nil, fmt.Errorf("multiple ReleasePlanAdmissions found in namespace (%+s) with the origin (%+s) for '%s'",
+                                releasePlan.Spec.Target, releasePlan.Namespace, releasePlan.GetGroupName())
                 }</span>
 
                 <span class="cov8" title="1">foundReleasePlanAdmission = &amp;releasePlanAdmissions.Items[i]</span>
         }
 
         <span class="cov8" title="1">if foundReleasePlanAdmission == nil </span><span class="cov8" title="1">{
-                return nil, fmt.Errorf("no ReleasePlanAdmission found in namespace (%+s) with the origin (%+s) for application '%s'",
-                        releasePlan.Spec.Target, releasePlan.Namespace, releasePlan.Spec.Application)
+                return nil, fmt.Errorf("no ReleasePlanAdmission found in namespace (%+s) with the origin (%+s) for '%s'",
+                        releasePlan.Spec.Target, releasePlan.Namespace, releasePlan.GetGroupName())
         }</span>
 
         <span class="cov8" title="1">return foundReleasePlanAdmission, nil</span>
@@ -4866,15 +4894,15 @@ func (l *loader) GetMatchingReleasePlans(ctx context.Context, cli client.Client,
         }
 
         <span class="cov8" title="1">for i := len(releasePlans.Items) - 1; i &gt;= 0; i-- </span><span class="cov8" title="1">{
-                if !slices.Contains(releasePlanAdmission.Spec.Applications, releasePlans.Items[i].Spec.Application) </span><span class="cov8" title="1">{
-                        // Remove ReleasePlans that do not have matching applications from the list
+                if !releasePlanAdmission.MatchesReleasePlan(&amp;releasePlans.Items[i]) </span><span class="cov8" title="1">{
+                        // Remove ReleasePlans that do not have matching applications or componentGroups from the list
                         releasePlans.Items = append(releasePlans.Items[:i], releasePlans.Items[i+1:]...)
                         continue</span>
                 }
 
                 <span class="cov8" title="1">labelValue, found := releasePlans.Items[i].GetLabels()[metadata.ReleasePlanAdmissionLabel]
                 if found &amp;&amp; labelValue != releasePlanAdmission.Name </span><span class="cov8" title="1">{
-                        // Remove ReleasePlans whose label doesn’t match the ReleasePlanAdmission name
+                        // Remove ReleasePlans whose label doesn't match the ReleasePlanAdmission name
                         releasePlans.Items = append(releasePlans.Items[:i], releasePlans.Items[i+1:]...)
                 }</span>
         }
