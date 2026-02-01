@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/21538214412",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/21556239898",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -117,12 +117,12 @@
           "coverage": 79.2
         },
         {
-          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan",
-          "coverage": 90.9
-        },
-        {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
           "coverage": 96.7
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan",
+          "coverage": 90.9
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/author",
