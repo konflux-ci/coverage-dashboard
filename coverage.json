@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/21556239898",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/21576761432",
   "data": [
     {
       "repo": "konflux-ci/caching",
@@ -117,12 +117,12 @@
           "coverage": 79.2
         },
         {
-          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
-          "coverage": 96.7
-        },
-        {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan",
           "coverage": 90.9
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
+          "coverage": 96.7
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/author",
@@ -141,12 +141,12 @@
           "coverage": 78.6
         },
         {
-          "package": "github.com/konflux-ci/release-service/tekton/utils",
-          "coverage": 93.2
-        },
-        {
           "package": "github.com/konflux-ci/release-service/syncer",
           "coverage": 90.0
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/tekton/utils",
+          "coverage": 93.2
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release",
