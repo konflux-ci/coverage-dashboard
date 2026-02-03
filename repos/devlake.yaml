@@ -1,0 +1,20 @@
+name: konflux-ci/devlake
+exclude_dirs:
+    - vendor/
+    - .github/
+    - .tekton/
+    - hack/
+    - proto/
+    - test/
+    - tests/
+    - integration-tests/
+    - /fake(/|$)
+    - /mock(s)?(/|$)
+    - /e2e(-tests)?(/|$)
+    - docs/
+exclude_files:
+    - zz_generated.deepcopy.go
+    - openapi_generated.go
+    - '*.pb.go'
+    - mock_*.go
+    - '*_mock.go'
