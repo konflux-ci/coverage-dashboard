@@ -71,7 +71,7 @@
 				
 				<option value="file7">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission/webhook.go (96.7%)</option>
 				
-				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (83.6%)</option>
+				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (84.0%)</option>
 				
 				<option value="file9">github.com/konflux-ci/release-service/controllers/release/controller.go (70.6%)</option>
 				
@@ -103,7 +103,7 @@
 				
 				<option value="file23">github.com/konflux-ci/release-service/tekton/predicates.go (100.0%)</option>
 				
-				<option value="file24">github.com/konflux-ci/release-service/tekton/utils.go (84.6%)</option>
+				<option value="file24">github.com/konflux-ci/release-service/tekton/utils.go (90.5%)</option>
 				
 				<option value="file25">github.com/konflux-ci/release-service/tekton/utils/pipeline.go (100.0%)</option>
 				
@@ -1943,6 +1943,7 @@ import (
         "github.com/konflux-ci/release-service/loader"
         "github.com/konflux-ci/release-service/metadata"
         "github.com/konflux-ci/release-service/syncer"
+        "github.com/konflux-ci/release-service/tekton"
         "github.com/konflux-ci/release-service/tekton/utils"
         tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
         corev1 "k8s.io/api/core/v1"
@@ -3486,7 +3487,7 @@ func (a *adapter) registerManagedProcessingData(releasePipelineRun *tektonv1.Pip
 // associated tenant collectors Release PipelineRun and setting the appropriate state in the Release. If the PipelineRun hasn't
 // started/succeeded, no action will be taken.
 func (a *adapter) registerTenantCollectorsProcessingStatus(pipelineRun *tektonv1.PipelineRun) error <span class="cov8" title="1">{
-        if pipelineRun == nil || !pipelineRun.IsDone() </span><span class="cov8" title="1">{
+        if pipelineRun == nil || !tekton.IsPipelineRunDone(pipelineRun) </span><span class="cov8" title="1">{
                 return nil
         }</span>
 
@@ -3496,13 +3497,19 @@ func (a *adapter) registerTenantCollectorsProcessingStatus(pipelineRun *tektonv1
         if condition.IsTrue() </span><span class="cov8" title="1">{
                 a.release.MarkTenantCollectorsPipelineProcessed()
         }</span> else<span class="cov8" title="1"> {
-                message, err := a.getFailedTaskRunLogs(pipelineRun)
-                if err != nil </span><span class="cov0" title="0">{
-                        a.logger.Error(err, "failed to get TaskRun logs for tenant collectors pipeline")
-                }</span>
-                <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
-                        message = condition.Message
-                }</span>
+                var message string
+                if pipelineRun.GetDeletionTimestamp() != nil &amp;&amp; condition.IsUnknown() </span><span class="cov8" title="1">{
+                        message = "PipelineRun was deleted while still running"
+                }</span> else<span class="cov8" title="1"> {
+                        var err error
+                        message, err = a.getFailedTaskRunLogs(pipelineRun)
+                        if err != nil </span><span class="cov0" title="0">{
+                                a.logger.Error(err, "failed to get TaskRun logs for tenant collectors pipeline")
+                        }</span>
+                        <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
+                                message = condition.Message
+                        }</span>
+                }
                 <span class="cov8" title="1">a.release.MarkTenantCollectorsPipelineProcessingFailed(message)
                 a.release.MarkReleaseFailed("Release processing failed on tenant collectors pipelineRun")</span>
         }
@@ -3514,7 +3521,7 @@ func (a *adapter) registerTenantCollectorsProcessingStatus(pipelineRun *tektonv1
 // associated tenant Release PipelineRun and setting the appropriate state in the Release. If the PipelineRun hasn't
 // started/succeeded, no action will be taken.
 func (a *adapter) registerTenantProcessingStatus(pipelineRun *tektonv1.PipelineRun) error <span class="cov8" title="1">{
-        if pipelineRun == nil || !pipelineRun.IsDone() </span><span class="cov8" title="1">{
+        if pipelineRun == nil || !tekton.IsPipelineRunDone(pipelineRun) </span><span class="cov8" title="1">{
                 return nil
         }</span>
 
@@ -3524,13 +3531,19 @@ func (a *adapter) registerTenantProcessingStatus(pipelineRun *tektonv1.PipelineR
         if condition.IsTrue() </span><span class="cov8" title="1">{
                 a.release.MarkTenantPipelineProcessed()
         }</span> else<span class="cov8" title="1"> {
-                message, err := a.getFailedTaskRunLogs(pipelineRun)
-                if err != nil </span><span class="cov0" title="0">{
-                        a.logger.Error(err, "failed to get TaskRun logs for tenant pipeline")
-                }</span>
-                <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
-                        message = condition.Message
-                }</span>
+                var message string
+                if pipelineRun.GetDeletionTimestamp() != nil &amp;&amp; condition.IsUnknown() </span><span class="cov8" title="1">{
+                        message = "PipelineRun was deleted while still running"
+                }</span> else<span class="cov8" title="1"> {
+                        var err error
+                        message, err = a.getFailedTaskRunLogs(pipelineRun)
+                        if err != nil </span><span class="cov0" title="0">{
+                                a.logger.Error(err, "failed to get TaskRun logs for tenant pipeline")
+                        }</span>
+                        <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
+                                message = condition.Message
+                        }</span>
+                }
                 <span class="cov8" title="1">a.release.MarkTenantPipelineProcessingFailed(message)
                 a.release.MarkReleaseFailed("Release processing failed on tenant pipelineRun")</span>
         }
@@ -3542,7 +3555,7 @@ func (a *adapter) registerTenantProcessingStatus(pipelineRun *tektonv1.PipelineR
 // associated managed collectors Release PipelineRun and setting the appropriate state in the Release. If the PipelineRun hasn't
 // started/succeeded, no action will be taken.
 func (a *adapter) registerManagedCollectorsProcessingStatus(pipelineRun *tektonv1.PipelineRun) error <span class="cov8" title="1">{
-        if pipelineRun == nil || !pipelineRun.IsDone() </span><span class="cov8" title="1">{
+        if pipelineRun == nil || !tekton.IsPipelineRunDone(pipelineRun) </span><span class="cov8" title="1">{
                 return nil
         }</span>
 
@@ -3552,13 +3565,19 @@ func (a *adapter) registerManagedCollectorsProcessingStatus(pipelineRun *tektonv
         if condition.IsTrue() </span><span class="cov8" title="1">{
                 a.release.MarkManagedCollectorsPipelineProcessed()
         }</span> else<span class="cov8" title="1"> {
-                message, err := a.getFailedTaskRunLogs(pipelineRun)
-                if err != nil </span><span class="cov0" title="0">{
-                        a.logger.Error(err, "failed to get TaskRun logs for managed collectors pipeline")
-                }</span>
-                <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
-                        message = condition.Message
-                }</span>
+                var message string
+                if pipelineRun.GetDeletionTimestamp() != nil &amp;&amp; condition.IsUnknown() </span><span class="cov8" title="1">{
+                        message = "PipelineRun was deleted while still running"
+                }</span> else<span class="cov8" title="1"> {
+                        var err error
+                        message, err = a.getFailedTaskRunLogs(pipelineRun)
+                        if err != nil </span><span class="cov0" title="0">{
+                                a.logger.Error(err, "failed to get TaskRun logs for managed collectors pipeline")
+                        }</span>
+                        <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
+                                message = condition.Message
+                        }</span>
+                }
                 <span class="cov8" title="1">a.release.MarkManagedCollectorsPipelineProcessingFailed(message)
                 a.release.MarkReleaseFailed("Release processing failed on managed collectors pipelineRun")</span>
         }
@@ -3570,7 +3589,7 @@ func (a *adapter) registerManagedCollectorsProcessingStatus(pipelineRun *tektonv
 // associated managed Release PipelineRun and setting the appropriate state in the Release. If the PipelineRun hasn't
 // started/succeeded, no action will be taken.
 func (a *adapter) registerManagedProcessingStatus(pipelineRun *tektonv1.PipelineRun) error <span class="cov8" title="1">{
-        if pipelineRun == nil || !pipelineRun.IsDone() </span><span class="cov8" title="1">{
+        if pipelineRun == nil || !tekton.IsPipelineRunDone(pipelineRun) </span><span class="cov8" title="1">{
                 return nil
         }</span>
 
@@ -3580,13 +3599,19 @@ func (a *adapter) registerManagedProcessingStatus(pipelineRun *tektonv1.Pipeline
         if condition.IsTrue() </span><span class="cov8" title="1">{
                 a.release.MarkManagedPipelineProcessed()
         }</span> else<span class="cov8" title="1"> {
-                message, err := a.getFailedTaskRunLogs(pipelineRun)
-                if err != nil </span><span class="cov0" title="0">{
-                        a.logger.Error(err, "failed to get TaskRun logs for managed pipeline")
-                }</span>
-                <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
-                        message = condition.Message
-                }</span>
+                var message string
+                if pipelineRun.GetDeletionTimestamp() != nil &amp;&amp; condition.IsUnknown() </span><span class="cov8" title="1">{
+                        message = "PipelineRun was deleted while still running"
+                }</span> else<span class="cov8" title="1"> {
+                        var err error
+                        message, err = a.getFailedTaskRunLogs(pipelineRun)
+                        if err != nil </span><span class="cov0" title="0">{
+                                a.logger.Error(err, "failed to get TaskRun logs for managed pipeline")
+                        }</span>
+                        <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
+                                message = condition.Message
+                        }</span>
+                }
                 <span class="cov8" title="1">a.release.MarkManagedPipelineProcessingFailed(message)
                 a.release.MarkReleaseFailed("Release processing failed on managed pipelineRun")</span>
         }
@@ -3598,7 +3623,7 @@ func (a *adapter) registerManagedProcessingStatus(pipelineRun *tektonv1.Pipeline
 // associated final Release PipelineRun and setting the appropriate state in the Release. If the PipelineRun hasn't
 // started/succeeded, no action will be taken.
 func (a *adapter) registerFinalProcessingStatus(pipelineRun *tektonv1.PipelineRun) error <span class="cov8" title="1">{
-        if pipelineRun == nil || !pipelineRun.IsDone() </span><span class="cov8" title="1">{
+        if pipelineRun == nil || !tekton.IsPipelineRunDone(pipelineRun) </span><span class="cov8" title="1">{
                 return nil
         }</span>
 
@@ -3608,13 +3633,19 @@ func (a *adapter) registerFinalProcessingStatus(pipelineRun *tektonv1.PipelineRu
         if condition.IsTrue() </span><span class="cov8" title="1">{
                 a.release.MarkFinalPipelineProcessed()
         }</span> else<span class="cov8" title="1"> {
-                message, err := a.getFailedTaskRunLogs(pipelineRun)
-                if err != nil </span><span class="cov0" title="0">{
-                        a.logger.Error(err, "failed to get TaskRun logs for final pipeline")
-                }</span>
-                <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
-                        message = condition.Message
-                }</span>
+                var message string
+                if pipelineRun.GetDeletionTimestamp() != nil &amp;&amp; condition.IsUnknown() </span><span class="cov8" title="1">{
+                        message = "PipelineRun was deleted while still running"
+                }</span> else<span class="cov8" title="1"> {
+                        var err error
+                        message, err = a.getFailedTaskRunLogs(pipelineRun)
+                        if err != nil </span><span class="cov0" title="0">{
+                                a.logger.Error(err, "failed to get TaskRun logs for final pipeline")
+                        }</span>
+                        <span class="cov8" title="1">if message == "" </span><span class="cov8" title="1">{
+                                message = condition.Message
+                        }</span>
+                }
                 <span class="cov8" title="1">a.release.MarkFinalPipelineProcessingFailed(message)
                 a.release.MarkReleaseFailed("Release processing failed on final pipelineRun")</span>
         }
@@ -5813,7 +5844,8 @@ import (
 )
 
 // ReleasePipelineRunLifecyclePredicate is a predicate to select Release PipelineRuns during
-// key lifecycle events: successful completion, deletion with finalizers, or finalizer changes.
+// key lifecycle events: successful completion, deletion with finalizers, finalizer changes,
+// or when marked for deletion (to handle PipelineRuns deleted while still running).
 func ReleasePipelineRunLifecyclePredicate() predicate.Predicate <span class="cov8" title="1">{
         return predicate.Funcs{
                 CreateFunc: func(createEvent event.CreateEvent) bool </span><span class="cov8" title="1">{
@@ -5828,7 +5860,9 @@ func ReleasePipelineRunLifecyclePredicate() predicate.Predicate <span class="cov
                 }</span>,
                 UpdateFunc: func(e event.UpdateEvent) bool <span class="cov8" title="1">{
                         return isReleasePipelineRun(e.ObjectNew) &amp;&amp;
-                                (hasPipelineSucceeded(e.ObjectNew) || hasFinalizersChanged(e.ObjectOld, e.ObjectNew))
+                                (hasPipelineSucceeded(e.ObjectNew) ||
+                                        hasFinalizersChanged(e.ObjectOld, e.ObjectNew) ||
+                                        hasDeletionTimestampChanged(e.ObjectOld, e.ObjectNew))
                 }</span>,
         }
 }
@@ -5898,6 +5932,27 @@ func hasFinalizersChanged(oldObj, newObj client.Object) bool <span class="cov8" 
         newFinalizers := newObj.GetFinalizers()
 
         return !reflect.DeepEqual(oldFinalizers, newFinalizers)</span>
+}
+
+// hasDeletionTimestampChanged returns true if the deletion timestamp has changed between old and new objects.
+// This detects when a PipelineRun is marked for deletion.
+func hasDeletionTimestampChanged(oldObj, newObj client.Object) bool <span class="cov8" title="1">{
+        if oldObj == nil || newObj == nil </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">oldTs := oldObj.GetDeletionTimestamp()
+        newTs := newObj.GetDeletionTimestamp()
+        return (oldTs == nil) != (newTs == nil)</span>
+}
+
+// IsPipelineRunDone returns true if the PipelineRun has completed (succeeded or failed)
+// or if it has been marked for deletion. This handles the edge case where a PipelineRun
+// is deleted while still running and Tekton hasn't updated the status to finished.
+func IsPipelineRunDone(pipelineRun *tektonv1.PipelineRun) bool <span class="cov8" title="1">{
+        if pipelineRun == nil </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">return pipelineRun.IsDone() || pipelineRun.GetDeletionTimestamp() != nil</span>
 }
 </pre>
 		
