@@ -1,0 +1,1040 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>querygen: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/redhat-appstudio/segment-bridge.git/querygen/fieldset.go (100.0%)</option>
+				
+				<option value="file1">github.com/redhat-appstudio/segment-bridge.git/querygen/filter.go (100.0%)</option>
+				
+				<option value="file2">github.com/redhat-appstudio/segment-bridge.git/querygen/k8s_audit_fieldset.go (100.0%)</option>
+				
+				<option value="file3">github.com/redhat-appstudio/segment-bridge.git/querygen/querygen.go (92.6%)</option>
+				
+				<option value="file4">github.com/redhat-appstudio/segment-bridge.git/querygen/ujquery.go (100.0%)</option>
+				
+				<option value="file5">github.com/redhat-appstudio/segment-bridge.git/queryprint/queryprint.go (100.0%)</option>
+				
+				<option value="file6">github.com/redhat-appstudio/segment-bridge.git/scripts/runner.go (50.0%)</option>
+				
+				<option value="file7">github.com/redhat-appstudio/segment-bridge.git/stats/series.go (84.4%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package querygen
+
+import (
+        "fmt"
+        "sort"
+        "strings"
+)
+
+const (
+        // ExcludeFieldsCmd is a Splunk query "fields" command for removing fields
+        // from query results that splunk includes by default and we don't need.
+        excludeFieldsCmd = `fields - _*`
+)
+
+// FieldSet defines a set of fields that can be included in the query output,
+// how to generated the values for them from the input index and how to place
+// then in the output
+//
+// The keys in the FieldSet are the output field names while the values include
+// details about how to obtain the output values and how to present them.
+//
+// The zero value for the value struct defines that the output field is copied
+// as-is from the input.
+type FieldSet map[string]*FieldSetSpec
+
+type FieldSetSpec struct {
+        // srcFields defines which input fields to use. Each field in the list is
+        // used as a fallback for when all the fields that precede it are NULL.
+        srcFields []string
+        // srcExpr is an expression for generating the field value, if provided, it
+        // overrides the fallback logic for srcFields. The expression may be a
+        // literal value, in which case srcFields may be empty.
+        srcExpr string
+        // subObj defines a JSON sub-object for the field to reside in when its
+        // included in the output
+        subObj string
+}
+
+// QueryGen generates a Splunk query with searchExpr where its output includes
+// the given fields. The values for the fields and how to present them in the
+// output are determined from the FieldSet
+func (fs FieldSet) QueryGen(searchExpr string, fields []string) (string, error) <span class="cov8" title="1">{
+        var queryElements, evalElements []string
+        var err error
+        if evalElements, err = fs.collectEvalElements(fields); err != nil </span><span class="cov8" title="1">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">queryElements = append(
+                queryElements,
+                searchExpr,
+        )
+        if len(evalElements) &gt; 0 </span><span class="cov8" title="1">{
+                queryElements = append(queryElements, "eval "+commaSep(evalElements))
+        }</span>
+        <span class="cov8" title="1">queryElements = append(
+                queryElements,
+                "fields "+commaSep(fs.collectIncludeFields()),
+                excludeFieldsCmd,
+        )
+        return strings.Join(queryElements, "|"), nil</span>
+}
+
+func commaSep(words []string) string <span class="cov8" title="1">{
+        return strings.Join(words, ",")
+}</span>
+
+// collectEvalElements generates a list of Splunk `eval` expressions for
+// generating the values for the given output fields.
+func (fs FieldSet) collectEvalElements(fields []string) ([]string, error) <span class="cov8" title="1">{
+        var evalElements, subObjects []string
+        subObjectFields := map[string][]string{}
+
+        for _, field := range fields </span><span class="cov8" title="1">{
+                if spec, ok := fs[field]; ok </span><span class="cov8" title="1">{
+                        expr := spec.srcExpr
+                        if expr == "" </span><span class="cov8" title="1">{
+                                expr = mkFieldSrcEvalExpr(spec.srcFields)
+                        }</span>
+                        <span class="cov8" title="1">if spec.subObj == "" </span><span class="cov8" title="1">{
+                                if expr != "" </span><span class="cov8" title="1">{
+                                        evalElements = append(evalElements, field+"="+expr)
+                                }</span>
+                                <span class="cov8" title="1">continue</span>
+                        }
+                        <span class="cov8" title="1">if expr == "" </span><span class="cov8" title="1">{
+                                expr = sQuot(field)
+                        }</span>
+                        <span class="cov8" title="1">sof, ok := subObjectFields[spec.subObj]
+                        if !ok </span><span class="cov8" title="1">{
+                                subObjects = append(subObjects, spec.subObj)
+                        }</span>
+                        <span class="cov8" title="1">subObjectFields[spec.subObj] = append(sof, dQuot(field), expr)</span>
+                } else<span class="cov8" title="1"> {
+                        return []string{}, fmt.Errorf(`no field specification for: "%s"`, field)
+                }</span>
+        }
+        <span class="cov8" title="1">for _, subObject := range subObjects </span><span class="cov8" title="1">{
+                evalElements = append(
+                        evalElements,
+                        fmt.Sprintf(
+                                "%s=json_object(%s)",
+                                subObject,
+                                commaSep(subObjectFields[subObject]),
+                        ),
+                )
+        }</span>
+        <span class="cov8" title="1">return evalElements, nil</span>
+}
+
+// collectIncludeFields generates a list of all the top-level fields that may be
+// included in the query output
+func (fs FieldSet) collectIncludeFields() (fields []string) <span class="cov8" title="1">{
+        seenSubObj := map[string]bool{}
+        for field, spec := range fs </span><span class="cov8" title="1">{
+                if spec.subObj == "" </span><span class="cov8" title="1">{
+                        fields = append(fields, field)
+                }</span> else<span class="cov8" title="1"> if !seenSubObj[spec.subObj] </span><span class="cov8" title="1">{
+                        seenSubObj[spec.subObj] = true
+                        fields = append(fields, spec.subObj)
+                }</span>
+        }
+        <span class="cov8" title="1">sort.Strings(fields)
+        return</span>
+}
+
+// mkFieldSrcEvalExpr generates a Splunk `eval` expression for getting the value
+// from the given srcFields so that each field in the list is a fallback for the
+// ones before it.
+//
+// Example: given srcFields = {"a", "b", "c"}
+//
+//        if(isnull('a'),if(isnull('b'),'c','b'),'a')
+func mkFieldSrcEvalExpr(srcFields []string) string <span class="cov8" title="1">{
+        if len(srcFields) &lt;= 0 </span><span class="cov8" title="1">{
+                return ""
+        }</span>
+        <span class="cov8" title="1">expr := sQuot(srcFields[len(srcFields)-1])
+        for i := len(srcFields) - 2; i &gt;= 0; i-- </span><span class="cov8" title="1">{
+                expr = fmt.Sprintf(
+                        "if(isnull('%s'),%s,'%s')",
+                        srcFields[i], expr, srcFields[i],
+                )
+        }</span>
+        <span class="cov8" title="1">return expr</span>
+}
+
+func dQuot(v string) string <span class="cov8" title="1">{
+        return fmt.Sprintf(`"%s"`, v)
+}</span>
+
+func sQuot(v string) string <span class="cov8" title="1">{
+        return fmt.Sprintf(`'%s'`, v)
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package querygen
+
+import (
+        "fmt"
+        "strings"
+)
+
+// The Filter interface must be implemented by each filter.
+type Filter interface {
+        // Commands provides a sequence of Splunk commands for narrowing down search results.
+        Commands() []string
+        // FieldSet returns a map of all possible fields that can be included in the output
+        // from this filter.
+        FieldSet() FieldSet
+}
+
+// Optional fields for customizing StatusConditionFilter.
+// All options will be combined using an "AND" boolean expression.
+type StatusConditionOpts struct {
+        // If defined, only match conditions with one of the specified reasons.
+        reasons []string
+        // If defined, only match conditions with one of the specified statuses.
+        statuses []string
+        // If defined, only match conditions with this message.
+        // Evaluated using the Splunk 'like' function to allow for the use of wildcards.
+        message string
+}
+
+// StatusConditionFilter matches audit records for any k8s resource based on its
+// status conditions.
+type StatusConditionFilter struct {
+        // The status condition's 'type' fields value
+        cType string
+        // The name of the field used to track the position of the desired status condition.
+        indexField string
+        // Optional params
+        opts StatusConditionOpts
+}
+
+// NewStatusConditionFilter creates a default StatusConditionFilter
+func NewStatusConditionFilter(cType string) *StatusConditionFilter <span class="cov8" title="1">{
+        return &amp;StatusConditionFilter{
+                cType:      cType,
+                indexField: "status_condition_index",
+        }
+}</span>
+
+func (f *StatusConditionFilter) FieldSet() FieldSet <span class="cov8" title="1">{
+        return FieldSet{
+                "status_message": {
+                        subObj:  "properties",
+                        srcExpr: fmt.Sprintf(`mvindex('responseObject.status.conditions{}.message', %s)`, f.indexField),
+                },
+                "status_reason": {
+                        subObj:  "properties",
+                        srcExpr: fmt.Sprintf(`mvindex('responseObject.status.conditions{}.reason', %s)`, f.indexField),
+                },
+        }
+}</span>
+
+func (f *StatusConditionFilter) Commands() []string <span class="cov8" title="1">{
+        evalCmd := fmt.Sprintf(
+                `eval %s=mvfind('responseObject.status.conditions{}.type', "%s")`,
+                f.indexField, f.cType,
+        )
+        whereCmd := fmt.Sprintf(`where isnotnull(%s)`, f.indexField)
+
+        if len(f.opts.reasons) &gt; 0 </span><span class="cov8" title="1">{
+                whereCmd += fmt.Sprintf(
+                        ` AND mvindex('responseObject.status.conditions{}.reason', %s) IN (%s)`,
+                        f.indexField,
+                        `"`+strings.Join(f.opts.reasons, `", "`)+`"`,
+                )
+        }</span>
+
+        <span class="cov8" title="1">if len(f.opts.statuses) &gt; 0 </span><span class="cov8" title="1">{
+                whereCmd += fmt.Sprintf(
+                        ` AND mvindex('responseObject.status.conditions{}.status', %s) IN (%s)`,
+                        f.indexField,
+                        `"`+strings.Join(f.opts.statuses, `", "`)+`"`,
+                )
+        }</span>
+
+        <span class="cov8" title="1">if f.opts.message != "" </span><span class="cov8" title="1">{
+                whereCmd += fmt.Sprintf(
+                        ` AND like(mvindex('responseObject.status.conditions{}.message', %s), "%s")`,
+                        f.indexField, f.opts.message,
+                )
+        }</span>
+
+        <span class="cov8" title="1">return []string{evalCmd, whereCmd}</span>
+}
+
+// TektonTaskResultFilter will match audit records for Tekton TaskRun resources
+// based on conditions for its task results.
+type TektonTaskResultFilter struct {
+        // The name of the result key
+        name string
+        // The name of the field used to track the position of the matching task result.
+        indexField string
+}
+
+// NewTektonTaskResultFilter creates a default TektonTaskResultFilter
+func NewTektonTaskResultFilter(name string) *TektonTaskResultFilter <span class="cov8" title="1">{
+        return &amp;TektonTaskResultFilter{
+                name:       name,
+                indexField: "tekton_task_result_index",
+        }
+}</span>
+
+func (f *TektonTaskResultFilter) FieldSet() FieldSet <span class="cov8" title="1">{
+        return FieldSet{
+                "tekton_task_result": {
+                        subObj:  "properties",
+                        srcExpr: fmt.Sprintf(`mvindex('responseObject.status.taskResults{}.value', %s)`, f.indexField),
+                },
+        }
+}</span>
+
+func (f *TektonTaskResultFilter) Commands() []string <span class="cov8" title="1">{
+        return []string{
+                fmt.Sprintf(
+                        `eval %s=mvfind('responseObject.status.taskResults{}.name', "%s")`,
+                        f.indexField, f.name,
+                ),
+                fmt.Sprintf(`where isnotnull(%s)`, f.indexField),
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package querygen
+
+import (
+        "fmt"
+        "strings"
+)
+
+// K8sApiId defines a K8s API by including details about the API group and
+// resource names
+type K8sApiId struct {
+        apiGroup string
+        resource string
+}
+
+// Maps K8s API identifiers to field sets. This map should at least contain
+// a value for the K8sApiId zero value. That value is used as the FieldSet for
+// querying. When querying for an API object for which a value exists in the map
+// the fields in the value are added to the zero-value fields to make up the
+// final FieldSet used for the query.
+// This allows to have different field settings for different K8s APIs.
+type K8sAuditFieldSet map[K8sApiId]FieldSet
+
+func (kfs K8sAuditFieldSet) QueryGen(
+        index string, api K8sApiId, searchExpr string, fields []string, extra ...FieldSet,
+) (string, error) <span class="cov8" title="1">{
+        searchCmd := strings.TrimSpace(fmt.Sprintf(
+                `search index="%s" log_type=audit `+
+                        `"objectRef.apiGroup"="%s" `+
+                        `"objectRef.resource"="%s" `+
+                        `%s`,
+                index,
+                api.apiGroup,
+                api.resource,
+                searchExpr,
+        ))
+        allFieldSets := []FieldSet{kfs[K8sApiId{}], kfs[api]}
+        allFieldSets = append(allFieldSets, extra...)
+        fieldSet := FieldSet{}
+        for _, fieldSetToAdd := range allFieldSets </span><span class="cov8" title="1">{
+                for fld, spec := range fieldSetToAdd </span><span class="cov8" title="1">{
+                        fieldSet[fld] = spec
+                }</span>
+        }
+
+        <span class="cov8" title="1">return fieldSet.QueryGen(searchCmd, fields)</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">// Package querygen is used to generate Splunk queries for fetching user journey
+// events from the RHTAP K8s event log.
+package querygen
+
+import "fmt"
+
+// GenApplicationQuery returns a Splunk query for generating Segment events
+// representing AppStudio Application object events.
+func GenApplicationQuery(index string) string <span class="cov8" title="1">{
+        q, _ := NewUserJourneyQuery(index, K8sApiId{"appstudio.redhat.com", "applications"}).
+                WithPredicate(
+                        `verb=create `+
+                                `"responseStatus.code" IN (200, 201) `+
+                                `("impersonatedUser.username"="*" OR (user.username="*" AND NOT user.username="system:*")) `+
+                                `(verb!=create OR "responseObject.metadata.resourceVersion"="*")`,
+                ).
+                WithFields("name", "userId", "application").
+                String()
+        return q
+}</span>
+
+// GenComponentQuery returns a Splunk query for generating Segment events
+// representing AppStudio Component object events.
+func GenComponentQuery(index string) string <span class="cov0" title="0">{
+        q, _ := NewUserJourneyQuery(index, K8sApiId{"appstudio.redhat.com", "components"}).
+                WithPredicate(
+                        `verb IN (create, update, delete, patch) `+
+                                `"responseStatus.code" IN (200, 201) `+
+                                `("impersonatedUser.username"="*" OR (user.username="*" AND NOT user.username="system:*")) `+
+                                `(verb!=create OR "responseObject.metadata.resourceVersion"="*")`,
+                ).
+                WithFields("name", "userId", "application", "component", "src_url", "src_revision").
+                String()
+        return q
+}</span>
+
+// GenBuildPipelineRunCreatedQuery returns a Splunk query for generating Segment events
+// representing creation of AppStudio build PipelineRuns.
+func GenBuildPipelineRunCreatedQuery(index string) string <span class="cov8" title="1">{
+        q, _ := NewUserJourneyQuery(index, K8sApiId{"tekton.dev", "pipelineruns"}).
+                WithPredicate(
+                        `verb=create `+
+                                `"responseStatus.code" IN (200, 201) `+
+                                `"responseObject.metadata.labels.pipelines.appstudio.openshift.io/type"=build `+
+                                `"responseObject.metadata.resourceVersion"="*"`,
+                ).
+                WithEventExpr(`"Build PipelineRun created"`).
+                WithFields("application", "component", "repo", "commit_sha", "target_branch",
+                        "git_trigger_event_type", "git_trigger_provider", "pipeline_log_url").
+                String()
+        return q
+}</span>
+
+// GenBuildPipelineRunStartedQuery returns a Splunk query for generating Segment events
+// representing the start of AppStudio build PipelineRuns.
+func GenBuildPipelineRunStartedQuery(index string) string <span class="cov8" title="1">{
+        statusFilter := NewStatusConditionFilter("Succeeded")
+        statusFilter.opts.reasons = []string{"Running"}
+        statusFilter.opts.message = "Tasks Completed: 0 %"
+
+        q, _ := NewUserJourneyQuery(index, K8sApiId{"tekton.dev", "pipelineruns"}).
+                WithPredicate(
+                        `verb=update `+
+                                `"responseStatus.code"=200 `+
+                                `"objectRef.subresource"="status" `+
+                                `"responseObject.metadata.labels.pipelines.appstudio.openshift.io/type"=build `+
+                                `"responseObject.metadata.resourceVersion"="*" `+
+                                `"responseObject.status.startTime"="*"`,
+                ).
+                WithFilter(statusFilter).
+                WithEventExpr(`"Build PipelineRun started"`).
+                WithFields("application", "component",
+                        "git_trigger_event_type", "git_trigger_provider", "pipeline_log_url").
+                String()
+        return q
+}</span>
+
+// GenClairScanCompletedQuery returns a Splunk query for generating Segment events
+// when the clair-scan task completes.
+func GenClairScanCompletedQuery(index string) string <span class="cov8" title="1">{
+        statusFilter := NewStatusConditionFilter("Succeeded")
+        statusFilter.opts.reasons = []string{"Succeeded"}
+        statusFilter.opts.statuses = []string{"True"}
+
+        trFilter := NewTektonTaskResultFilter("CLAIR_SCAN_RESULT")
+
+        q, _ := NewUserJourneyQuery(index, K8sApiId{"tekton.dev", "taskruns"}).
+                WithPredicate(
+                        `verb=update `+
+                                `"responseStatus.code"=200 `+
+                                `"objectRef.subresource"="status" `+
+                                `"requestObject.metadata.labels.tekton.dev/pipelineTask"="clair-scan" `+
+                                `"responseObject.status.completionTime"="*"`,
+                ).
+                WithFilter(statusFilter).
+                WithFilter(trFilter).
+                WithCommands(
+                        fmt.Sprintf(`eval clair_scan_result=%s`, trFilter.FieldSet()["tekton_task_result"].srcExpr),
+                        `spath input=clair_scan_result, path=vulnerabilities.critical output=clair_scan_result.vulnerabilities.critical`,
+                        `spath input=clair_scan_result, path=vulnerabilities.high output=clair_scan_result.vulnerabilities.high`,
+                        `spath input=clair_scan_result, path=vulnerabilities.medium output=clair_scan_result.vulnerabilities.medium`,
+                        `spath input=clair_scan_result, path=vulnerabilities.low output=clair_scan_result.vulnerabilities.low`,
+                ).
+                WithEventExpr(`"Clair scan TaskRun completed"`).
+                WithFields(
+                        "application", "component",
+                        "vulnerabilities_critical", "vulnerabilities_high",
+                        "vulnerabilities_medium", "vulnerabilities_low",
+                ).
+                String()
+        return q
+}</span>
+
+// GenBuildPipelineRunCompletedQuery returns a Splunk query for generating Segment events
+// representing success or failure of AppStudio build PipelineRuns.
+func GenBuildPipelineRunCompletedQuery(index string) string <span class="cov8" title="1">{
+        statusFilter := NewStatusConditionFilter("Succeeded")
+        statusFilter.opts.reasons = []string{"Completed", "Failed"}
+
+        q, _ := NewUserJourneyQuery(index, K8sApiId{"tekton.dev", "pipelineruns"}).
+                WithPredicate(
+                        `verb=update `+
+                                `"responseStatus.code"=200 `+
+                                `"objectRef.subresource"="status" `+
+                                `"responseObject.metadata.labels.pipelines.appstudio.openshift.io/type"=build `+
+                                `"responseObject.metadata.resourceVersion"="*" `+
+                                `"responseObject.status.completionTime"="*"`,
+                ).
+                WithFilter(statusFilter).
+                WithEventExpr(`"Build PipelineRun ended"`).
+                WithFields(
+                        "application", "component",
+                        "status_message", "status_reason",
+                        "repo", "commit_sha", "target_branch",
+                        "git_trigger_event_type", "git_trigger_provider",
+                        "pipeline_log_url").
+                String()
+
+        return q
+}</span>
+
+// GenReleaseCompletedQuery returns a Splunk query for generating Segment events
+// representing the Release resource success/failure state changes.
+func GenReleaseCompletedQuery(index string) string <span class="cov8" title="1">{
+        statusFilter := NewStatusConditionFilter("Released")
+        statusFilter.opts.reasons = []string{"Succeeded", "Failed"}
+
+        q, _ := NewUserJourneyQuery(index, K8sApiId{"appstudio.redhat.com", "releases"}).
+                WithPredicate(
+                        `verb=patch `+
+                                `"responseStatus.code"=200 `+
+                                `"objectRef.subresource"="status" `+
+                                `"responseObject.metadata.resourceVersion"="*" `+
+                                `"responseObject.status.completionTime"="*"`,
+                ).
+                WithFilter(statusFilter).
+                WithEventExpr(`"Release process done"`).
+                WithFields("name", "application", "status_reason", "status_message").
+                String()
+        return q
+}</span>
+
+// GenPullRequestCreatedQuery returns a Splunk query for generating Segment events
+// whenever a Pull request is created in the users GitHub repository.
+func GenPullRequestCreatedQuery(index string) string <span class="cov8" title="1">{
+        q, _ := NewUserJourneyQuery(index, K8sApiId{"appstudio.redhat.com", "components"}).
+                WithPredicate(
+                        `verb=update `+
+                                `"responseStatus.code"=200 `+
+                                `"user.username"="system:serviceaccount:build-service:build-service-controller-manager" `+
+                                `"responseObject.metadata.annotations.build.appstudio.openshift.io/status"="*pac*" `+
+                                `(NOT "responseObject.metadata.annotations.build.appstudio.openshift.io/request"="*")`,
+                ).
+                WithCommands(
+                        `spath input="responseObject.metadata.annotations.build.appstudio.openshift.io/status", path=pac.state output=build_status.pac.state`,
+                        `search "build_status.pac.state"="enabled"`,
+                        `spath input="responseObject.metadata.annotations.build.appstudio.openshift.io/status", path=pac.merge-url output=build_status.pac.merge-url`,
+                        `dedup build_status.pac.merge-url sortby +_time`,
+                ).
+                WithEventExpr(`"Pull request created"`).
+                WithFields("name", "application", "component", "merge_url", "src_url", "src_revision").
+                String()
+        return q
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package querygen
+
+import (
+        "sort"
+        "strings"
+)
+
+var UJFieldSet = K8sAuditFieldSet{
+        K8sApiId{}: {
+                "messageId":     {srcFields: []string{"auditID"}},
+                "timestamp":     {srcFields: []string{"requestReceivedTimestamp"}},
+                "type":          {srcExpr: `"track"`},
+                "userAgent":     {subObj: "context"},
+                "userId":        {srcFields: []string{"impersonatedUser.username", "user.username"}},
+                "namespace":     {srcFields: []string{"objectRef.namespace"}},
+                "event_verb":    {srcFields: []string{"verb"}},
+                "event_subject": {srcFields: []string{"objectRef.resource"}},
+                "apiGroup":      {subObj: "properties", srcFields: []string{"objectRef.apiGroup"}},
+                "apiVersion":    {subObj: "properties", srcFields: []string{"objectRef.apiVersion"}},
+                "kind":          {subObj: "properties", srcFields: []string{"objectRef.resource"}},
+                "name":          {subObj: "properties", srcFields: []string{"objectRef.name"}},
+                "src_url":       {subObj: "properties", srcFields: []string{"responseObject.spec.source.git.url"}},
+                "src_revision":  {subObj: "properties", srcFields: []string{"responseObject.spec.source.git.revision"}},
+                "src_context":   {subObj: "properties", srcFields: []string{"responseObject.spec.source.git.context"}},
+                "application": {
+                        subObj: "properties",
+                        srcFields: []string{
+                                "responseObject.spec.application",
+                                "responseObject.metadata.labels.appstudio.openshift.io/application",
+                        },
+                },
+                "commit_sha": {
+                        subObj:    "properties",
+                        srcFields: []string{"responseObject.metadata.annotations.build.appstudio.redhat.com/commit_sha"},
+                },
+                "component": {
+                        subObj: "properties",
+                        srcFields: []string{
+                                "responseObject.spec.componentName",
+                                "responseObject.metadata.labels.appstudio.openshift.io/component",
+                        },
+                },
+                "repo": {
+                        subObj:    "properties",
+                        srcFields: []string{"responseObject.metadata.annotations.build.appstudio.openshift.io/repo"},
+                        srcExpr:   `replace('responseObject.metadata.annotations.build.appstudio.openshift.io/repo',"^([^?]*)(.*)?","\1")`,
+                },
+                "target_branch": {
+                        subObj:    "properties",
+                        srcFields: []string{"responseObject.metadata.annotations.build.appstudio.redhat.com/target_branch"},
+                },
+                "git_trigger_event_type": {
+                        subObj:    "properties",
+                        srcFields: []string{"responseObject.metadata.annotations.pipelinesascode.tekton.dev/event-type"},
+                },
+                "git_trigger_provider": {
+                        subObj:    "properties",
+                        srcFields: []string{"responseObject.metadata.annotations.pipelinesascode.tekton.dev/git-provider"},
+                },
+                "pipeline_log_url": {
+                        subObj:    "properties",
+                        srcFields: []string{"responseObject.metadata.annotations.pipelinesascode.tekton.dev/log-url"},
+                },
+                "vulnerabilities_critical": {
+                        subObj:    "properties",
+                        srcFields: []string{"clair_scan_result.vulnerabilities.critical"},
+                },
+                "vulnerabilities_high": {
+                        subObj:    "properties",
+                        srcFields: []string{"clair_scan_result.vulnerabilities.high"},
+                },
+                "vulnerabilities_medium": {
+                        subObj:    "properties",
+                        srcFields: []string{"clair_scan_result.vulnerabilities.medium"},
+                },
+                "vulnerabilities_low": {
+                        subObj:    "properties",
+                        srcFields: []string{"clair_scan_result.vulnerabilities.low"},
+                },
+                "merge_url": {
+                        subObj:    "properties",
+                        srcFields: []string{"build_status.pac.merge-url"},
+                },
+        },
+        K8sApiId{"appstudio.redhat.com", "applications"}: {
+                "application": {subObj: "properties", srcFields: []string{"objectRef.name"}},
+        },
+        K8sApiId{"appstudio.redhat.com", "components"}: {
+                "event_verb": {
+                        srcExpr: `case(
+                                'objectRef.resource'=="components"
+                                AND verb=="patch"
+                                AND spath(_raw,"requestObject{0}.path")=="/metadata/annotations/build.appstudio.openshift.io~1request",
+                                spath(_raw, "requestObject{0}.value"),
+                                'objectRef.resource'=="components"
+                                AND verb=="patch"
+                                AND NOT isnull('requestObject.metadata.annotations.build.appstudio.openshift.io/request'),
+                                'requestObject.metadata.annotations.build.appstudio.openshift.io/request',
+                                true(),
+                                'verb'
+                                )`,
+                },
+        },
+        K8sApiId{"appstudio.redhat.com", "releases"}: {
+                "application": {
+                        subObj:  "properties",
+                        srcExpr: `mvindex('responseObject.metadata.ownerReferences{}.name',0)`,
+                },
+        },
+}
+
+// UserJourneyQuery is a builder for Splunk queries.
+type UserJourneyQuery struct {
+        // The Splunk index to be searched
+        index string
+
+        // The K8s API objects to be searched
+        subject K8sApiId
+
+        // The initial search predicate used to narrow down results
+        predicate string
+
+        // Additional Splunk commands to execute in order immediately after the search
+        // command.
+        commands []string
+
+        // Fields to return from the query
+        fields []string
+
+        // FieldSet objects contributed to the query by filters
+        filterFieldSets []FieldSet
+}
+
+// NewUserJourneyQuery constructs a default UserJourneyQuery
+func NewUserJourneyQuery(index string, subject K8sApiId) *UserJourneyQuery <span class="cov8" title="1">{
+        return &amp;UserJourneyQuery{
+                index:   index,
+                subject: subject,
+                fields: []string{
+                        "apiGroup",
+                        "apiVersion",
+                        "event_subject",
+                        "event_verb",
+                        "kind",
+                        "messageId",
+                        "namespace",
+                        "timestamp",
+                        "type",
+                        "userAgent",
+                },
+        }
+}</span>
+
+// WithPredicate adds additional expressions to the leading search command.
+func (q *UserJourneyQuery) WithPredicate(predicate string) *UserJourneyQuery <span class="cov8" title="1">{
+        q.predicate = predicate
+        return q
+}</span>
+
+// WithCommands adds raw Splunk commands to the query.
+// Each call appends to the existing set of commands so order of invocation is important.
+func (q *UserJourneyQuery) WithCommands(commands ...string) *UserJourneyQuery <span class="cov8" title="1">{
+        q.commands = append(q.commands, commands...)
+        return q
+}</span>
+
+// WithFilter adds all the Splunk commands for a Filter to the query.
+// Each call appends to the existing set of commands so order of invocation is important.
+func (q *UserJourneyQuery) WithFilter(filter Filter) *UserJourneyQuery <span class="cov8" title="1">{
+        q.filterFieldSets = append(q.filterFieldSets, filter.FieldSet())
+        return q.WithCommands(filter.Commands()...)
+}</span>
+
+// WithFields adds fields to the output of the query.
+func (q *UserJourneyQuery) WithFields(fields ...string) *UserJourneyQuery <span class="cov8" title="1">{
+        q.fields = append(q.fields, fields...)
+        return q
+}</span>
+
+// WithEventExpr adds a Splunk 'eval' expression specifically for the 'event' output field.
+// This is handy when trying to override the default event naming logic.
+func (q *UserJourneyQuery) WithEventExpr(expr string) *UserJourneyQuery <span class="cov8" title="1">{
+        q.filterFieldSets = append(
+                q.filterFieldSets,
+                FieldSet{"event": {srcExpr: expr}},
+        )
+        q.fields = append(q.fields, "event")
+        return q
+}</span>
+
+// String builds the Splunk query.
+func (q *UserJourneyQuery) String() (string, error) <span class="cov8" title="1">{
+        sort.Strings(q.fields) // To make test results predictable
+
+        commands := append([]string{q.predicate}, q.commands...)
+        query := strings.Join(commands, " | ")
+
+        return UJFieldSet.QueryGen(q.index, q.subject, query, q.fields, q.filterFieldSets...)
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">// Package queryprint contains utilities for printing one or more Splunk queries
+package queryprint
+
+import "strings"
+
+// QueryDesc includes a printable description of a Splunk query: A descriptive
+// title for it and the query string itself.
+type QueryDesc struct {
+        Title string
+        Query string
+}
+
+// PrettyPrintQueries prints the given set of queries in a human-readable format
+func PrettyPrintQueries(queries []QueryDesc) string <span class="cov8" title="1">{
+        var builder strings.Builder
+        for i, query := range queries </span><span class="cov8" title="1">{
+                if i &gt; 0 </span><span class="cov8" title="1">{
+                        builder.WriteString("\n")
+                        builder.WriteString("\n")
+                }</span>
+                <span class="cov8" title="1">builder.WriteString(query.Title)
+                builder.WriteString("\n")
+                builder.WriteString(strings.Repeat("-", len(query.Title)))
+                builder.WriteString("\n")
+                builder.WriteString(prettyPrintQuery(query.Query, "    "))</span>
+        }
+        <span class="cov8" title="1">return builder.String()</span>
+}
+
+func prettyPrintQuery(query string, indent string) string <span class="cov8" title="1">{
+        var builder strings.Builder
+        if len(query) &lt; 60 </span><span class="cov8" title="1">{
+                builder.WriteString(indent)
+                builder.WriteString(query)
+        }</span> else<span class="cov8" title="1"> {
+                for i, line := range strings.Split(query, "|") </span><span class="cov8" title="1">{
+                        if i &gt; 0 </span><span class="cov8" title="1">{
+                                builder.WriteString("\n")
+                        }</span>
+                        <span class="cov8" title="1">builder.WriteString(indent)
+                        if i &gt; 0 </span><span class="cov8" title="1">{
+                                builder.WriteString("|")
+                        }</span>
+                        <span class="cov8" title="1">builder.WriteString(line)</span>
+                }
+        }
+        <span class="cov8" title="1">return builder.String()</span>
+}
+
+// MachinePrintQueries prints the given set of queries in a compact,
+// machine-readable format where queries are separated by NULL ("\x00")
+// characters
+func MachinePrintQueries(queries []QueryDesc) string <span class="cov8" title="1">{
+        var builder strings.Builder
+        for i, query := range queries </span><span class="cov8" title="1">{
+                if i &gt; 0 </span><span class="cov8" title="1">{
+                        builder.WriteRune('\x00')
+                }</span>
+                <span class="cov8" title="1">builder.WriteString(query.Query)</span>
+        }
+        <span class="cov8" title="1">return builder.String()</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package scripts
+
+import (
+        "errors"
+        "fmt"
+        "os"
+        "os/exec"
+        "path"
+        "path/filepath"
+        "runtime"
+        "testing"
+
+        "github.com/stretchr/testify/assert"
+)
+
+// A version of exec.LookPath that can find our scripts
+// Current implementation works by manipulating $PATH to include the directory
+// where this Go file is located, assuming it is placed in the same location as
+// the scripts
+func LookPath(file string) (string, error) <span class="cov8" title="1">{
+        _, goFile, _, ok := runtime.Caller(0)
+        if !ok </span><span class="cov0" title="0">{
+                return "", errors.New("failed to find path of scripts via Go file name")
+        }</span>
+        <span class="cov8" title="1">if err := pushToPath(path.Dir(goFile)); err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">return exec.LookPath(file)</span>
+}
+
+// Push the given directory in front of $PATH unless its already listed there
+func pushToPath(dir string) error <span class="cov8" title="1">{
+        osPath := os.Getenv("PATH")
+        osPathList := filepath.SplitList(osPath)
+        for _, pathDir := range osPathList </span><span class="cov8" title="1">{
+                if dir == pathDir </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+        }
+        <span class="cov8" title="1">newOsPath := fmt.Sprintf("%s%c%s", dir, filepath.ListSeparator, osPath)
+        return os.Setenv("PATH", newOsPath)</span>
+}
+
+func GetRepoRootDir() (string, error) <span class="cov0" title="0">{
+        _, filename, _, ok := runtime.Caller(0)
+        if !ok </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to find the path of the root directory")
+        }</span>
+        <span class="cov0" title="0">dirPath := filepath.Dir(filepath.Dir(filename))
+        return dirPath, nil</span>
+}
+
+func AssertExecuteScript(t *testing.T, scriptPath string) []byte <span class="cov0" title="0">{
+        cmd := exec.Command(scriptPath)
+        output, err := cmd.Output()
+        assert.NoError(t, err, "failed to run script")
+        return output
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">// Stats package includes simple statistics utilities
+package stats
+
+import (
+        "fmt"
+
+        "golang.org/x/exp/constraints"
+)
+
+type Number interface {
+        constraints.Integer | constraints.Float
+}
+
+// Series calculates cumulative statistics on a series of numbers
+// For streamlined use, all operations are designed to be error-free, results
+// may not always be useful though.
+type Series[T Number] struct {
+        count uint
+        min   T
+        max   T
+        total T
+}
+
+func (s *Series[T]) Add(v T) <span class="cov8" title="1">{
+        if s.count &lt;= 0 </span><span class="cov8" title="1">{
+                s.min = v
+                s.max = v
+                s.total = v
+        }</span> else<span class="cov8" title="1"> {
+                if s.min &gt; v </span><span class="cov0" title="0">{
+                        s.min = v
+                }</span>
+                <span class="cov8" title="1">if s.max &lt; v </span><span class="cov8" title="1">{
+                        s.max = v
+                }</span>
+                <span class="cov8" title="1">s.total += v</span>
+        }
+        <span class="cov8" title="1">s.count += 1</span>
+}
+
+func (s Series[T]) Len() uint <span class="cov8" title="1">{ return s.count }</span>
+func (s Series[T]) Min() T    <span class="cov8" title="1">{ return s.min }</span>
+func (s Series[T]) Max() T    <span class="cov8" title="1">{ return s.max }</span>
+func (s Series[T]) Total() T  <span class="cov8" title="1">{ return s.total }</span>
+
+func (s Series[T]) Avg() T <span class="cov8" title="1">{
+        if s.count &lt;= 0 </span><span class="cov8" title="1">{
+                return 0
+        }</span>
+        <span class="cov8" title="1">return s.total / T(s.count)</span>
+}
+
+// Implement the fmt.Formatter interface
+func (s Series[T]) Format(f fmt.State, verb rune) <span class="cov8" title="1">{
+        fldFmtStr := rebuildFmtStr(f, verb)
+        fmtStr := fmt.Sprintf("min: %s max: %s avg: %s", fldFmtStr, fldFmtStr, fldFmtStr)
+        fmt.Fprintf(f, fmtStr, s.Min(), s.Max(), s.Avg())
+}</span>
+
+func rebuildFmtStr(f fmt.State, verb rune) string <span class="cov8" title="1">{
+        fldFmtStr := "%"
+        for flag := range [...]int{'+', '=', '#', ' ', '0'} </span><span class="cov8" title="1">{
+                if f.Flag(flag) </span><span class="cov0" title="0">{
+                        fldFmtStr += string(rune(flag))
+                }</span>
+        }
+        <span class="cov8" title="1">if w, ok := f.Width(); ok </span><span class="cov8" title="1">{
+                fldFmtStr += fmt.Sprintf("%d", w)
+        }</span>
+        <span class="cov8" title="1">if p, ok := f.Precision(); ok </span><span class="cov0" title="0">{
+                if p == 0 </span><span class="cov0" title="0">{
+                        fldFmtStr += "."
+                }</span> else<span class="cov0" title="0"> {
+                        fldFmtStr += fmt.Sprintf(".%d", p)
+                }</span>
+        }
+        <span class="cov8" title="1">fldFmtStr += string(verb)
+        return fldFmtStr</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

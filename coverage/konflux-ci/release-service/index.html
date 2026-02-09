@@ -63,13 +63,13 @@
 				
 				<option value="file3">github.com/konflux-ci/release-service/api/v1alpha1/releaseserviceconfig_types.go (81.8%)</option>
 				
-				<option value="file4">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/author/webhook.go (89.3%)</option>
+				<option value="file4">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/author/webhook.go (91.4%)</option>
 				
-				<option value="file5">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release/webhook.go (94.6%)</option>
+				<option value="file5">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release/webhook.go (93.9%)</option>
 				
-				<option value="file6">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan/webhook.go (90.9%)</option>
+				<option value="file6">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan/webhook.go (90.0%)</option>
 				
-				<option value="file7">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission/webhook.go (96.7%)</option>
+				<option value="file7">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission/webhook.go (96.2%)</option>
 				
 				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (84.0%)</option>
 				
@@ -105,7 +105,7 @@
 				
 				<option value="file24">github.com/konflux-ci/release-service/tekton/utils.go (90.5%)</option>
 				
-				<option value="file25">github.com/konflux-ci/release-service/tekton/utils/pipeline.go (100.0%)</option>
+				<option value="file25">github.com/konflux-ci/release-service/tekton/utils/pipeline.go (98.8%)</option>
 				
 				<option value="file26">github.com/konflux-ci/release-service/tekton/utils/pipeline_run_builder.go (90.7%)</option>
 				
@@ -1413,6 +1413,7 @@ import (
         "fmt"
         "net/http"
         "strings"
+        "unicode"
 
         "github.com/konflux-ci/release-service/api/v1alpha1"
         ctrl "sigs.k8s.io/controller-runtime"
@@ -1463,7 +1464,7 @@ func (w *Webhook) Register(mgr ctrl.Manager, log *logr.Logger) error <span class
 func (w *Webhook) handleRelease(req admission.Request) admission.Response <span class="cov8" title="1">{
         release := &amp;v1alpha1.Release{}
         err := json.Unmarshal(req.Object.Raw, release)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return admission.Errored(http.StatusBadRequest, errors.Wrap(err, "error decoding object"))
         }</span>
 
@@ -1560,6 +1561,11 @@ func (w *Webhook) sanitizeLabelValue(username string) string <span class="cov8" 
                 author = string(author)[0:metadata.MaxLabelLength]
         }</span>
 
+        // Ensure author ends with an alphanumeric character
+        <span class="cov8" title="1">author = strings.TrimRightFunc(author, func(r rune) bool </span><span class="cov8" title="1">{
+                return !unicode.IsLetter(r) &amp;&amp; !unicode.IsDigit(r)
+        }</span>)
+
         <span class="cov8" title="1">return author</span>
 }
 </pre>
@@ -1593,7 +1599,6 @@ import (
         "github.com/go-logr/logr"
         "github.com/konflux-ci/release-service/api/v1alpha1"
         "k8s.io/apimachinery/pkg/api/errors"
-        "k8s.io/apimachinery/pkg/runtime"
         ctrl "sigs.k8s.io/controller-runtime"
         "sigs.k8s.io/controller-runtime/pkg/client"
         "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -1607,9 +1612,7 @@ type Webhook struct {
 }
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (w *Webhook) Default(ctx context.Context, obj runtime.Object) error <span class="cov8" title="1">{
-        release := obj.(*v1alpha1.Release)
-
+func (w *Webhook) Default(ctx context.Context, release *v1alpha1.Release) error <span class="cov8" title="1">{
         // Initialize labels map if nil
         if release.Labels == nil </span><span class="cov8" title="1">{
                 release.Labels = make(map[string]string)
@@ -1646,17 +1649,14 @@ func (w *Webhook) Register(mgr ctrl.Manager, log *logr.Logger) error <span class
         w.loader = loader.NewLoader()
         w.log = log.WithName("release")
 
-        return ctrl.NewWebhookManagedBy(mgr).
-                For(&amp;v1alpha1.Release{}).
+        return ctrl.NewWebhookManagedBy(mgr, &amp;v1alpha1.Release{}).
                 WithDefaulter(w).
                 WithValidator(w).
                 Complete()
 }</span>
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (w *Webhook) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
-        release := obj.(*v1alpha1.Release)
-
+func (w *Webhook) ValidateCreate(ctx context.Context, release *v1alpha1.Release) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
         // Validate that resource names used as labels don't exceed Kubernetes label value limit (63 characters)
         if len(release.Name) &gt; 63 </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("release name must be no more than 63 characters, got %d characters", len(release.Name))
@@ -1672,10 +1672,7 @@ func (w *Webhook) ValidateCreate(ctx context.Context, obj runtime.Object) (warni
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (w *Webhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
-        oldRelease := oldObj.(*v1alpha1.Release)
-        newRelease := newObj.(*v1alpha1.Release)
-
+func (w *Webhook) ValidateUpdate(ctx context.Context, oldRelease, newRelease *v1alpha1.Release) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
         if !reflect.DeepEqual(newRelease.Spec, oldRelease.Spec) </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("release resources spec cannot be updated")
         }</span>
@@ -1694,7 +1691,7 @@ func (w *Webhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Obj
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (w *Webhook) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
+func (w *Webhook) ValidateDelete(ctx context.Context, release *v1alpha1.Release) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
         return nil, nil
 }</span>
 </pre>
@@ -1723,7 +1720,6 @@ import (
         "github.com/go-logr/logr"
         "github.com/konflux-ci/release-service/api/v1alpha1"
         "github.com/konflux-ci/release-service/metadata"
-        "k8s.io/apimachinery/pkg/runtime"
         ctrl "sigs.k8s.io/controller-runtime"
         "sigs.k8s.io/controller-runtime/pkg/client"
         "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -1736,9 +1732,7 @@ type Webhook struct {
 }
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (w *Webhook) Default(ctx context.Context, obj runtime.Object) error <span class="cov8" title="1">{
-        releasePlan := obj.(*v1alpha1.ReleasePlan)
-
+func (w *Webhook) Default(ctx context.Context, releasePlan *v1alpha1.ReleasePlan) error <span class="cov8" title="1">{
         if _, found := releasePlan.GetLabels()[metadata.AutoReleaseLabel]; !found </span><span class="cov8" title="1">{
                 if releasePlan.Labels == nil </span><span class="cov8" title="1">{
                         releasePlan.Labels = map[string]string{
@@ -1758,8 +1752,7 @@ func (w *Webhook) Register(mgr ctrl.Manager, log *logr.Logger) error <span class
         w.client = mgr.GetClient()
         w.log = log.WithName("releasePlan")
 
-        return ctrl.NewWebhookManagedBy(mgr).
-                For(&amp;v1alpha1.ReleasePlan{}).
+        return ctrl.NewWebhookManagedBy(mgr, &amp;v1alpha1.ReleasePlan{}).
                 WithDefaulter(w).
                 WithValidator(w).
                 Complete()
@@ -1767,18 +1760,18 @@ func (w *Webhook) Register(mgr ctrl.Manager, log *logr.Logger) error <span class
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
 // Validation is handled by CRD schema (maxLength, pattern) and CEL rules (mutual exclusivity).
-func (w *Webhook) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
+func (w *Webhook) ValidateCreate(ctx context.Context, releasePlan *v1alpha1.ReleasePlan) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
         return nil, nil
 }</span>
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
 // Validation is handled by CRD schema (maxLength, pattern) and CEL rules (mutual exclusivity).
-func (w *Webhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) <span class="cov0" title="0">{
+func (w *Webhook) ValidateUpdate(ctx context.Context, oldReleasePlan, newReleasePlan *v1alpha1.ReleasePlan) (warnings admission.Warnings, err error) <span class="cov0" title="0">{
         return nil, nil
 }</span>
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (w *Webhook) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
+func (w *Webhook) ValidateDelete(ctx context.Context, releasePlan *v1alpha1.ReleasePlan) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
         return nil, nil
 }</span>
 </pre>
@@ -1808,7 +1801,6 @@ import (
         "github.com/go-logr/logr"
         "github.com/konflux-ci/release-service/api/v1alpha1"
         "github.com/konflux-ci/release-service/metadata"
-        "k8s.io/apimachinery/pkg/runtime"
         ctrl "sigs.k8s.io/controller-runtime"
         "sigs.k8s.io/controller-runtime/pkg/client"
         "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -1821,9 +1813,7 @@ type Webhook struct {
 }
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (w *Webhook) Default(ctx context.Context, obj runtime.Object) error <span class="cov8" title="1">{
-        releasePlanAdmission := obj.(*v1alpha1.ReleasePlanAdmission)
-
+func (w *Webhook) Default(ctx context.Context, releasePlanAdmission *v1alpha1.ReleasePlanAdmission) error <span class="cov8" title="1">{
         if _, found := releasePlanAdmission.GetLabels()[metadata.BlockReleasesLabel]; !found </span><span class="cov8" title="1">{
                 if releasePlanAdmission.Labels == nil </span><span class="cov8" title="1">{
                         releasePlanAdmission.Labels = map[string]string{
@@ -1845,29 +1835,26 @@ func (w *Webhook) Register(mgr ctrl.Manager, log *logr.Logger) error <span class
         w.client = mgr.GetClient()
         w.log = log.WithName("releasePlanAdmission")
 
-        return ctrl.NewWebhookManagedBy(mgr).
-                For(&amp;v1alpha1.ReleasePlanAdmission{}).
+        return ctrl.NewWebhookManagedBy(mgr, &amp;v1alpha1.ReleasePlanAdmission{}).
                 WithDefaulter(w).
                 WithValidator(w).
                 Complete()
 }</span>
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (w *Webhook) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
-        rpa := obj.(*v1alpha1.ReleasePlanAdmission)
+func (w *Webhook) ValidateCreate(ctx context.Context, rpa *v1alpha1.ReleasePlanAdmission) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
         if err := w.validateSpec(rpa); err != nil </span><span class="cov8" title="1">{
                 return nil, err
         }</span>
-        <span class="cov8" title="1">return w.validateBlockReleasesLabel(obj)</span>
+        <span class="cov8" title="1">return w.validateBlockReleasesLabel(rpa)</span>
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (w *Webhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
-        rpa := newObj.(*v1alpha1.ReleasePlanAdmission)
-        if err := w.validateSpec(rpa); err != nil </span><span class="cov8" title="1">{
+func (w *Webhook) ValidateUpdate(ctx context.Context, oldRpa, newRpa *v1alpha1.ReleasePlanAdmission) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
+        if err := w.validateSpec(newRpa); err != nil </span><span class="cov8" title="1">{
                 return nil, err
         }</span>
-        <span class="cov8" title="1">return w.validateBlockReleasesLabel(newObj)</span>
+        <span class="cov8" title="1">return w.validateBlockReleasesLabel(newRpa)</span>
 }
 
 // validateSpec validates the length of application and componentGroup names.
@@ -1889,15 +1876,13 @@ func (w *Webhook) validateSpec(rpa *v1alpha1.ReleasePlanAdmission) error <span c
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (w *Webhook) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
+func (w *Webhook) ValidateDelete(ctx context.Context, rpa *v1alpha1.ReleasePlanAdmission) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
         return nil, nil
 }</span>
 
-// validateAutoReleaseLabel throws an error if the block-releases label value is set to anything besides true or false.
-func (w *Webhook) validateBlockReleasesLabel(obj runtime.Object) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
-        releasePlanAdmission := obj.(*v1alpha1.ReleasePlanAdmission)
-
-        if value, found := releasePlanAdmission.GetLabels()[metadata.BlockReleasesLabel]; found </span><span class="cov8" title="1">{
+// validateBlockReleasesLabel throws an error if the block-releases label value is set to anything besides true or false.
+func (w *Webhook) validateBlockReleasesLabel(rpa *v1alpha1.ReleasePlanAdmission) (warnings admission.Warnings, err error) <span class="cov8" title="1">{
+        if value, found := rpa.GetLabels()[metadata.BlockReleasesLabel]; found </span><span class="cov8" title="1">{
                 if value != "true" &amp;&amp; value != "false" </span><span class="cov8" title="1">{
                         return nil, fmt.Errorf("'%s' label can only be set to true or false", metadata.BlockReleasesLabel)
                 }</span>
@@ -3022,7 +3007,7 @@ func (a *adapter) createFinalPipelineRun(releasePlan *v1alpha1.ReleasePlan, snap
                 WithPipelineRef(releasePlan.Spec.FinalPipeline.PipelineRef.ToTektonPipelineRef()).
                 WithServiceAccount(releasePlan.Spec.FinalPipeline.ServiceAccountName).
                 WithTaskRunSpecs(releasePlan.Spec.FinalPipeline.TaskRunSpecs...).
-                WithTimeouts(&amp;releasePlan.Spec.FinalPipeline.Timeouts, &amp;a.releaseServiceConfig.Spec.DefaultTimeouts)
+                WithTimeouts(utils.AdjustTimeouts(&amp;releasePlan.Spec.FinalPipeline.Timeouts, *a.logger), &amp;a.releaseServiceConfig.Spec.DefaultTimeouts)
 
         if releasePlan.Spec.FinalPipeline.PipelineRef.UseEmptyDir </span><span class="cov8" title="1">{
                 builder = builder.WithEmptyDirVolume(
@@ -3075,7 +3060,7 @@ func (a *adapter) createManagedPipelineRun(resources *loader.ProcessingResources
                 WithPipelineRef(resources.ReleasePlanAdmission.Spec.Pipeline.PipelineRef.ToTektonPipelineRef()).
                 WithServiceAccount(resources.ReleasePlanAdmission.Spec.Pipeline.ServiceAccountName).
                 WithTaskRunSpecs(resources.ReleasePlanAdmission.Spec.Pipeline.TaskRunSpecs...).
-                WithTimeouts(&amp;resources.ReleasePlanAdmission.Spec.Pipeline.Timeouts, &amp;a.releaseServiceConfig.Spec.DefaultTimeouts).
+                WithTimeouts(utils.AdjustTimeouts(&amp;resources.ReleasePlanAdmission.Spec.Pipeline.Timeouts, *a.logger), &amp;a.releaseServiceConfig.Spec.DefaultTimeouts).
                 WithParams(resources.ReleasePlanAdmission.Spec.Pipeline.GetOciStorageParam()...)
 
         url, revision, pathInRepo, err := resources.ReleasePlanAdmission.Spec.Pipeline.PipelineRef.GetGitResolverParams()
@@ -3127,7 +3112,7 @@ func (a *adapter) createTenantPipelineRun(releasePlan *v1alpha1.ReleasePlan, sna
                 WithPipelineRef(releasePlan.Spec.TenantPipeline.PipelineRef.ToTektonPipelineRef()).
                 WithServiceAccount(releasePlan.Spec.TenantPipeline.ServiceAccountName).
                 WithTaskRunSpecs(releasePlan.Spec.TenantPipeline.TaskRunSpecs...).
-                WithTimeouts(&amp;releasePlan.Spec.TenantPipeline.Timeouts, &amp;a.releaseServiceConfig.Spec.DefaultTimeouts)
+                WithTimeouts(utils.AdjustTimeouts(&amp;releasePlan.Spec.TenantPipeline.Timeouts, *a.logger), &amp;a.releaseServiceConfig.Spec.DefaultTimeouts)
 
         if releasePlan.Spec.TenantPipeline.PipelineRef.UseEmptyDir </span><span class="cov8" title="1">{
                 builder = builder.WithEmptyDirVolume(
@@ -5976,8 +5961,11 @@ package utils
 
 import (
         "fmt"
+        "time"
 
+        "github.com/go-logr/logr"
         tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Param defines the parameters for a given resolver in PipelineRef
@@ -6156,6 +6144,130 @@ func (prp *ParameterizedPipeline) GetTektonParams() []tektonv1.Param <span class
 func (pr *PipelineRef) IsClusterScoped() bool <span class="cov8" title="1">{
         return pr.Resolver == "cluster"
 }</span>
+
+// AdjustTimeouts adjusts the timeout values to ensure they follow the rule: pipeline &gt;= tasks + finally.
+// It modifies the timeouts as needed based on which values are set and logs the action taken.
+// The adjustment buffer is 10 minutes, or half of pipeline timeout if pipeline is less than 20 minutes.
+func AdjustTimeouts(timeouts *tektonv1.TimeoutFields, logger logr.Logger) *tektonv1.TimeoutFields <span class="cov8" title="1">{
+        const defaultAdjustmentBuffer = 10 * time.Minute
+        const shortPipelineThreshold = 20 * time.Minute
+        const minPipelineWarningThreshold = 5 * time.Minute
+
+        // If timeouts is nil, return as is
+        if timeouts == nil </span><span class="cov8" title="1">{
+                logger.Info("Timeouts not set, returning nil")
+                return nil
+        }</span>
+
+        // Check which fields are set
+        <span class="cov8" title="1">pipelineSet := timeouts.Pipeline != nil &amp;&amp; timeouts.Pipeline.Duration &gt; 0
+        tasksSet := timeouts.Tasks != nil &amp;&amp; timeouts.Tasks.Duration &gt; 0
+        finallySet := timeouts.Finally != nil &amp;&amp; timeouts.Finally.Duration &gt; 0
+
+        // If all are unset, return as is
+        if !pipelineSet &amp;&amp; !tasksSet &amp;&amp; !finallySet </span><span class="cov8" title="1">{
+                logger.Info("All timeout fields are unset, returning original timeouts")
+                return timeouts
+        }</span>
+
+        // Create a copy to avoid modifying the original
+        <span class="cov8" title="1">result := &amp;tektonv1.TimeoutFields{}
+        if pipelineSet </span><span class="cov8" title="1">{
+                result.Pipeline = &amp;metav1.Duration{Duration: timeouts.Pipeline.Duration}
+        }</span>
+        <span class="cov8" title="1">if tasksSet </span><span class="cov8" title="1">{
+                result.Tasks = &amp;metav1.Duration{Duration: timeouts.Tasks.Duration}
+        }</span>
+        <span class="cov8" title="1">if finallySet </span><span class="cov8" title="1">{
+                result.Finally = &amp;metav1.Duration{Duration: timeouts.Finally.Duration}
+        }</span>
+
+        // Calculate adjustment buffer: use pipeline/2 if pipeline &lt; 20min, otherwise default 10min
+        <span class="cov8" title="1">adjustmentBuffer := defaultAdjustmentBuffer
+        if pipelineSet &amp;&amp; result.Pipeline.Duration &lt; shortPipelineThreshold </span><span class="cov8" title="1">{
+                adjustmentBuffer = result.Pipeline.Duration / 2
+        }</span>
+
+        // Handle all scenarios
+        <span class="cov8" title="1">switch </span>{
+        case pipelineSet &amp;&amp; tasksSet &amp;&amp; finallySet:<span class="cov8" title="1">
+                // All three are set
+                if result.Pipeline.Duration &gt;= result.Tasks.Duration+result.Finally.Duration </span><span class="cov8" title="1">{
+                        logger.Info("All timeouts set and valid (pipeline &gt;= tasks + finally), returning original values",
+                                "pipeline", result.Pipeline.Duration, "tasks", result.Tasks.Duration, "finally", result.Finally.Duration)
+                }</span> else<span class="cov8" title="1"> {
+                        // They don't follow the rule: set tasks and finally based on adjustment buffer
+                        result.Tasks = &amp;metav1.Duration{Duration: result.Pipeline.Duration - adjustmentBuffer}
+                        result.Finally = &amp;metav1.Duration{Duration: adjustmentBuffer}
+                        logger.Info("All timeouts set but invalid, adjusted tasks and finally",
+                                "pipeline", result.Pipeline.Duration, "tasks", result.Tasks.Duration, "finally", result.Finally.Duration,
+                                "adjustmentBuffer", adjustmentBuffer)
+                }</span>
+
+        case pipelineSet &amp;&amp; tasksSet &amp;&amp; !finallySet:<span class="cov8" title="1">
+                // Only pipeline and tasks are set
+                if result.Tasks.Duration &lt; result.Pipeline.Duration </span><span class="cov8" title="1">{
+                        logger.Info("Pipeline and tasks set, tasks is lower than pipeline, returning original values",
+                                "pipeline", result.Pipeline.Duration, "tasks", result.Tasks.Duration)
+                }</span> else<span class="cov8" title="1"> {
+                        // tasks &gt;= pipeline, set tasks based on adjustment buffer
+                        result.Tasks = &amp;metav1.Duration{Duration: result.Pipeline.Duration - adjustmentBuffer}
+                        logger.Info("Pipeline and tasks set, tasks was &gt;= pipeline, adjusted tasks",
+                                "pipeline", result.Pipeline.Duration, "tasks", result.Tasks.Duration,
+                                "adjustmentBuffer", adjustmentBuffer)
+                }</span>
+
+        case pipelineSet &amp;&amp; !tasksSet &amp;&amp; finallySet:<span class="cov8" title="1">
+                // Only pipeline and finally are set
+                if result.Finally.Duration &lt;= result.Pipeline.Duration/2 </span><span class="cov8" title="1">{
+                        // finally is at most half of pipeline, use current logic
+                        result.Tasks = &amp;metav1.Duration{Duration: result.Pipeline.Duration - result.Finally.Duration}
+                        logger.Info("Pipeline and finally set (finally &lt;= pipeline/2), calculated tasks as pipeline - finally",
+                                "pipeline", result.Pipeline.Duration, "tasks", result.Tasks.Duration, "finally", result.Finally.Duration)
+                }</span> else<span class="cov8" title="1"> {
+                        // finally is more than half of pipeline, set tasks and finally based on adjustment buffer
+                        result.Tasks = &amp;metav1.Duration{Duration: result.Pipeline.Duration - adjustmentBuffer}
+                        result.Finally = &amp;metav1.Duration{Duration: adjustmentBuffer}
+                        logger.Info("Pipeline and finally set (finally &gt; pipeline/2), adjusted tasks and finally based on adjustment buffer",
+                                "pipeline", result.Pipeline.Duration, "tasks", result.Tasks.Duration, "finally", result.Finally.Duration,
+                                "adjustmentBuffer", adjustmentBuffer)
+                }</span>
+
+        case pipelineSet &amp;&amp; !tasksSet &amp;&amp; !finallySet:<span class="cov8" title="1">
+                // Only pipeline is set
+                result.Tasks = &amp;metav1.Duration{Duration: result.Pipeline.Duration - adjustmentBuffer}
+                logger.Info("Only pipeline set, calculated tasks as pipeline - adjustmentBuffer",
+                        "pipeline", result.Pipeline.Duration, "tasks", result.Tasks.Duration,
+                        "adjustmentBuffer", adjustmentBuffer)</span>
+
+        case !pipelineSet &amp;&amp; tasksSet &amp;&amp; !finallySet:<span class="cov8" title="1">
+                // Only tasks is set - use default buffer since we don't have pipeline
+                result.Pipeline = &amp;metav1.Duration{Duration: result.Tasks.Duration + adjustmentBuffer}
+                logger.Info("Only tasks set, calculated pipeline as tasks + adjustmentBuffer",
+                        "pipeline", result.Pipeline.Duration, "tasks", result.Tasks.Duration,
+                        "adjustmentBuffer", adjustmentBuffer)</span>
+
+        case !pipelineSet &amp;&amp; !tasksSet &amp;&amp; finallySet:<span class="cov8" title="1">
+                // Only finally is set - return empty struct so defaults will be used
+                logger.Info("WARNING: Only finally timeout is set, returning empty timeouts to use defaults",
+                        "finally", result.Finally.Duration)
+                return &amp;tektonv1.TimeoutFields{}</span>
+
+        case !pipelineSet &amp;&amp; tasksSet &amp;&amp; finallySet:<span class="cov8" title="1">
+                // Only finally and tasks are set
+                result.Pipeline = &amp;metav1.Duration{Duration: result.Tasks.Duration + result.Finally.Duration}
+                logger.Info("Tasks and finally set, calculated pipeline as tasks + finally",
+                        "pipeline", result.Pipeline.Duration, "tasks", result.Tasks.Duration, "finally", result.Finally.Duration)</span>
+        }
+
+        // Warn if pipeline timeout is less than 5 minutes
+        <span class="cov8" title="1">if result.Pipeline != nil &amp;&amp; result.Pipeline.Duration &lt; minPipelineWarningThreshold </span><span class="cov0" title="0">{
+                logger.Info("WARNING: Pipeline timeout is less than 5 minutes, this may not be enough time for the pipeline to complete",
+                        "pipeline", result.Pipeline.Duration)
+        }</span>
+
+        <span class="cov8" title="1">return result</span>
+}
 </pre>
 		
 		<pre class="file" id="file26" style="display: none">/*
