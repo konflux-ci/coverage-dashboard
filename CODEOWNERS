@@ -22,3 +22,5 @@
 /repos/internal-services.yaml @querti @mmalina
 
 /repos/build-service.yaml @konflux-ci/build-maintainers
+/repos/workspace-manager.yaml @yftacherzog @gbenhaim @Omeramsc @avi-biton
+/repos/segment-bridge.yaml @Omeramsc
