@@ -1,9 +1,9 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/21883275904",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/21884525641",
   "data": [
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 52.8,
+      "coverage": 53.0,
       "status": "ok",
       "packages": [
         {
@@ -16,15 +16,15 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 78.9
-        },
-        {
-          "package": "github.com/konflux-ci/build-service/pkg/common",
-          "coverage": 90.0
+          "coverage": 79.2
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
           "coverage": 20.5
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/common",
+          "coverage": 90.0
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git/gitproviderfactory",
@@ -68,6 +68,37 @@
         {
           "package": "github.com/konflux-ci/caching/cmd/icap-server",
           "coverage": 75.0
+        }
+      ]
+    },
+    {
+      "repo": "konflux-ci/integration-service",
+      "coverage": 65.7,
+      "status": "ok",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/integration-service/status",
+          "coverage": 61.1
+        },
+        {
+          "package": "github.com/konflux-ci/integration-service/pkg/metrics",
+          "coverage": 37.9
+        },
+        {
+          "package": "github.com/konflux-ci/integration-service/pkg/integrationteststatus",
+          "coverage": 86.3
+        },
+        {
+          "package": "github.com/konflux-ci/integration-service/git/github",
+          "coverage": 79.4
+        },
+        {
+          "package": "github.com/konflux-ci/integration-service/api/v1beta2",
+          "coverage": 100.0
+        },
+        {
+          "package": "github.com/konflux-ci/integration-service/cmd/snapshotgc",
+          "coverage": 79.2
         }
       ]
     },
@@ -242,12 +273,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 57.1,
+      "coverage": 58.4,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 57.1
+          "coverage": 58.4
         }
       ]
     },
