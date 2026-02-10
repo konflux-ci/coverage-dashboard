@@ -1,0 +1,354 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>cmd: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/konflux-ci/workspace-manager/cmd/main.go (55.2%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "context"
+        "net/http"
+
+        "github.com/labstack/echo/v4"
+        "github.com/labstack/echo/v4/middleware"
+        authorizationv1 "k8s.io/api/authorization/v1"
+        core "k8s.io/api/core/v1"
+        authorizationv1Client "k8s.io/client-go/kubernetes/typed/authorization/v1"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+        "sigs.k8s.io/controller-runtime/pkg/client/config"
+
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        "k8s.io/apimachinery/pkg/labels"
+        "k8s.io/apimachinery/pkg/selection"
+
+        "k8s.io/apimachinery/pkg/runtime"
+        utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+        clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+
+        crt "github.com/codeready-toolchain/api/api/v1alpha1"
+        "k8s.io/client-go/kubernetes"
+
+        dummysignup "github.com/konflux-ci/workspace-manager/pkg/handlers/signup/dummy"
+)
+
+var (
+        scheme = runtime.NewScheme()
+)
+
+func init() <span class="cov8" title="1">{
+        utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+}</span>
+
+type NamespaceWithAccess func(e *echo.Echo, c echo.Context, authCl authorizationv1Client.AuthorizationV1Interface, allNamespaces []core.Namespace) ([]core.Namespace, error)
+
+// Given all relevant user namespaces, return all workspaces for the calling user
+func getWorkspacesWithAccess(
+        e *echo.Echo, c echo.Context, allNamespaces []core.Namespace, getNamespacesWithAccess NamespaceWithAccess,
+) (crt.WorkspaceList, error) <span class="cov8" title="1">{
+        cfg, err := config.GetConfig()
+        if err != nil </span><span class="cov0" title="0">{
+                e.Logger.Fatal(err)
+        }</span>
+        <span class="cov8" title="1">clientset, err := kubernetes.NewForConfig(cfg)
+        if err != nil </span><span class="cov0" title="0">{
+                e.Logger.Fatal(err)
+        }</span>
+
+        <span class="cov8" title="1">authCl := clientset.AuthorizationV1()
+        namespaces, err := getNamespacesWithAccess(e, c, authCl, allNamespaces)
+        if err != nil </span><span class="cov0" title="0">{
+                e.Logger.Fatal(err)
+        }</span>
+
+        <span class="cov8" title="1">gv := crt.GroupVersion.String()
+
+        var wss []crt.Workspace
+
+        for _, ns := range namespaces </span><span class="cov8" title="1">{
+                ws := crt.Workspace{
+                        TypeMeta: metav1.TypeMeta{
+                                Kind:       "Workspace",
+                                APIVersion: gv,
+                        },
+                        ObjectMeta: metav1.ObjectMeta{
+                                Name: ns.Name,
+                        },
+                        Status: crt.WorkspaceStatus{
+                                Namespaces: []crt.SpaceNamespace{
+                                        {
+                                                Name: ns.Name,
+                                                Type: "default",
+                                        },
+                                },
+                                // Owner: "user1",
+                                // Role:  "admin",
+                        },
+                }
+                wss = append(wss, ws)
+        }</span>
+
+        <span class="cov8" title="1">workspaces := crt.WorkspaceList{
+                TypeMeta: metav1.TypeMeta{
+                        Kind:       "WorkspaceList",
+                        APIVersion: gv,
+                },
+                Items: wss,
+        }
+        return workspaces, nil</span>
+}
+
+// Get all the namespace in which the calling user is allowed to perform enough actions
+// to allow workspace access
+var getNamespacesWithAccess = func(
+        e *echo.Echo,
+        c echo.Context,
+        authCl authorizationv1Client.AuthorizationV1Interface,
+        allNamespaces []core.Namespace,
+) ([]core.Namespace, error) <span class="cov8" title="1">{
+        var allowedNs []core.Namespace
+        for _, ns := range allNamespaces </span><span class="cov8" title="1">{
+                notAllowed := false
+                for _, verb := range []string{"list", "watch"} </span><span class="cov8" title="1">{
+                        for _, resource := range []string{"applications", "components"} </span><span class="cov8" title="1">{
+                                allowed, err := runAccessCheck(
+                                        authCl,
+                                        c.Request().Header["X-Email"][0],
+                                        ns.Name,
+                                        "appstudio.redhat.com",
+                                        resource,
+                                        verb,
+                                )
+                                if err != nil || !allowed </span><span class="cov8" title="1">{
+                                        e.Logger.Error(err)
+                                        notAllowed = true
+                                        break</span>
+                                }
+                        }
+                        <span class="cov8" title="1">if notAllowed </span><span class="cov8" title="1">{
+                                break</span> // skip next verbs
+                        }
+                }
+                <span class="cov8" title="1">if notAllowed </span><span class="cov8" title="1">{
+                        continue</span> // move to next ns
+                }
+                <span class="cov8" title="1">allowedNs = append(allowedNs, ns)</span>
+        }
+        <span class="cov8" title="1">return allowedNs, nil</span>
+}
+
+// Gets all user namespaces that satisfy the provided requirement
+func getUserNamespaces(e *echo.Echo, nameReq labels.Requirement) ([]core.Namespace, error) <span class="cov8" title="1">{
+        cfg, err := config.GetConfig()
+        if err != nil </span><span class="cov0" title="0">{
+                e.Logger.Fatal(err)
+        }</span>
+
+        <span class="cov8" title="1">cl, err := client.New(cfg, client.Options{Scheme: scheme})
+        if err != nil </span><span class="cov0" title="0">{
+                e.Logger.Fatal(err)
+        }</span>
+        <span class="cov8" title="1">req, _ := labels.NewRequirement("konflux.ci/type", selection.In, []string{"user"})
+        selector := labels.NewSelector().Add(*req)
+        selector = selector.Add(nameReq)
+        namespaceList := &amp;core.NamespaceList{}
+        err = cl.List(
+                context.Background(),
+                namespaceList,
+                &amp;client.ListOptions{LabelSelector: selector},
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return namespaceList.Items, nil</span>
+}
+
+// check if a user can perform a specific verb on a specific resource in namespace
+func runAccessCheck(
+        authCl authorizationv1Client.AuthorizationV1Interface,
+        user string,
+        namespace string,
+        resourceGroup string,
+        resource string,
+        verb string,
+) (bool, error) <span class="cov8" title="1">{
+        sar := &amp;authorizationv1.LocalSubjectAccessReview{
+                ObjectMeta: metav1.ObjectMeta{
+                        Namespace: namespace,
+                },
+                Spec: authorizationv1.SubjectAccessReviewSpec{
+                        User: user,
+                        ResourceAttributes: &amp;authorizationv1.ResourceAttributes{
+                                Namespace: namespace,
+                                Verb:      verb,
+                                Group:     resourceGroup,
+                                Resource:  resource,
+                        },
+                },
+        }
+        response, err := authCl.LocalSubjectAccessReviews(namespace).Create(
+                context.TODO(), sar, metav1.CreateOptions{},
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return false, err
+        }</span>
+        <span class="cov8" title="1">if response.Status.Allowed </span><span class="cov8" title="1">{
+                return true, nil
+        }</span>
+        <span class="cov8" title="1">return false, nil</span>
+}
+
+func main() <span class="cov0" title="0">{
+        e := echo.New()
+
+        e.Pre(middleware.RemoveTrailingSlash())
+
+        e.Use(middleware.RequestID())
+        e.Use(middleware.Logger())
+        e.Use(middleware.Recover())
+
+        e.POST("/api/v1/signup", dummysignup.DummySignupPostHandler)
+
+        e.GET("/api/v1/signup", dummysignup.DummySignupGetHandler)
+
+        e.GET("/workspaces", func(c echo.Context) error </span><span class="cov0" title="0">{
+                nameReq, _ := labels.NewRequirement(
+                        "kubernetes.io/metadata.name", selection.Exists, []string{},
+                )
+                userNamespaces, err := getUserNamespaces(e, *nameReq)
+                if err != nil </span><span class="cov0" title="0">{
+                        e.Logger.Fatal(err)
+                }</span>
+                <span class="cov0" title="0">workspaces, err := getWorkspacesWithAccess(e, c, userNamespaces, getNamespacesWithAccess)
+                if err != nil </span><span class="cov0" title="0">{
+                        e.Logger.Fatal(err)
+                }</span>
+
+                <span class="cov0" title="0">return c.JSON(http.StatusOK, &amp;workspaces)</span>
+        })
+
+        <span class="cov0" title="0">e.GET("/workspaces/:ws", func(c echo.Context) error </span><span class="cov0" title="0">{
+                nameReq, _ := labels.NewRequirement(
+                        "kubernetes.io/metadata.name", selection.In, []string{c.Param("ws")},
+                )
+                userNamespaces, err := getUserNamespaces(e, *nameReq)
+                if err != nil </span><span class="cov0" title="0">{
+                        e.Logger.Fatal(err)
+                }</span>
+                <span class="cov0" title="0">workspaces, err := getWorkspacesWithAccess(e, c, userNamespaces, getNamespacesWithAccess)
+                if err != nil </span><span class="cov0" title="0">{
+                        e.Logger.Fatal(err)
+                }</span>
+                <span class="cov0" title="0">wsParam := c.Param("ws")
+                for _, ws := range workspaces.Items </span><span class="cov0" title="0">{
+                        if ws.Name == wsParam </span><span class="cov0" title="0">{
+                                return c.JSON(http.StatusOK, &amp;ws)
+                        }</span>
+                }
+
+                <span class="cov0" title="0">return echo.NewHTTPError(http.StatusNotFound)</span>
+        })
+
+        <span class="cov0" title="0">e.GET("/health", func(c echo.Context) error </span><span class="cov0" title="0">{
+                return c.NoContent(http.StatusOK)
+        }</span>)
+
+        <span class="cov0" title="0">e.Logger.Fatal(e.Start(":5000"))</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
