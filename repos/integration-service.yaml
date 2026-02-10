@@ -12,6 +12,13 @@ exclude_dirs:
     - /mock(s)?(/|$)
     - /e2e(-tests)?(/|$)
     - docs/
+    - gitops/                                                                                                                                                      
+    - helpers/                                                                                                                                                     
+    - internal/controller/                                                                                                                                         
+    - internal/webhook/                                                                                                                                            
+    - loader/                                                                                                                                                      
+    - release/                                                                                                                                                     
+    - tekton/ 
 exclude_files:
     - zz_generated.deepcopy.go
     - openapi_generated.go
