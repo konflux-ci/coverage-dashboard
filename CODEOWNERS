@@ -21,6 +21,7 @@
 /repos/release-service.yaml @querti @mmalina @elenagerman
 /repos/internal-services.yaml @querti @mmalina
 
+/repos/application-api.yaml @konflux-ci/build-maintainers @konflux-ci/integration-service-maintainers
 /repos/integration-service.yaml @dirgim @hongweiliu17 @jsztuka @Josh-Everett @kasemAlem
 /repos/build-service.yaml @konflux-ci/build-maintainers
 /repos/workspace-manager.yaml @yftacherzog @gbenhaim @Omeramsc @avi-biton
