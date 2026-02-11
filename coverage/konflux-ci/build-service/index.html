@@ -55,17 +55,17 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (76.9%)</option>
+				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (73.6%)</option>
 				
 				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.9%)</option>
 				
 				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (82.1%)</option>
 				
-				<option value="file3">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pipeline.go (86.0%)</option>
+				<option value="file3">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pipeline.go (85.0%)</option>
 				
 				<option value="file4">github.com/konflux-ci/build-service/internal/controller/component_build_controller_secrets.go (71.6%)</option>
 				
-				<option value="file5">github.com/konflux-ci/build-service/internal/controller/component_build_controller_service_account.go (73.4%)</option>
+				<option value="file5">github.com/konflux-ci/build-service/internal/controller/component_build_controller_service_account.go (71.4%)</option>
 				
 				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_dependency_update_controller.go (76.1%)</option>
 				
@@ -302,7 +302,7 @@ func (r *ComponentBuildReconciler) Reconcile(ctx context.Context, req ctrl.Reque
         <span class="cov8" title="1">if component.ObjectMeta.DeletionTimestamp.IsZero() </span><span class="cov8" title="1">{
                 // We need to make sure the Service Account exists before checking the Component image,
                 // because Image Controller operator expects the Service Account to exist to link push secret to it.
-                if err := r.EnsureBuildPipelineServiceAccount(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
+                if err := r.EnsureBuildPipelineServiceAccount(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
                         return ctrl.Result{}, err
                 }</span>
         }
@@ -421,7 +421,7 @@ func (r *ComponentBuildReconciler) Reconcile(ctx context.Context, req ctrl.Reque
                 writeBuildStatus(&amp;component, buildStatus)
                 delete(component.Annotations, BuildRequestAnnotationName)
 
-                if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
+                if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
                         log.Error(err, fmt.Sprintf("failed to update component after wrong %s annotation", defaultBuildPipelineAnnotation))
                         return ctrl.Result{}, err
                 }</span>
@@ -638,8 +638,8 @@ func (r *ComponentBuildReconciler) WaitForCacheUpdate(ctx context.Context, names
                                 break</span>
                         }
                         // Outdated version of the component, wait more.
-                } else<span class="cov8" title="1"> {
-                        if errors.IsNotFound(err) </span><span class="cov8" title="1">{
+                } else<span class="cov0" title="0"> {
+                        if errors.IsNotFound(err) </span><span class="cov0" title="0">{
                                 // The component was deleted
                                 isComponentInCacheUpToDate = true
                                 break</span>
@@ -648,7 +648,7 @@ func (r *ComponentBuildReconciler) WaitForCacheUpdate(ctx context.Context, names
                 }
                 <span class="cov8" title="1">time.Sleep(100 * time.Millisecond)</span>
         }
-        <span class="cov8" title="1">if !isComponentInCacheUpToDate </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if !isComponentInCacheUpToDate </span><span class="cov0" title="0">{
                 log.Info("failed to wait for updated cache. Requested action could be repeated.", l.Audit, "true")
         }</span>
 }
@@ -2020,8 +2020,8 @@ func (r *ComponentBuildReconciler) GetBuildPipelineFromComponentAnnotation(ctx c
         additionalParams := []string{}
 
         pipelinesConfigMap := &amp;corev1.ConfigMap{}
-        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineConfigMapResourceName, Namespace: BuildServiceNamespaceName}, pipelinesConfigMap); err != nil </span><span class="cov8" title="1">{
-                if errors.IsNotFound(err) </span><span class="cov8" title="1">{
+        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineConfigMapResourceName, Namespace: BuildServiceNamespaceName}, pipelinesConfigMap); err != nil </span><span class="cov0" title="0">{
+                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
                         return nil, nil, boerrors.NewBuildOpError(boerrors.EBuildPipelineConfigNotDefined, err)
                 }</span>
                 <span class="cov0" title="0">return nil, nil, err</span>
@@ -2679,7 +2679,7 @@ func (r *ComponentBuildReconciler) EnsureBuildPipelineServiceAccount(ctx context
                 }</span>
         }
 
-        <span class="cov8" title="1">if err := r.ensureNudgingPullSecrets(ctx, component); err != nil </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if err := r.ensureNudgingPullSecrets(ctx, component); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "failed to ensure nudge secrets linked")
                 return err
         }</span>
@@ -2750,7 +2750,7 @@ func (r *ComponentBuildReconciler) ensureNudgingPullSecrets(ctx context.Context,
         }</span>
 
         <span class="cov8" title="1">buildPipelineServiceAccount := &amp;corev1.ServiceAccount{}
-        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineServiceAccountName, Namespace: component.Namespace}, buildPipelineServiceAccount); err != nil </span><span class="cov8" title="1">{
+        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineServiceAccountName, Namespace: component.Namespace}, buildPipelineServiceAccount); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "failed to get build pipeline Service Account", l.Action, l.ActionView)
                 return err
         }</span>

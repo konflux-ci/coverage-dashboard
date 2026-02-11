@@ -1,9 +1,9 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/21884525641",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/21892208734",
   "data": [
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 53.0,
+      "coverage": 52.6,
       "status": "ok",
       "packages": [
         {
@@ -16,15 +16,15 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 79.2
-        },
-        {
-          "package": "github.com/konflux-ci/build-service/pkg/git",
-          "coverage": 20.5
+          "coverage": 78.5
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/common",
           "coverage": 90.0
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git",
+          "coverage": 20.5
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git/gitproviderfactory",
@@ -262,23 +262,23 @@
           "coverage": 84.4
         },
         {
-          "package": "github.com/redhat-appstudio/segment-bridge.git/scripts",
-          "coverage": 50.0
-        },
-        {
           "package": "github.com/redhat-appstudio/segment-bridge.git/querygen",
           "coverage": 98.2
+        },
+        {
+          "package": "github.com/redhat-appstudio/segment-bridge.git/scripts",
+          "coverage": 50.0
         }
       ]
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.4,
+      "coverage": 57.1,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.4
+          "coverage": 57.1
         }
       ]
     },
