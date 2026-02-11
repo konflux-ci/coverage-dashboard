@@ -1,9 +1,15 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/21892208734",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/21914555918",
   "data": [
     {
+      "repo": "konflux-ci/application-api",
+      "coverage": null,
+      "status": "failed",
+      "packages": []
+    },
+    {
       "repo": "konflux-ci/build-service",
-      "coverage": 52.6,
+      "coverage": 52.8,
       "status": "ok",
       "packages": [
         {
@@ -16,15 +22,15 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 78.5
-        },
-        {
-          "package": "github.com/konflux-ci/build-service/pkg/common",
-          "coverage": 90.0
+          "coverage": 78.9
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
           "coverage": 20.5
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/common",
+          "coverage": 90.0
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git/gitproviderfactory",
@@ -43,12 +49,12 @@
           "coverage": 100.0
         },
         {
-          "package": "github.com/konflux-ci/build-service/pkg/git/gitlab",
-          "coverage": 5.6
-        },
-        {
           "package": "github.com/konflux-ci/build-service/pkg/git/github",
           "coverage": 0.0
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git/gitlab",
+          "coverage": 5.6
         }
       ]
     },
@@ -73,12 +79,12 @@
     },
     {
       "repo": "konflux-ci/integration-service",
-      "coverage": 65.7,
+      "coverage": 68.4,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/integration-service/status",
-          "coverage": 61.1
+          "coverage": 64.9
         },
         {
           "package": "github.com/konflux-ci/integration-service/pkg/metrics",

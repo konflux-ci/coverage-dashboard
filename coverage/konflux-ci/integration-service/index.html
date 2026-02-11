@@ -87,7 +87,7 @@
 				
 				<option value="file15">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (59.6%)</option>
 				
-				<option value="file16">github.com/konflux-ci/integration-service/status/status.go (49.4%)</option>
+				<option value="file16">github.com/konflux-ci/integration-service/status/status.go (62.9%)</option>
 				
 				</select>
 			</div>
@@ -2827,9 +2827,9 @@ func (m *MockStatusInterface) EXPECT() *MockStatusInterfaceMockRecorder <span cl
 }</span>
 
 // FindSnapshotWithOpenedPR mocks base method.
-func (m *MockStatusInterface) FindSnapshotWithOpenedPR(arg0 context.Context, arg1 *[]v1alpha1.Snapshot) (*v1alpha1.Snapshot, int, error) <span class="cov0" title="0">{
+func (m *MockStatusInterface) FindSnapshotWithOpenedPR(arg0 context.Context, arg1 *[]v1alpha1.Snapshot, arg2 *v1alpha1.Snapshot) (*v1alpha1.Snapshot, int, error) <span class="cov0" title="0">{
         m.ctrl.T.Helper()
-        ret := m.ctrl.Call(m, "FindSnapshotWithOpenedPR", arg0, arg1)
+        ret := m.ctrl.Call(m, "FindSnapshotWithOpenedPR", arg0, arg1, arg2)
         ret0, _ := ret[0].(*v1alpha1.Snapshot)
         ret1, _ := ret[1].(int)
         ret2, _ := ret[2].(error)
@@ -2837,9 +2837,9 @@ func (m *MockStatusInterface) FindSnapshotWithOpenedPR(arg0 context.Context, arg
 }</span>
 
 // FindSnapshotWithOpenedPR indicates an expected call of FindSnapshotWithOpenedPR.
-func (mr *MockStatusInterfaceMockRecorder) FindSnapshotWithOpenedPR(arg0, arg1 interface{}) *gomock.Call <span class="cov0" title="0">{
+func (mr *MockStatusInterfaceMockRecorder) FindSnapshotWithOpenedPR(arg0, arg1, arg2 interface{}) *gomock.Call <span class="cov0" title="0">{
         mr.mock.ctrl.T.Helper()
-        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSnapshotWithOpenedPR", reflect.TypeOf((*MockStatusInterface)(nil).FindSnapshotWithOpenedPR), arg0, arg1)
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSnapshotWithOpenedPR", reflect.TypeOf((*MockStatusInterface)(nil).FindSnapshotWithOpenedPR), arg0, arg1, arg2)
 }</span>
 
 // GetReporter mocks base method.
@@ -4789,7 +4789,7 @@ type StatusInterface interface {
         // Check if gitlab MR is open
         IsMRInSnapshotOpened(context.Context, ReporterInterface, *applicationapiv1alpha1.Snapshot) (bool, int, error)
         // find snapshot with opened PR or MR
-        FindSnapshotWithOpenedPR(context.Context, *[]applicationapiv1alpha1.Snapshot) (*applicationapiv1alpha1.Snapshot, int, error)
+        FindSnapshotWithOpenedPR(context.Context, *[]applicationapiv1alpha1.Snapshot, *applicationapiv1alpha1.Snapshot) (*applicationapiv1alpha1.Snapshot, int, error)
 }
 
 type Status struct {
@@ -5041,7 +5041,7 @@ func getConsoleName() string <span class="cov8" title="1">{
         <span class="cov8" title="1">return consoleName</span>
 }
 
-func (s Status) IsPRMRInSnapshotOpened(ctx context.Context, snapshot *applicationapiv1alpha1.Snapshot) (bool, int, error) <span class="cov0" title="0">{
+func (s Status) IsPRMRInSnapshotOpened(ctx context.Context, snapshot *applicationapiv1alpha1.Snapshot) (bool, int, error) <span class="cov8" title="1">{
         // need to rework reporter.Detect() function and reuse it here
         githubReporter := NewGitHubReporter(s.logger, s.client)
         if githubReporter.Detect(snapshot) </span><span class="cov0" title="0">{
@@ -5052,13 +5052,13 @@ func (s Status) IsPRMRInSnapshotOpened(ctx context.Context, snapshot *applicatio
                 <span class="cov0" title="0">return s.IsPRInSnapshotOpened(ctx, githubReporter, snapshot)</span>
         }
 
-        <span class="cov0" title="0">gitlabReporter := NewGitLabReporter(s.logger, s.client)
-        if gitlabReporter.Detect(snapshot) </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">gitlabReporter := NewGitLabReporter(s.logger, s.client)
+        if gitlabReporter.Detect(snapshot) </span><span class="cov8" title="1">{
                 statusCode, err := gitlabReporter.Initialize(ctx, snapshot)
                 if err != nil </span><span class="cov0" title="0">{
                         return false, statusCode, err
                 }</span>
-                <span class="cov0" title="0">return s.IsMRInSnapshotOpened(ctx, gitlabReporter, snapshot)</span>
+                <span class="cov8" title="1">return s.IsMRInSnapshotOpened(ctx, gitlabReporter, snapshot)</span>
         }
 
         <span class="cov0" title="0">forgejoReporter := NewForgejoReporter(s.logger, s.client)
@@ -5074,7 +5074,7 @@ func (s Status) IsPRMRInSnapshotOpened(ctx context.Context, snapshot *applicatio
 }
 
 // IsMRInSnapshotOpened check if the gitlab merge request triggering snapshot is opened
-func (s Status) IsMRInSnapshotOpened(ctx context.Context, reporter ReporterInterface, snapshot *applicationapiv1alpha1.Snapshot) (bool, int, error) <span class="cov0" title="0">{
+func (s Status) IsMRInSnapshotOpened(ctx context.Context, reporter ReporterInterface, snapshot *applicationapiv1alpha1.Snapshot) (bool, int, error) <span class="cov8" title="1">{
         var statusCode = 0
         var unRecoverableError error
         log := log.FromContext(ctx)
@@ -5085,7 +5085,7 @@ func (s Status) IsMRInSnapshotOpened(ctx context.Context, reporter ReporterInter
                 return false, statusCode, err
         }</span>
 
-        <span class="cov0" title="0">annotations := snapshot.GetAnnotations()
+        <span class="cov8" title="1">annotations := snapshot.GetAnnotations()
         repoUrl, ok := annotations[gitops.PipelineAsCodeRepoURLAnnotation]
         if !ok </span><span class="cov0" title="0">{
                 unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("failed to get value of %s annotation from the snapshot %s", gitops.PipelineAsCodeRepoURLAnnotation, snapshot.Name))
@@ -5093,13 +5093,13 @@ func (s Status) IsMRInSnapshotOpened(ctx context.Context, reporter ReporterInter
                 return false, statusCode, unRecoverableError
         }</span>
 
-        <span class="cov0" title="0">burl, err := url.Parse(repoUrl)
+        <span class="cov8" title="1">burl, err := url.Parse(repoUrl)
         if err != nil </span><span class="cov0" title="0">{
                 unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("failed to parse repo-url: %s", err.Error()))
                 log.Error(unRecoverableError, fmt.Sprintf("failed to parse repo-url: %s", err.Error()))
                 return false, statusCode, unRecoverableError
         }</span>
-        <span class="cov0" title="0">apiURL := fmt.Sprintf("%s://%s", burl.Scheme, burl.Host)
+        <span class="cov8" title="1">apiURL := fmt.Sprintf("%s://%s", burl.Scheme, burl.Host)
 
         gitLabClient, err := gitlab.NewClient(token, gitlab.WithBaseURL(apiURL))
         if err != nil </span><span class="cov0" title="0">{
@@ -5107,45 +5107,45 @@ func (s Status) IsMRInSnapshotOpened(ctx context.Context, reporter ReporterInter
                 return false, statusCode, fmt.Errorf("failed to create gitlab client: %w", err)
         }</span>
 
-        <span class="cov0" title="0">targetProjectIDstr, found := annotations[gitops.PipelineAsCodeTargetProjectIDAnnotation]
+        <span class="cov8" title="1">targetProjectIDstr, found := annotations[gitops.PipelineAsCodeTargetProjectIDAnnotation]
         if !found </span><span class="cov0" title="0">{
                 unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("target project ID annotation not found %q", gitops.PipelineAsCodeTargetProjectIDAnnotation))
                 log.Error(unRecoverableError, fmt.Sprintf("target project ID annotation not found %q", gitops.PipelineAsCodeTargetProjectIDAnnotation))
                 return false, statusCode, unRecoverableError
         }</span>
-        <span class="cov0" title="0">targetProjectID, err := strconv.Atoi(targetProjectIDstr)
+        <span class="cov8" title="1">targetProjectID, err := strconv.Atoi(targetProjectIDstr)
         if err != nil </span><span class="cov0" title="0">{
                 unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("failed to convert project ID '%s' to integer: %s", targetProjectIDstr, err.Error()))
                 log.Error(unRecoverableError, "failed to convert project ID '%s' to integer", targetProjectIDstr)
                 return false, statusCode, unRecoverableError
         }</span>
 
-        <span class="cov0" title="0">mergeRequestStr, found := annotations[gitops.PipelineAsCodePullRequestAnnotation]
+        <span class="cov8" title="1">mergeRequestStr, found := annotations[gitops.PipelineAsCodePullRequestAnnotation]
         if !found </span><span class="cov0" title="0">{
                 unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("pull-request annotation not found %q", gitops.PipelineAsCodePullRequestAnnotation))
                 log.Error(unRecoverableError, fmt.Sprintf("pull-request annotation not found %q", gitops.PipelineAsCodePullRequestAnnotation))
                 return false, statusCode, unRecoverableError
         }</span>
-        <span class="cov0" title="0">mergeRequest, err := strconv.Atoi(mergeRequestStr)
+        <span class="cov8" title="1">mergeRequest, err := strconv.Atoi(mergeRequestStr)
         if err != nil </span><span class="cov0" title="0">{
                 unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("failed to convert merge request number '%s' to integer: %s", mergeRequestStr, err.Error()))
                 log.Error(unRecoverableError, fmt.Sprintf("failed to convert merge request number '%s' to integer", mergeRequestStr))
                 return false, statusCode, unRecoverableError
         }</span>
 
-        <span class="cov0" title="0">log.Info(fmt.Sprintf("try to find the status of merge request projectID/pulls %d/%d", targetProjectID, mergeRequest))
+        <span class="cov8" title="1">log.Info(fmt.Sprintf("try to find the status of merge request projectID/pulls %d/%d", targetProjectID, mergeRequest))
         getOpts := gitlab.GetMergeRequestsOptions{}
         mr, response, err := gitLabClient.MergeRequests.GetMergeRequest(targetProjectID, mergeRequest, &amp;getOpts)
-        if response != nil </span><span class="cov0" title="0">{
+        if response != nil </span><span class="cov8" title="1">{
                 statusCode = response.StatusCode
         }</span>
 
-        <span class="cov0" title="0">if err != nil &amp;&amp; strings.Contains(err.Error(), "Not Found") </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err != nil &amp;&amp; strings.Contains(err.Error(), "Not Found") </span><span class="cov0" title="0">{
                 log.Info(fmt.Sprintf("not found merge request projectID/pulls %d/%d, it might be deleted", targetProjectID, mergeRequest))
-                return false, statusCode, nil
+                return false, statusCode, err
         }</span>
 
-        <span class="cov0" title="0">if mr != nil &amp;&amp; err == nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if mr != nil &amp;&amp; err == nil </span><span class="cov8" title="1">{
                 log.Info(fmt.Sprintf("found merge request projectID/pulls %d/%d", targetProjectID, mergeRequest))
                 return mr.State == "opened", statusCode, nil
         }</span>
@@ -5254,20 +5254,27 @@ func GetComponentSnapshotsFromGroupSnapshot(ctx context.Context, c client.Client
 }
 
 // FindSnapshotWithOpenedPR find the latest snapshot with opened PR/MR for the given sorted snapshots
-func (s Status) FindSnapshotWithOpenedPR(ctx context.Context, snapshots *[]applicationapiv1alpha1.Snapshot) (*applicationapiv1alpha1.Snapshot, int, error) <span class="cov0" title="0">{
+func (s Status) FindSnapshotWithOpenedPR(ctx context.Context, snapshots *[]applicationapiv1alpha1.Snapshot, processedSnapshot *applicationapiv1alpha1.Snapshot) (*applicationapiv1alpha1.Snapshot, int, error) <span class="cov8" title="1">{
         log := log.FromContext(ctx)
         sortedSnapshots := gitops.SortSnapshots(*snapshots)
+
         // find the latest component snapshot created for open PR/MR
         // find the built image for pull/merge request build PLR from the latest opened pull request component snapshot
         latestSnapshot := sortedSnapshots[0]
 
         log.Info("Try to find if the latest snapshot has opened PR/MR", "snapshot.Name", sortedSnapshots[0].Name)
-        isPRMROpened, statusCode, err := s.IsPRMRInSnapshotOpened(ctx, &amp;latestSnapshot)
+        // consider PR as open state if the latest snapshot has the same git url and PR/MR number
+        if gitops.HasSameGitSourceAndPRWithProcessedSnapshot(&amp;latestSnapshot, processedSnapshot) </span><span class="cov8" title="1">{
+                log.Info("The latest snapshot is the same as the processed snapshot or has the same target git repo and PR/MR number as the processed snapshot, skip checking PR/MR status", "latestSnapshot.Name", latestSnapshot.Name, "processedSnapshot.Name", processedSnapshot.Name)
+                return &amp;latestSnapshot, 0, nil
+        }</span>
+
+        <span class="cov8" title="1">isPRMROpened, statusCode, err := s.IsPRMRInSnapshotOpened(ctx, &amp;latestSnapshot)
         if err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "Failed to fetch PR/MR status for component snapshot", "snapshot.Name", latestSnapshot.Name)
                 return nil, statusCode, err
         }</span>
-        <span class="cov0" title="0">if isPRMROpened </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if isPRMROpened </span><span class="cov8" title="1">{
                 log.Info("PR/MR in snapshot is opened, will find snapshotComponent and add to groupSnapshot")
                 return &amp;latestSnapshot, statusCode, nil
         }</span>
