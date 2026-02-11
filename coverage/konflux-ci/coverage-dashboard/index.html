@@ -1,0 +1,1280 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>config: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/konflux-ci/coverage-dashboard/internal/config/config.go (87.8%)</option>
+				
+				<option value="file1">github.com/konflux-ci/coverage-dashboard/internal/discover/runner.go (9.5%)</option>
+				
+				<option value="file2">github.com/konflux-ci/coverage-dashboard/internal/ownership/detector.go (72.0%)</option>
+				
+				<option value="file3">github.com/konflux-ci/coverage-dashboard/internal/pr/creator.go (16.8%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package config
+
+import (
+        "fmt"
+        "os"
+        "path/filepath"
+        "regexp"
+        "strings"
+
+        "gopkg.in/yaml.v3"
+)
+
+var (
+        // repoNamePattern validates repository names in org/repo format
+        // Allows: alphanumerics, underscores, hyphens, and requires a single forward slash
+        repoNamePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$`)
+)
+
+// RepositoryConfig represents a repository configuration
+type RepositoryConfig struct {
+        Name         string   `yaml:"name"`
+        ExcludeDirs  []string `yaml:"exclude_dirs"`
+        ExcludeFiles []string `yaml:"exclude_files"`
+        Owners       []string `yaml:"-"` // Not serialized, used for CODEOWNERS
+}
+
+// Writer writes repository configurations to disk
+type Writer struct {
+        reposDir       string
+        codeownersFile string
+}
+
+// NewWriter creates a new configuration writer
+func NewWriter(reposDir, codeownersFile string) *Writer <span class="cov8" title="1">{
+        return &amp;Writer{
+                reposDir:       reposDir,
+                codeownersFile: codeownersFile,
+        }
+}</span>
+
+// Write writes a repository configuration to disk
+func (w *Writer) Write(cfg RepositoryConfig, dryRun bool) error <span class="cov8" title="1">{
+        // Validate repository name
+        if strings.TrimSpace(cfg.Name) == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("repository name cannot be empty")
+        }</span>
+        // Validate using allowlist: must be in org/repo format with allowed characters
+        <span class="cov8" title="1">if !repoNamePattern.MatchString(cfg.Name) </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid repository name: %q (must be in org/repo format with only alphanumerics, underscores, and hyphens)", cfg.Name)
+        }</span>
+
+        // Generate filename from repository name
+        <span class="cov8" title="1">filename := w.getFilename(cfg.Name)
+
+        var targetPath string
+        if dryRun </span><span class="cov8" title="1">{
+                dryRunDir := filepath.Join(filepath.Dir(w.reposDir), "discovered-repos")
+                targetPath = filepath.Join(dryRunDir, filename)
+        }</span> else<span class="cov8" title="1"> {
+                targetPath = filepath.Join(w.reposDir, filename)
+        }</span>
+
+        <span class="cov8" title="1">data, err := yaml.Marshal(cfg)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to marshal config: %w", err)
+        }</span>
+
+        // Ensure parent directory exists
+        <span class="cov8" title="1">if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create directory: %w", err)
+        }</span>
+
+        // Write config file
+        <span class="cov8" title="1">if err := os.WriteFile(targetPath, data, 0644); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to write config to %s: %w", targetPath, err)
+        }</span>
+
+        // Update CODEOWNERS if not dry run
+        <span class="cov8" title="1">if !dryRun </span><span class="cov8" title="1">{
+                if err := w.updateCodeowners(filename, cfg.Owners); err != nil </span><span class="cov8" title="1">{
+                        return fmt.Errorf("failed to update CODEOWNERS: %w", err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// getFilename generates a filename from repository name
+func (w *Writer) getFilename(repoName string) string <span class="cov8" title="1">{
+        // Extract repo name from "org/repo" format
+        parts := strings.Split(repoName, "/")
+        return parts[1] + ".yaml"
+}</span>
+
+// updateCodeowners updates or adds an entry in the CODEOWNERS file
+func (w *Writer) updateCodeowners(filename string, owners []string) error <span class="cov8" title="1">{
+        if len(owners) == 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("no owners specified for %s", filename)
+        }</span>
+
+        // Normalize and deduplicate owners
+        <span class="cov8" title="1">normalizedOwners := normalizeOwners(owners)
+        if len(normalizedOwners) == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("all owners for %s were invalid after normalization", filename)
+        }</span>
+
+        // Read existing CODEOWNERS file
+        <span class="cov8" title="1">var lines []string
+        data, err := os.ReadFile(w.codeownersFile)
+        if err != nil &amp;&amp; !os.IsNotExist(err) </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if err == nil </span><span class="cov8" title="1">{
+                lines = strings.Split(string(data), "\n")
+        }</span>
+
+        // Pattern for matching this repository's entry
+        <span class="cov8" title="1">pattern := fmt.Sprintf("/repos/%s", filename)
+        newEntry := fmt.Sprintf("/repos/%s %s", filename, strings.Join(normalizedOwners, " "))
+        found := false
+
+        // Look for existing entry and update it
+        for i, line := range lines </span><span class="cov8" title="1">{
+                if matchesPattern(line, pattern) </span><span class="cov8" title="1">{
+                        lines[i] = newEntry
+                        found = true
+                        break</span>
+                }
+        }
+
+        // If not found, append new entry
+        <span class="cov8" title="1">if !found </span><span class="cov8" title="1">{
+                // Ensure there's a blank line before adding if file exists and isn't empty
+                if len(lines) &gt; 0 &amp;&amp; lines[len(lines)-1] != "" </span><span class="cov0" title="0">{
+                        lines = append(lines, "")
+                }</span>
+                <span class="cov8" title="1">lines = append(lines, newEntry)</span>
+        }
+
+        <span class="cov8" title="1">return w.writeCodeowners(lines)</span>
+}
+
+// matchesPattern checks if a line matches the given CODEOWNERS pattern
+func matchesPattern(line, pattern string) bool <span class="cov8" title="1">{
+        // Strip inline comments and surrounding spaces
+        trimmed := strings.TrimSpace(strings.SplitN(line, "#", 2)[0])
+        // Match exact file path token (followed by space or end of line)
+        return trimmed == pattern || strings.HasPrefix(trimmed, pattern+" ")
+}</span>
+
+// normalizeOwners normalizes a list of owners: trim whitespace, ensure @ prefix, deduplicate
+func normalizeOwners(owners []string) []string <span class="cov8" title="1">{
+        seen := make(map[string]bool)
+        var result []string
+        for _, owner := range owners </span><span class="cov8" title="1">{
+                owner = strings.TrimSpace(owner)
+                if owner == "" </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                // Ensure @ prefix for team/user handles
+                <span class="cov8" title="1">if !strings.HasPrefix(owner, "@") </span><span class="cov8" title="1">{
+                        owner = "@" + owner
+                }</span>
+                // Deduplicate
+                <span class="cov8" title="1">if !seen[owner] </span><span class="cov8" title="1">{
+                        seen[owner] = true
+                        result = append(result, owner)
+                }</span>
+        }
+        <span class="cov8" title="1">return result</span>
+}
+
+// writeCodeowners writes lines to CODEOWNERS file with proper formatting
+func (w *Writer) writeCodeowners(lines []string) error <span class="cov8" title="1">{
+        content := strings.Join(lines, "\n")
+        if !strings.HasSuffix(content, "\n") </span><span class="cov8" title="1">{
+                content += "\n"
+        }</span>
+        <span class="cov8" title="1">return os.WriteFile(w.codeownersFile, []byte(content), 0644)</span>
+}
+
+// LoadRepositoryConfig loads a repository configuration from disk
+func LoadRepositoryConfig(reposDir, filename string) (RepositoryConfig, error) <span class="cov8" title="1">{
+        path := filepath.Join(reposDir, filename)
+
+        data, err := os.ReadFile(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return RepositoryConfig{}, err
+        }</span>
+
+        <span class="cov8" title="1">var cfg RepositoryConfig
+        if err := yaml.Unmarshal(data, &amp;cfg); err != nil </span><span class="cov0" title="0">{
+                return RepositoryConfig{}, err
+        }</span>
+
+        <span class="cov8" title="1">return cfg, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package discover
+
+import (
+        "context"
+        "fmt"
+        "os"
+        "strings"
+
+        "github.com/google/go-github/v66/github"
+        "github.com/konflux-ci/coverage-dashboard/internal/config"
+        "github.com/konflux-ci/coverage-dashboard/internal/ownership"
+        "github.com/konflux-ci/coverage-dashboard/internal/pr"
+        "golang.org/x/oauth2"
+)
+
+// Config holds the configuration for the discovery process
+type Config struct {
+        Organization   string
+        ReposDir       string
+        CodeownersFile string
+        DryRun         bool
+}
+
+// Runner orchestrates the repository discovery process
+type Runner struct {
+        config         Config
+        githubClient   *github.Client // For general API calls and ownership detection
+        writeClient    *github.Client // For PR creation
+        ownerDetector  *ownership.Detector
+        configWriter   *config.Writer
+        existingRepos  map[string]bool
+}
+
+// NewRunner creates a new Runner instance
+func NewRunner(cfg Config) (*Runner, error) <span class="cov8" title="1">{
+        // Create read client for ownership detection (teams/collaborators)
+        readToken := os.Getenv("GITHUB_READ_TOKEN")
+
+        var readClient *github.Client
+        if readToken != "" </span><span class="cov8" title="1">{
+                ts := oauth2.StaticTokenSource(&amp;oauth2.Token{AccessToken: readToken})
+                tc := oauth2.NewClient(context.Background(), ts)
+                readClient = github.NewClient(tc)
+        }</span> else<span class="cov8" title="1"> {
+                readClient = github.NewClient(nil)
+                fmt.Println("⚠️  Warning: GITHUB_READ_TOKEN not set, using unauthenticated API calls")
+                fmt.Println("   Ownership detection will be limited to CODEOWNERS files only")
+                fmt.Println()
+        }</span>
+
+        // Create write client for PR creation
+        <span class="cov8" title="1">writeToken := os.Getenv("GITHUB_WRITE_TOKEN")
+
+        var writeClient *github.Client
+        if writeToken != "" </span><span class="cov8" title="1">{
+                ts := oauth2.StaticTokenSource(&amp;oauth2.Token{AccessToken: writeToken})
+                tc := oauth2.NewClient(context.Background(), ts)
+                writeClient = github.NewClient(tc)
+        }</span> else<span class="cov8" title="1"> {
+                if !cfg.DryRun </span><span class="cov8" title="1">{
+                        return nil, fmt.Errorf("GITHUB_WRITE_TOKEN is required for --apply (needed for creating PRs)")
+                }</span>
+                // For dry-run, write client is not needed
+                <span class="cov8" title="1">writeClient = github.NewClient(nil)</span>
+        }
+
+        <span class="cov8" title="1">return &amp;Runner{
+                config:        cfg,
+                githubClient:  readClient,
+                writeClient:   writeClient,
+                ownerDetector: ownership.NewDetector(readClient, ""),
+                configWriter:  config.NewWriter(cfg.ReposDir, cfg.CodeownersFile),
+        }, nil</span>
+}
+
+// Run executes the discovery process
+func (r *Runner) Run(ctx context.Context) error <span class="cov0" title="0">{
+        fmt.Println("🔍 Konflux-CI Repository Auto-Discovery")
+        fmt.Println("========================================")
+
+        if r.config.DryRun </span><span class="cov0" title="0">{
+                fmt.Println("📋 Mode: DRY RUN (preview only)")
+                fmt.Println("   Use --apply to create files and PRs")
+        }</span> else<span class="cov0" title="0"> {
+                fmt.Println("🚀 Mode: APPLY (will create files and PRs)")
+        }</span>
+        <span class="cov0" title="0">fmt.Println()
+
+        // Step 1: Fetch all Go repositories
+        fmt.Println("→ Fetching Go repositories from", r.config.Organization, "organization...")
+        repos, err := r.fetchGoRepositories(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to fetch repositories: %w", err)
+        }</span>
+        <span class="cov0" title="0">fmt.Printf("  ✅ Found %d Go repositories\n", len(repos))
+        fmt.Println()
+
+        // Step 2: Load currently tracked repositories
+        fmt.Println("→ Checking currently tracked repositories...")
+        if err := r.loadExistingRepos(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to load existing repos: %w", err)
+        }</span>
+        <span class="cov0" title="0">fmt.Printf("  ✅ Currently tracking %d repositories\n", len(r.existingRepos))
+        fmt.Println()
+
+        // Step 3: Find new repositories
+        fmt.Println("→ Identifying new repositories to add...")
+        newRepos := r.filterNewRepositories(repos)
+        if len(newRepos) == 0 </span><span class="cov0" title="0">{
+                fmt.Println("  ✅ No new repositories found. All Go repos are already tracked!")
+                fmt.Println()
+                fmt.Println("=========================================")
+                fmt.Println("Summary: Up to date!")
+                fmt.Println("=========================================")
+                return nil
+        }</span>
+        <span class="cov0" title="0">fmt.Printf("  ✅ Found %d new repositories to add\n", len(newRepos))
+        fmt.Println()
+
+        // Step 4: Analyze each repository
+        fmt.Printf("Analyzing %d new repositories...\n", len(newRepos))
+        fmt.Println()
+
+        var repoConfigs []config.RepositoryConfig
+        for i, repo := range newRepos </span><span class="cov0" title="0">{
+                fmt.Printf("📦 [%d/%d] %s\n", i+1, len(newRepos), repo.GetName())
+
+                // Skip if PR already exists (in --apply mode)
+                if !r.config.DryRun </span><span class="cov0" title="0">{
+                        if r.prAlreadyExists(ctx, repo.GetName()) </span><span class="cov0" title="0">{
+                                fmt.Printf("  ⏭️  Skipped: PR already exists\n")
+                                continue</span>
+                        }
+                }
+
+                <span class="cov0" title="0">cfg, err := r.analyzeRepository(ctx, repo)
+                if err != nil </span><span class="cov0" title="0">{
+                        fmt.Printf("  ⚠️  Skipped: %v\n", err)
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">repoConfigs = append(repoConfigs, cfg)</span>
+        }
+        <span class="cov0" title="0">fmt.Println()
+
+        // Step 5: Write configuration files (or create PRs which will write them)
+        if r.config.DryRun </span><span class="cov0" title="0">{
+                // In dry-run mode, just write configs to discovered-repos/ directory
+                if err := r.writeConfigurations(ctx, repoConfigs); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to write configurations: %w", err)
+                }</span>
+        } else<span class="cov0" title="0"> {
+                // In apply mode, write configs as part of PR creation
+                // (each config is written after its branch is created to avoid git reset issues)
+                if err := r.createPullRequests(ctx, repoConfigs); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to create pull requests: %w", err)
+                }</span>
+        }
+
+        // Print summary
+        <span class="cov0" title="0">r.printSummary(len(repos), len(newRepos), len(repoConfigs))
+
+        return nil</span>
+}
+
+func (r *Runner) fetchGoRepositories(ctx context.Context) ([]*github.Repository, error) <span class="cov0" title="0">{
+        opts := &amp;github.RepositoryListByOrgOptions{
+                Type: "all",
+                ListOptions: github.ListOptions{
+                        PerPage: 100,
+                },
+        }
+
+        var allRepos []*github.Repository
+        for </span><span class="cov0" title="0">{
+                repos, resp, err := r.githubClient.Repositories.ListByOrg(ctx, r.config.Organization, opts)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                // Filter for Go repositories that are not archived
+                <span class="cov0" title="0">for _, repo := range repos </span><span class="cov0" title="0">{
+                        if repo.GetLanguage() == "Go" &amp;&amp; !repo.GetArchived() </span><span class="cov0" title="0">{
+                                allRepos = append(allRepos, repo)
+                        }</span>
+                }
+
+                <span class="cov0" title="0">if resp.NextPage == 0 </span><span class="cov0" title="0">{
+                        break</span>
+                }
+                <span class="cov0" title="0">opts.Page = resp.NextPage</span>
+        }
+
+        <span class="cov0" title="0">return allRepos, nil</span>
+}
+
+func (r *Runner) loadExistingRepos() error <span class="cov0" title="0">{
+        r.existingRepos = make(map[string]bool)
+
+        entries, err := os.ReadDir(r.config.ReposDir)
+        if err != nil </span><span class="cov0" title="0">{
+                if os.IsNotExist(err) </span><span class="cov0" title="0">{
+                        return nil
+                }</span>
+                <span class="cov0" title="0">return err</span>
+        }
+
+        <span class="cov0" title="0">for _, entry := range entries </span><span class="cov0" title="0">{
+                if entry.IsDir() </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">cfg, err := config.LoadRepositoryConfig(r.config.ReposDir, entry.Name())
+                if err != nil </span><span class="cov0" title="0">{
+                        fmt.Printf("  ⚠️  Warning: failed to parse %s: %v\n", entry.Name(), err)
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">r.existingRepos[cfg.Name] = true</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (r *Runner) filterNewRepositories(repos []*github.Repository) []*github.Repository <span class="cov0" title="0">{
+        var newRepos []*github.Repository
+        for _, repo := range repos </span><span class="cov0" title="0">{
+                fullName := fmt.Sprintf("%s/%s", r.config.Organization, repo.GetName())
+                if !r.existingRepos[fullName] </span><span class="cov0" title="0">{
+                        newRepos = append(newRepos, repo)
+                }</span>
+        }
+        <span class="cov0" title="0">return newRepos</span>
+}
+
+func (r *Runner) analyzeRepository(ctx context.Context, repo *github.Repository) (config.RepositoryConfig, error) <span class="cov0" title="0">{
+        fullName := fmt.Sprintf("%s/%s", r.config.Organization, repo.GetName())
+
+        // Detect ownership
+        owners, err := r.ownerDetector.DetectOwners(ctx, r.config.Organization, repo.GetName())
+        if err != nil </span><span class="cov0" title="0">{
+                owners = []string{"@konflux-ci/Vanguard"}
+                fmt.Printf("  👥 Owners: %v (default - %s)\n", owners, err.Error())
+        }</span> else<span class="cov0" title="0"> {
+                fmt.Printf("  👥 Owners: %v\n", owners)
+        }</span>
+
+        // Apply common exclude patterns - repository owners can adjust in PR
+        <span class="cov0" title="0">excludeDirs := []string{
+                "vendor/",
+                ".github/",
+                ".tekton/",
+                "hack/",
+                "proto/",
+                "test/",
+                "tests/",
+                "integration-tests/",
+                "/fake(/|$)",
+                "/mock(s)?(/|$)",
+                "/e2e(-tests)?(/|$)",
+                "docs/",
+        }
+
+        excludeFiles := []string{
+                "zz_generated.deepcopy.go",
+                "openapi_generated.go",
+                "*.pb.go",
+                "mock_*.go",
+                "*_mock.go",
+        }
+
+        return config.RepositoryConfig{
+                Name:         fullName,
+                ExcludeDirs:  excludeDirs,
+                ExcludeFiles: excludeFiles,
+                Owners:       owners,
+        }, nil</span>
+}
+
+func (r *Runner) writeConfigurations(ctx context.Context, configs []config.RepositoryConfig) error <span class="cov0" title="0">{
+        if len(configs) == 0 </span><span class="cov0" title="0">{
+                fmt.Println("📝 No configurations to generate")
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">fmt.Printf("📝 Generating %d configuration files...\n", len(configs))
+
+        for _, cfg := range configs </span><span class="cov0" title="0">{
+                if err := r.configWriter.Write(cfg, r.config.DryRun); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+
+        <span class="cov0" title="0">if r.config.DryRun </span><span class="cov0" title="0">{
+                fmt.Printf("  ✅ Created %d files in discovered-repos/ directory\n", len(configs))
+        }</span> else<span class="cov0" title="0"> {
+                fmt.Printf("  ✅ Created %d files and updated CODEOWNERS\n", len(configs))
+        }</span>
+        <span class="cov0" title="0">fmt.Println()
+
+        return nil</span>
+}
+
+func (r *Runner) createPullRequests(ctx context.Context, configs []config.RepositoryConfig) error <span class="cov0" title="0">{
+        if len(configs) == 0 </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">fmt.Printf("🔀 Creating %d pull requests...\n", len(configs))
+
+        // Get current working directory
+        workDir, err := os.Getwd()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get working directory: %w", err)
+        }</span>
+
+        // Extract repository name from git remote
+        <span class="cov0" title="0">currentRepo, err := r.getCurrentRepoName(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get current repository name: %w", err)
+        }</span>
+
+        // Get default branch from GitHub API
+        <span class="cov0" title="0">baseBranch, err := r.getDefaultBranch(ctx, currentRepo)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get default branch: %w", err)
+        }</span>
+
+        // Use writeClient for PR creation (may have different permissions than readClient)
+        <span class="cov0" title="0">prCreator := pr.NewCreator(r.writeClient, workDir, r.config.Organization, currentRepo, baseBranch)
+
+        successCount := 0
+        for i, cfg := range configs </span><span class="cov0" title="0">{
+                fmt.Printf("  [%d/%d] %s... ", i+1, len(configs), extractRepoNameFromConfig(cfg.Name))
+                // Pass configWriter so PR creation can write config after creating branch
+                if err := prCreator.CreatePullRequest(ctx, cfg, r.configWriter); err != nil </span><span class="cov0" title="0">{
+                        fmt.Printf("failed (%v)\n", err)
+                        continue</span>
+                }
+                <span class="cov0" title="0">successCount++</span>
+        }
+
+        <span class="cov0" title="0">if successCount &lt; len(configs) </span><span class="cov0" title="0">{
+                fmt.Printf("  ⚠️  Created %d/%d pull requests\n", successCount, len(configs))
+        }</span> else<span class="cov0" title="0"> {
+                fmt.Printf("  🎉 All %d pull requests created successfully!\n", successCount)
+        }</span>
+        <span class="cov0" title="0">fmt.Println()
+
+        return nil</span>
+}
+
+func (r *Runner) getCurrentRepoName(ctx context.Context) (string, error) <span class="cov0" title="0">{
+        workDir, err := os.Getwd()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to get working directory: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">remoteURL, err := getGitRemoteURL(ctx, workDir)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        // Parse repository name from URL
+        <span class="cov0" title="0">parts := strings.Split(remoteURL, "/")
+        if len(parts) &gt; 0 </span><span class="cov0" title="0">{
+                repoName := parts[len(parts)-1]
+                repoName = strings.TrimSuffix(repoName, ".git")
+                return repoName, nil
+        }</span>
+
+        <span class="cov0" title="0">return "", fmt.Errorf("failed to parse repository name from remote URL: %s", remoteURL)</span>
+}
+
+func (r *Runner) getDefaultBranch(ctx context.Context, repoName string) (string, error) <span class="cov0" title="0">{
+        repo, _, err := r.writeClient.Repositories.Get(ctx, r.config.Organization, repoName)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to get repository info: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">defaultBranch := repo.GetDefaultBranch()
+        if defaultBranch == "" </span><span class="cov0" title="0">{
+                // Fallback to main if default branch is not set
+                return "main", nil
+        }</span>
+
+        <span class="cov0" title="0">return defaultBranch, nil</span>
+}
+
+func (r *Runner) printSummary(totalRepos, newRepos, created int) <span class="cov0" title="0">{
+        fmt.Println("=========================================")
+        fmt.Println("Discovery Summary")
+        fmt.Println("=========================================")
+        fmt.Println()
+        fmt.Println("📊 Statistics:")
+        fmt.Printf("  • Total Go repositories: %d\n", totalRepos)
+        fmt.Printf("  • Currently tracked: %d\n", len(r.existingRepos))
+        fmt.Printf("  • New repositories: %d\n", newRepos)
+        fmt.Printf("  • Configurations created: %d\n", created)
+        fmt.Println()
+
+        if r.config.DryRun </span><span class="cov0" title="0">{
+                fmt.Println("💡 Next Steps:")
+                fmt.Println("  • Review files in discovered-repos/")
+                fmt.Printf("  • Run: go run cmd/discover-repos/main.go --apply\n")
+                fmt.Println("  • Set GITHUB_TOKEN if not already set")
+        }</span> else<span class="cov0" title="0"> {
+                fmt.Println("🎉 Success! Repository configurations created.")
+                fmt.Println("💡 Next Steps:")
+                fmt.Println("  • Repository owners will receive PR notifications")
+                fmt.Println("  • PRs can be reviewed and approved by teams")
+                fmt.Println("  • Dashboard will update within 24 hours")
+        }</span>
+
+        <span class="cov0" title="0">fmt.Println("\n✨ Discovery Complete!")</span>
+}
+
+// Helper functions
+
+func extractRepoNameFromConfig(fullName string) string <span class="cov0" title="0">{
+        parts := strings.Split(fullName, "/")
+        if len(parts) == 2 </span><span class="cov0" title="0">{
+                return parts[1]
+        }</span>
+        <span class="cov0" title="0">return fullName</span>
+}
+
+// prAlreadyExists checks if a PR already exists for the given repository
+func (r *Runner) prAlreadyExists(ctx context.Context, repoName string) bool <span class="cov0" title="0">{
+        // Get the current repository name
+        currentRepo, err := r.getCurrentRepoName(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        // Get default branch
+        <span class="cov0" title="0">baseBranch, err := r.getDefaultBranch(ctx, currentRepo)
+        if err != nil </span><span class="cov0" title="0">{
+                // Fallback to main if we can't determine the default branch
+                baseBranch = "main"
+        }</span>
+
+        // Branch name format matches pr/creator.go
+        <span class="cov0" title="0">branchName := fmt.Sprintf("add-repo/%s", repoName)
+
+        // Check if PR exists with this branch as head
+        opts := &amp;github.PullRequestListOptions{
+                State: "open",
+                Head:  fmt.Sprintf("%s:%s", r.config.Organization, branchName),
+                Base:  baseBranch,
+        }
+
+        prs, _, err := r.writeClient.PullRequests.List(ctx, r.config.Organization, currentRepo, opts)
+        if err != nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">return len(prs) &gt; 0</span>
+}
+
+func getGitRemoteURL(ctx context.Context, workDir string) (string, error) <span class="cov0" title="0">{
+        output, err := pr.RunGitCommand(ctx, workDir, "remote", "get-url", "origin")
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to get remote URL: %w", err)
+        }</span>
+        <span class="cov0" title="0">return strings.TrimSpace(output), nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package ownership
+
+import (
+        "context"
+        "fmt"
+        "regexp"
+
+        "github.com/google/go-github/v66/github"
+)
+
+// codeownersPaths defines the list of paths to check for CODEOWNERS files
+// Ordered by priority - checked in sequence until one is found
+var codeownersPaths = []string{
+        ".github/CODEOWNERS",
+        "CODEOWNERS",
+        "docs/CODEOWNERS",
+}
+
+// GetCodeownersPaths returns a copy of the CODEOWNERS file paths
+// This allows inspection of the paths without allowing external modification
+func GetCodeownersPaths() []string <span class="cov8" title="1">{
+        paths := make([]string, len(codeownersPaths))
+        copy(paths, codeownersPaths)
+        return paths
+}</span>
+
+// Detector detects repository ownership using multiple strategies
+type Detector struct {
+        client       *github.Client
+        defaultOwner string
+}
+
+// NewDetector creates a new ownership detector
+// defaultOwner specifies the fallback owner when no owners can be detected through other means
+// If empty, defaults to "@konflux-ci/Vanguard"
+func NewDetector(client *github.Client, defaultOwner string) *Detector <span class="cov8" title="1">{
+        if defaultOwner == "" </span><span class="cov8" title="1">{
+                defaultOwner = "@konflux-ci/Vanguard"
+        }</span>
+        <span class="cov8" title="1">return &amp;Detector{
+                client:       client,
+                defaultOwner: defaultOwner,
+        }</span>
+}
+
+// DetectOwners detects repository owners using a fallback chain:
+// 1. CODEOWNERS file (most authoritative)
+// 2. GitHub repository teams with admin/maintain permissions
+// 3. Individual collaborators with admin/maintain permissions
+// 4. Configured default owner (@konflux-ci/Vanguard if empty was provided to constructor)
+func (d *Detector) DetectOwners(ctx context.Context, org, repo string) ([]string, error) <span class="cov8" title="1">{
+        // Try CODEOWNERS file first
+        owners, err := d.detectFromCodeowners(ctx, org, repo)
+        if err == nil &amp;&amp; len(owners) &gt; 0 </span><span class="cov0" title="0">{
+                return owners, nil
+        }</span>
+
+        // Fallback to repository teams
+        <span class="cov8" title="1">owners, err = d.detectFromTeams(ctx, org, repo)
+        if err == nil &amp;&amp; len(owners) &gt; 0 </span><span class="cov8" title="1">{
+                return owners, nil
+        }</span>
+
+        // Fallback to individual collaborators
+        <span class="cov8" title="1">owners, err = d.detectFromCollaborators(ctx, org, repo)
+        if err == nil &amp;&amp; len(owners) &gt; 0 </span><span class="cov8" title="1">{
+                return owners, nil
+        }</span>
+
+        // Final fallback to configured default owner
+        <span class="cov8" title="1">return []string{d.defaultOwner}, nil</span>
+}
+
+// detectFromCodeowners attempts to find owners in CODEOWNERS file
+// Checks multiple standard locations in priority order
+func (d *Detector) detectFromCodeowners(ctx context.Context, org, repo string) ([]string, error) <span class="cov8" title="1">{
+        var lastErr error
+
+        // Try each CODEOWNERS path in order
+        for _, path := range codeownersPaths </span><span class="cov8" title="1">{
+                content, err := d.fetchFile(ctx, org, repo, path)
+                if err != nil </span><span class="cov8" title="1">{
+                        lastErr = err
+                        continue</span>
+                }
+
+                // Successfully fetched file, extract owners
+                <span class="cov0" title="0">owners := extractOwnersFromCodeowners(content)
+                if len(owners) &gt; 0 </span><span class="cov0" title="0">{
+                        return owners, nil
+                }</span>
+
+                // File exists but has no valid owners
+                <span class="cov0" title="0">lastErr = fmt.Errorf("no valid owners found in %s", path)</span>
+        }
+
+        // No CODEOWNERS file found or none had valid owners
+        <span class="cov8" title="1">if lastErr != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to detect owners from CODEOWNERS: %w", lastErr)
+        }</span>
+
+        <span class="cov0" title="0">return nil, fmt.Errorf("no CODEOWNERS files found")</span>
+}
+
+// detectFromTeams queries GitHub API for repository teams
+func (d *Detector) detectFromTeams(ctx context.Context, org, repo string) ([]string, error) <span class="cov8" title="1">{
+        if d.client == nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("GitHub client not configured")
+        }</span>
+
+        <span class="cov8" title="1">teams, _, err := d.client.Repositories.ListTeams(ctx, org, repo, nil)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to list teams for %s/%s: %w", org, repo, err)
+        }</span>
+
+        <span class="cov8" title="1">var owners []string
+        for _, team := range teams </span><span class="cov8" title="1">{
+                // Only include teams with admin or maintain permissions
+                perm := team.GetPermission()
+                if perm == "admin" || perm == "maintain" </span><span class="cov8" title="1">{
+                        owners = append(owners, fmt.Sprintf("@%s/%s", org, team.GetSlug()))
+                        if len(owners) &gt;= 3 </span><span class="cov8" title="1">{
+                                break</span>
+                        }
+                }
+        }
+
+        <span class="cov8" title="1">if len(owners) == 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("no teams with admin/maintain permissions found")
+        }</span>
+
+        <span class="cov8" title="1">return owners, nil</span>
+}
+
+// detectFromCollaborators queries GitHub API for individual repository collaborators
+func (d *Detector) detectFromCollaborators(ctx context.Context, org, repo string) ([]string, error) <span class="cov8" title="1">{
+        if d.client == nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("GitHub client not configured")
+        }</span>
+
+        <span class="cov8" title="1">opts := &amp;github.ListCollaboratorsOptions{
+                Affiliation: "direct",
+                ListOptions: github.ListOptions{PerPage: 100},
+        }
+
+        collaborators, _, err := d.client.Repositories.ListCollaborators(ctx, org, repo, opts)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to list collaborators for %s/%s: %w", org, repo, err)
+        }</span>
+
+        <span class="cov8" title="1">var owners []string
+        for _, collab := range collaborators </span><span class="cov8" title="1">{
+                // Only include collaborators with admin or maintain permissions
+                perms := collab.GetPermissions()
+                if perms["admin"] || perms["maintain"] </span><span class="cov8" title="1">{
+                        owners = append(owners, "@"+collab.GetLogin())
+                        if len(owners) &gt;= 5 </span><span class="cov8" title="1">{
+                                break</span>
+                        }
+                }
+        }
+
+        <span class="cov8" title="1">if len(owners) == 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("no collaborators with admin/maintain permissions found")
+        }</span>
+
+        <span class="cov8" title="1">return owners, nil</span>
+}
+
+// fetchFile fetches a file from GitHub repository using the GitHub API
+func (d *Detector) fetchFile(ctx context.Context, org, repo, path string) (string, error) <span class="cov8" title="1">{
+        if d.client == nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("GitHub client not configured")
+        }</span>
+
+        // GetContents automatically uses the default branch
+        <span class="cov8" title="1">fileContent, _, _, err := d.client.Repositories.GetContents(ctx, org, repo, path, nil)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to fetch %s: %w", path, err)
+        }</span>
+
+        <span class="cov0" title="0">if fileContent == nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("file %s exists but content is nil", path)
+        }</span>
+
+        <span class="cov0" title="0">content, err := fileContent.GetContent()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to decode content from %s: %w", path, err)
+        }</span>
+
+        <span class="cov0" title="0">return content, nil</span>
+}
+
+// extractOwnersFromCodeowners parses CODEOWNERS content and extracts owner references
+func extractOwnersFromCodeowners(content string) []string <span class="cov0" title="0">{
+        ownerPattern := regexp.MustCompile(`@[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)?`)
+
+        matches := ownerPattern.FindAllString(content, -1)
+
+        // Deduplicate and limit to 5
+        seen := make(map[string]bool)
+        var owners []string
+        for _, match := range matches </span><span class="cov0" title="0">{
+                if !seen[match] </span><span class="cov0" title="0">{
+                        seen[match] = true
+                        owners = append(owners, match)
+                        if len(owners) &gt;= 5 </span><span class="cov0" title="0">{
+                                break</span>
+                        }
+                }
+        }
+
+        <span class="cov0" title="0">return owners</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package pr
+
+import (
+        "context"
+        "fmt"
+        "os/exec"
+        "path/filepath"
+        "strings"
+
+        "github.com/google/go-github/v66/github"
+        "github.com/konflux-ci/coverage-dashboard/internal/config"
+)
+
+const prBodyTemplate = `## Add Coverage Dashboard Tracking
+
+This PR adds your repository to the **Konflux Coverage Dashboard** at:
+https://konflux-ci.dev/coverage-dashboard/
+
+### What is the Coverage Dashboard?
+
+The coverage dashboard automatically collects and displays test coverage metrics for all Konflux Go repositories in one centralized location. It provides:
+- Unified view of coverage across all repositories and teams
+- Package-level coverage breakdown for each repository
+- Detailed HTML coverage reports for deep-dive analysis
+
+### What This PR Does
+
+- ✅ Adds configuration for %s to the coverage dashboard
+- ✅ Sets up ownership mapping so your team can manage future changes
+- ✅ Enables automatic coverage report generation from your test suite
+
+### After Merge
+
+Your repository will automatically:
+1. Appear on the dashboard within 24 hours (next scheduled run)
+2. Have coverage metrics updated with each dashboard run
+3. Generate detailed HTML coverage reports accessible from the dashboard
+
+### Review Checklist
+
+- [ ] Verify exclude patterns are appropriate for your repository structure
+- [ ] Confirm ownership assignment includes the right team members
+- [ ] Repository has Go tests that will generate coverage data`
+
+const commitMsgTemplate = `chore: add coverage tracking for %s
+
+Add configuration for %s to the Konflux coverage dashboard.
+This enables automatic test coverage tracking and reporting for the repository.`
+
+// Creator creates pull requests for repository configurations
+type Creator struct {
+        client      *github.Client
+        workDir     string
+        org         string
+        baseBranch  string
+        currentRepo string
+}
+
+// NewCreator creates a new PR creator
+func NewCreator(client *github.Client, workDir, org, repo, baseBranch string) *Creator <span class="cov0" title="0">{
+        return &amp;Creator{
+                client:      client,
+                workDir:     workDir,
+                org:         org,
+                baseBranch:  baseBranch,
+                currentRepo: repo,
+        }
+}</span>
+
+// CreatePullRequest creates a pull request for a repository configuration
+func (c *Creator) CreatePullRequest(ctx context.Context, cfg config.RepositoryConfig, configWriter *config.Writer) error <span class="cov0" title="0">{
+        repoName := extractRepoName(cfg.Name)
+        branchName := fmt.Sprintf("add-repo/%s", repoName)
+
+        // 1. Create branch
+        if err := c.createBranch(ctx, branchName); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create branch: %w", err)
+        }</span>
+
+        // 2. Write config and update CODEOWNERS on this branch
+        // IMPORTANT: Must write AFTER creating branch because createBranch resets
+        // the working directory to match remote (via checkout -B ... FETCH_HEAD)
+        <span class="cov0" title="0">if err := configWriter.Write(cfg, false); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to write config: %w", err)
+        }</span>
+
+        // 3. Commit changes
+        <span class="cov0" title="0">configFile := filepath.Join("repos", repoName+".yaml")
+        if err := c.commitChanges(ctx, configFile, cfg.Name); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to commit changes: %w", err)
+        }</span>
+
+        // 4. Push branch
+        <span class="cov0" title="0">if _, err := RunGitCommand(ctx, c.workDir, "push", "-u", "origin", branchName, "--force"); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to push branch: %w", err)
+        }</span>
+
+        // 5. Create pull request
+        <span class="cov0" title="0">_, err := c.createGitHubPR(ctx, branchName, cfg)
+        if err != nil </span><span class="cov0" title="0">{
+                if strings.Contains(err.Error(), "already exists") </span><span class="cov0" title="0">{
+                        return fmt.Errorf("PR already exists")
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("GitHub API error: %w", err)</span>
+        }
+
+        // 6. Return to base branch for next iteration
+        <span class="cov0" title="0">if _, err := RunGitCommand(ctx, c.workDir, "checkout", c.baseBranch); err != nil </span><span class="cov0" title="0">{
+                fmt.Printf("    ⚠️  Warning: failed to checkout %s: %v\n", c.baseBranch, err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (c *Creator) createBranch(ctx context.Context, branchName string) error <span class="cov0" title="0">{
+        // Delete branch if it exists
+        if c.branchExists(ctx, branchName) </span><span class="cov0" title="0">{
+                if _, err := RunGitCommand(ctx, c.workDir, "branch", "-D", branchName); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+
+        // Try to fetch the base branch from origin
+        // If this fails, we'll try to use the local branch if it exists
+        <span class="cov0" title="0">fetchSucceeded := false
+        if _, err := RunGitCommand(ctx, c.workDir, "fetch", "origin", c.baseBranch); err == nil </span><span class="cov0" title="0">{
+                fetchSucceeded = true
+        }</span>
+
+        // Check if base branch exists locally
+        <span class="cov0" title="0">baseExistsLocally := c.branchExists(ctx, c.baseBranch)
+
+        if !baseExistsLocally &amp;&amp; !fetchSucceeded </span><span class="cov0" title="0">{
+                // Can't proceed without either local branch or successful fetch
+                return fmt.Errorf("base branch %s does not exist locally and fetch from origin failed", c.baseBranch)
+        }</span>
+
+        <span class="cov0" title="0">if fetchSucceeded </span><span class="cov0" title="0">{
+                // Create/reset local branch to match FETCH_HEAD (latest from remote)
+                // -B creates the branch if it doesn't exist, or resets it if it does
+                if _, err := RunGitCommand(ctx, c.workDir, "checkout", "-B", c.baseBranch, "FETCH_HEAD"); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to setup base branch %s from remote: %w", c.baseBranch, err)
+                }</span>
+        } else<span class="cov0" title="0"> {
+                // Fetch failed but local branch exists - use local copy
+                if _, err := RunGitCommand(ctx, c.workDir, "checkout", c.baseBranch); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to checkout base branch %s: %w", c.baseBranch, err)
+                }</span>
+                <span class="cov0" title="0">fmt.Printf("    ⚠️  Warning: using local %s branch (fetch failed)\n", c.baseBranch)</span>
+        }
+
+        // Create and checkout new branch
+        <span class="cov0" title="0">_, err := RunGitCommand(ctx, c.workDir, "checkout", "-b", branchName)
+        return err</span>
+}
+
+func (c *Creator) commitChanges(ctx context.Context, configFile, repoFullName string) error <span class="cov0" title="0">{
+        // Configure git user identity
+        if _, err := RunGitCommand(ctx, c.workDir, "config", "user.name", "github-actions[bot]"); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to set git user.name: %w", err)
+        }</span>
+        <span class="cov0" title="0">if _, err := RunGitCommand(ctx, c.workDir, "config", "user.email", "github-actions[bot]@users.noreply.github.com"); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to set git user.email: %w", err)
+        }</span>
+
+        // Stage files
+        <span class="cov0" title="0">if _, err := RunGitCommand(ctx, c.workDir, "add", configFile, "CODEOWNERS"); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // Create commit message
+        <span class="cov0" title="0">commitMsg := fmt.Sprintf(commitMsgTemplate, repoFullName, repoFullName)
+
+        _, err := RunGitCommand(ctx, c.workDir, "commit", "-m", commitMsg)
+        return err</span>
+}
+
+func (c *Creator) createGitHubPR(ctx context.Context, branchName string, cfg config.RepositoryConfig) (string, error) <span class="cov0" title="0">{
+        repoName := extractRepoName(cfg.Name)
+
+        title := fmt.Sprintf("chore: add coverage tracking for %s", repoName)
+        body := c.generatePRBody(cfg)
+
+        newPR := &amp;github.NewPullRequest{
+                Title:               github.String(title),
+                Head:                github.String(branchName),
+                Base:                github.String(c.baseBranch),
+                Body:                github.String(body),
+                MaintainerCanModify: github.Bool(true),
+        }
+
+        pr, _, err := c.client.PullRequests.Create(ctx, c.org, c.currentRepo, newPR)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        // Add reviewers
+        <span class="cov0" title="0">if err := c.addReviewers(ctx, pr.GetNumber(), cfg.Owners); err != nil </span><span class="cov0" title="0">{
+                fmt.Printf("    ⚠️  Warning: failed to add reviewers: %v\n", err)
+        }</span>
+
+        <span class="cov0" title="0">return pr.GetHTMLURL(), nil</span>
+}
+
+func (c *Creator) addReviewers(ctx context.Context, prNumber int, owners []string) error <span class="cov0" title="0">{
+        reviewers := extractReviewers(owners)
+        if len(reviewers) == 0 </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        // Separate individual reviewers from teams
+        <span class="cov0" title="0">var users []string
+        var teams []string
+
+        for _, reviewer := range reviewers </span><span class="cov0" title="0">{
+                if strings.Contains(reviewer, "/") </span><span class="cov0" title="0">{
+                        parts := strings.Split(reviewer, "/")
+                        if len(parts) == 2 </span><span class="cov0" title="0">{
+                                teams = append(teams, parts[1])
+                        }</span>
+                } else<span class="cov0" title="0"> {
+                        users = append(users, reviewer)
+                }</span>
+        }
+
+        <span class="cov0" title="0">reviewersRequest := github.ReviewersRequest{
+                Reviewers:     users,
+                TeamReviewers: teams,
+        }
+
+        _, _, err := c.client.PullRequests.RequestReviewers(ctx, c.org, c.currentRepo, prNumber, reviewersRequest)
+        return err</span>
+}
+
+func (c *Creator) generatePRBody(cfg config.RepositoryConfig) string <span class="cov0" title="0">{
+        return fmt.Sprintf(prBodyTemplate, "`"+cfg.Name+"`")
+}</span>
+
+// Helper functions
+
+func extractRepoName(fullName string) string <span class="cov8" title="1">{
+        parts := strings.Split(fullName, "/")
+        if len(parts) == 2 </span><span class="cov8" title="1">{
+                return filepath.Base(parts[1])
+        }</span>
+        <span class="cov8" title="1">return filepath.Base(fullName)</span>
+}
+
+func extractReviewers(owners []string) []string <span class="cov8" title="1">{
+        var reviewers []string
+        for _, owner := range owners </span><span class="cov8" title="1">{
+                reviewer := strings.TrimPrefix(owner, "@")
+                if reviewer != "" </span><span class="cov8" title="1">{
+                        reviewers = append(reviewers, reviewer)
+                }</span>
+        }
+        <span class="cov8" title="1">return reviewers</span>
+}
+
+func formatList(items []string, emptyText string) string <span class="cov8" title="1">{
+        if len(items) == 0 </span><span class="cov8" title="1">{
+                return emptyText
+        }</span>
+        <span class="cov8" title="1">var formatted []string
+        for _, item := range items </span><span class="cov8" title="1">{
+                formatted = append(formatted, "- `"+item+"`")
+        }</span>
+        <span class="cov8" title="1">return strings.Join(formatted, "\n")</span>
+}
+
+// Git helper functions
+
+// RunGitCommand executes a git command and returns the output and error
+func RunGitCommand(ctx context.Context, workDir string, args ...string) (string, error) <span class="cov0" title="0">{
+        cmd := exec.CommandContext(ctx, "git", args...)
+        cmd.Dir = workDir
+        output, err := cmd.CombinedOutput()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("git %s failed: %w\n%s", strings.Join(args, " "), err, string(output))
+        }</span>
+        <span class="cov0" title="0">return string(output), nil</span>
+}
+
+func (c *Creator) branchExists(ctx context.Context, branchName string) bool <span class="cov0" title="0">{
+        _, err := RunGitCommand(ctx, c.workDir, "rev-parse", "--verify", branchName)
+        return err == nil
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
