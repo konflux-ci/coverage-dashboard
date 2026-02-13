@@ -1320,6 +1320,10 @@ type ReleaseServiceConfigSpec struct {
         // VolumeOverrides is a map containing the volume type for specific Pipeline git refs
         // +optional
         EmptyDirOverrides []EmptyDirOverrides `json:"EmptyDirOverrides,omitempty"`
+
+        // RetryablePipelines is a list of pipelines that are safe to automatically retry on failure.
+        // +optional
+        RetryablePipelines []RetryablePipeline `json:"retryablePipelines,omitempty"`
 }
 
 // EmptyDirOverrides defines the values usually set in a PipelineRef using a git resolver.
@@ -6014,6 +6018,13 @@ type Pipeline struct {
         // TaskRunSpecs is the PipelineTaskRunSpec to be used in the PipelineRun execution
         // +optional
         TaskRunSpecs []tektonv1.PipelineTaskRunSpec `json:"taskRunSpecs,omitempty"`
+
+        // MaxRetries sets the retry limit for the pipeline overriding the value in
+        // ReleaseServiceConfig when specified. When unset the ReleaseServiceConfig
+        // value is used and 0 disables retries for the pipeline.
+        // +kubebuilder:validation:Minimum=0
+        // +optional
+        MaxRetries *int `json:"maxRetries,omitempty"`
 
         // Timeouts defines the different Timeouts to use in the PipelineRun execution
         // +optional
