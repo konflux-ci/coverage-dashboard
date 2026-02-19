@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22125784855",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22167787597",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 52.8,
+      "coverage": 52.7,
       "status": "ok",
       "packages": [
         {
@@ -291,12 +291,12 @@
           "coverage": 84.4
         },
         {
-          "package": "github.com/redhat-appstudio/segment-bridge.git/scripts",
-          "coverage": 50.0
-        },
-        {
           "package": "github.com/redhat-appstudio/segment-bridge.git/querygen",
           "coverage": 98.2
+        },
+        {
+          "package": "github.com/redhat-appstudio/segment-bridge.git/scripts",
+          "coverage": 50.0
         }
       ]
     },
