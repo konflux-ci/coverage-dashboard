@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22210513511",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22249743515",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -252,12 +252,12 @@
           "coverage": 78.6
         },
         {
-          "package": "github.com/konflux-ci/release-service/tekton/utils",
-          "coverage": 94.6
-        },
-        {
           "package": "github.com/konflux-ci/release-service/syncer",
           "coverage": 90.0
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/tekton/utils",
+          "coverage": 94.6
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release",
@@ -291,12 +291,12 @@
           "coverage": 84.4
         },
         {
-          "package": "github.com/redhat-appstudio/segment-bridge.git/querygen",
-          "coverage": 98.2
-        },
-        {
           "package": "github.com/redhat-appstudio/segment-bridge.git/scripts",
           "coverage": 50.0
+        },
+        {
+          "package": "github.com/redhat-appstudio/segment-bridge.git/querygen",
+          "coverage": 98.2
         }
       ]
     },
