@@ -1,4 +1,4 @@
-name: konflux-ci/segment-bridge
+name: konflux-ci/coverage-dashboard
 exclude_dirs:
     - vendor/
     - .github/
@@ -12,14 +12,6 @@ exclude_dirs:
     - /mock(s)?(/|$)
     - /e2e(-tests)?(/|$)
     - docs/
-    - containerfixture/
-    - testfixture/
-    - webfixture/
-    - kwok/
-    - fetch-uj-records/
-    - uid_map/
-    - ws_map/
-    - splunk/
 exclude_files:
     - zz_generated.deepcopy.go
     - openapi_generated.go
