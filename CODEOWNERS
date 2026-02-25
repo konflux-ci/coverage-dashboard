@@ -21,6 +21,7 @@
 /repos/release-service.yaml @querti @mmalina @elenagerman
 /repos/internal-services.yaml @querti @mmalina
 
+/repos/namespace-lister.yaml @dperaza4dustbit @sadlerap @filariow
 /repos/image-controller.yaml @konflux-ci/build-maintainers
 /repos/coverage-dashboard.yaml @konflux-ci/Vanguard
 /repos/application-api.yaml @konflux-ci/build-maintainers @konflux-ci/integration-service-maintainers
