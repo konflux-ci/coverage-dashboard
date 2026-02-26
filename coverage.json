@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22446435596",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22448097796",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 52.6,
+      "coverage": 52.8,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 78.6
+          "coverage": 78.9
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/common",
@@ -49,12 +49,12 @@
           "coverage": 100.0
         },
         {
-          "package": "github.com/konflux-ci/build-service/pkg/git/github",
-          "coverage": 0.0
-        },
-        {
           "package": "github.com/konflux-ci/build-service/pkg/git/gitlab",
           "coverage": 5.6
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git/github",
+          "coverage": 0.0
         }
       ]
     },
@@ -99,6 +99,12 @@
           "coverage": 87.8
         }
       ]
+    },
+    {
+      "repo": "konflux-ci/devlake",
+      "coverage": null,
+      "status": "failed",
+      "packages": []
     },
     {
       "repo": "konflux-ci/image-controller",
@@ -352,12 +358,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 57.1,
+      "coverage": 58.4,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 57.1
+          "coverage": 58.4
         }
       ]
     },

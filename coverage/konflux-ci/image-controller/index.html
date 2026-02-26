@@ -216,12 +216,12 @@ func (r *ApplicationPullSecretCreator) Reconcile(ctx context.Context, req ctrl.R
                         return ctrl.Result{}, err
                 }</span>
 
-                <span class="cov8" title="1">if err := r.createApplicationPullSecret(ctx, applicationPullSecretName, application, pullSecretNames); err != nil </span><span class="cov8" title="1">{
+                <span class="cov8" title="1">if err := r.createApplicationPullSecret(ctx, applicationPullSecretName, application, pullSecretNames); err != nil </span><span class="cov0" title="0">{
                         return ctrl.Result{}, err
                 }</span>
         }
 
-        <span class="cov8" title="1">if err := r.updateServiceAccountWithApplicationPullSecret(ctx, applicationPullSecretName, application.Namespace); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := r.updateServiceAccountWithApplicationPullSecret(ctx, applicationPullSecretName, application.Namespace); err != nil </span><span class="cov8" title="1">{
                 return ctrl.Result{}, err
         }</span>
 
@@ -362,7 +362,7 @@ func (r *ApplicationPullSecretCreator) createApplicationPullSecret(ctx context.C
                 return err
         }</span>
 
-        <span class="cov8" title="1">if err := r.Client.Create(ctx, applicationPullSecret); err != nil </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if err := r.Client.Create(ctx, applicationPullSecret); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "failed to create application pull secret", "secretName", applicationPullSecretName, l.Action, l.ActionAdd)
                 return err
         }</span>
@@ -416,7 +416,7 @@ func (r *ApplicationPullSecretCreator) updateServiceAccountWithApplicationPullSe
         }</span>
 
         <span class="cov8" title="1">if shouldUpdateServiceAccount </span><span class="cov8" title="1">{
-                if err := r.Client.Update(ctx, namespaceServiceAccount); err != nil </span><span class="cov0" title="0">{
+                if err := r.Client.Update(ctx, namespaceServiceAccount); err != nil </span><span class="cov8" title="1">{
                         log.Error(err, "failed to update Service Account with application pull secret", l.Action, l.ActionUpdate)
                         return err
                 }</span>
