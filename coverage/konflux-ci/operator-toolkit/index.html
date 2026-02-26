@@ -1,0 +1,1361 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>conditions: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/konflux-ci/operator-toolkit/conditions/conditions.go (100.0%)</option>
+				
+				<option value="file1">github.com/konflux-ci/operator-toolkit/controller/controller.go (0.0%)</option>
+				
+				<option value="file2">github.com/konflux-ci/operator-toolkit/controller/handler.go (0.0%)</option>
+				
+				<option value="file3">github.com/konflux-ci/operator-toolkit/controller/operation.go (0.0%)</option>
+				
+				<option value="file4">github.com/konflux-ci/operator-toolkit/controller/validator.go (100.0%)</option>
+				
+				<option value="file5">github.com/konflux-ci/operator-toolkit/loader/loader.go (100.0%)</option>
+				
+				<option value="file6">github.com/konflux-ci/operator-toolkit/loader/mock_client.go (16.0%)</option>
+				
+				<option value="file7">github.com/konflux-ci/operator-toolkit/metadata/metadata.go (98.9%)</option>
+				
+				<option value="file8">github.com/konflux-ci/operator-toolkit/predicates/backups.go (100.0%)</option>
+				
+				<option value="file9">github.com/konflux-ci/operator-toolkit/predicates/events.go (0.0%)</option>
+				
+				<option value="file10">github.com/konflux-ci/operator-toolkit/predicates/generation.go (0.0%)</option>
+				
+				<option value="file11">github.com/konflux-ci/operator-toolkit/utils/backups.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package conditions
+
+import (
+        "k8s.io/apimachinery/pkg/api/meta"
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// ConditionReason is a string representing a Kubernetes condition reason.
+type ConditionReason string
+
+func (cr ConditionReason) String() string <span class="cov8" title="1">{
+        return string(cr)
+}</span>
+
+// ConditionType is a string representing a Kubernetes condition type.
+type ConditionType string
+
+// String returns a string representation of the ConditionType.
+func (ct ConditionType) String() string <span class="cov8" title="1">{
+        return string(ct)
+}</span>
+
+// SetCondition creates a new condition with the given conditionType, status and reason. Then, it sets this new condition,
+// unsetting previous conditions with the same type as necessary.
+func SetCondition(conditions *[]metav1.Condition, conditionType ConditionType, status metav1.ConditionStatus, reason ConditionReason) <span class="cov8" title="1">{
+        SetConditionWithMessage(conditions, conditionType, status, reason, "")
+}</span>
+
+// SetConditionWithMessage creates a new condition with the given conditionType, status, reason and message. Then, it sets this new condition,
+// unsetting previous conditions with the same type as necessary.
+func SetConditionWithMessage(conditions *[]metav1.Condition, conditionType ConditionType, status metav1.ConditionStatus, reason ConditionReason, message string) <span class="cov8" title="1">{
+        meta.SetStatusCondition(conditions, metav1.Condition{
+                Type:    conditionType.String(),
+                Status:  status,
+                Reason:  reason.String(),
+                Message: message,
+        })
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
+
+import (
+        "github.com/go-logr/logr"
+        ctrl "sigs.k8s.io/controller-runtime"
+        "sigs.k8s.io/controller-runtime/pkg/cluster"
+        "sigs.k8s.io/controller-runtime/pkg/manager"
+        "sigs.k8s.io/controller-runtime/pkg/reconcile"
+)
+
+// CacheInitializer is an interface that should be implemented by operator controllers requiring to index fields.
+type CacheInitializer interface {
+        SetupCache(mgr ctrl.Manager) error
+}
+
+// Controller is an interface that should be implemented by operator controllers and that allows to have a cohesive way
+// of defining them and register them.
+type Controller interface {
+        reconcile.Reconciler
+
+        Register(mgr ctrl.Manager, log *logr.Logger, cluster cluster.Cluster) error
+}
+
+// SetupControllers invoke the Register function of every controller passed as an argument to this function. If a given
+// Controller implements CacheInitializer, the cache will be initialized before registering the controller.
+func SetupControllers(mgr manager.Manager, cluster cluster.Cluster, controllers ...Controller) error <span class="cov0" title="0">{
+        log := ctrl.Log.WithName("controllers")
+
+        for _, controller := range controllers </span><span class="cov0" title="0">{
+                if cacheInitializer, ok := controller.(CacheInitializer); ok </span><span class="cov0" title="0">{
+                        err := cacheInitializer.SetupCache(mgr)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+                }
+
+                <span class="cov0" title="0">err := controller.Register(mgr, &amp;log, cluster)
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
+
+import ctrl "sigs.k8s.io/controller-runtime"
+
+// ReconcileHandler will invoke all the operations to be performed as part of an object reconcile, managing the queue
+// based on the operations' results.
+func ReconcileHandler(operations []Operation) (ctrl.Result, error) <span class="cov0" title="0">{
+        for _, operation := range operations </span><span class="cov0" title="0">{
+                result, err := operation()
+
+                switch </span>{
+                case err != nil || result.RequeueRequest:<span class="cov0" title="0">
+                        return ctrl.Result{RequeueAfter: result.RequeueDelay}, err</span>
+                case result.CancelRequest:<span class="cov0" title="0">
+                        return ctrl.Result{}, nil</span>
+                }
+        }
+
+        <span class="cov0" title="0">return ctrl.Result{}, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
+
+import "time"
+
+// OperationResult represents the result of a reconcile operation
+type OperationResult struct {
+        RequeueDelay   time.Duration
+        RequeueRequest bool
+        CancelRequest  bool
+}
+
+// Operation defines the syntax of functions invoked by the ReconcileHandler
+type Operation func() (OperationResult, error)
+
+// ContinueProcessing returns an (OperationResult, error) tuple instructing the reconcile loop to continue
+// reconciling of the object.
+func ContinueProcessing() (OperationResult, error) <span class="cov0" title="0">{
+        return OperationResult{
+                RequeueDelay:   0,
+                RequeueRequest: false,
+                CancelRequest:  false,
+        }, nil
+}</span>
+
+// Requeue returns an (OperationResult, error) tuple instructing the reconcile loop to requeue the object.
+func Requeue() (OperationResult, error) <span class="cov0" title="0">{
+        return RequeueWithError(nil)
+}</span>
+
+// RequeueAfter returns an (OperationResult, error) tuple instructing the reconcile loop to requeue the object
+// after the given delay.
+func RequeueAfter(delay time.Duration, err error) (OperationResult, error) <span class="cov0" title="0">{
+        return OperationResult{
+                RequeueDelay:   delay,
+                RequeueRequest: true,
+                CancelRequest:  false,
+        }, err
+}</span>
+
+// RequeueOnErrorOrContinue returns an (OperationResult, error) tuple instructing the reconcile loop to requeue
+// the object in case of an error or to continue reconciling the object.
+func RequeueOnErrorOrContinue(err error) (OperationResult, error) <span class="cov0" title="0">{
+        return OperationResult{
+                RequeueDelay:   0,
+                RequeueRequest: false,
+                CancelRequest:  false,
+        }, err
+}</span>
+
+// RequeueOnErrorOrStop returns an (OperationResult, error) tuple instructing the reconcile loop to requeue
+// the object in case of an error or to stop reconciling the object.
+func RequeueOnErrorOrStop(err error) (OperationResult, error) <span class="cov0" title="0">{
+        return OperationResult{
+                RequeueDelay:   0,
+                RequeueRequest: false,
+                CancelRequest:  true,
+        }, err
+}</span>
+
+// RequeueWithError returns an (OperationResult, error) tuple instructing the reconcile loop to requeue the object
+// with the given reconcile error.
+func RequeueWithError(err error) (OperationResult, error) <span class="cov0" title="0">{
+        return OperationResult{
+                RequeueDelay:   0,
+                RequeueRequest: true,
+                CancelRequest:  false,
+        }, err
+}</span>
+
+// StopProcessing returns an (OperationResult, error) tuple instructing the reconcile loop to stop reconciling the object.
+func StopProcessing() (OperationResult, error) <span class="cov0" title="0">{
+        return OperationResult{
+                RequeueDelay:   0,
+                RequeueRequest: false,
+                CancelRequest:  true,
+        }, nil
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
+
+type (
+        // ValidationFunction defines the signature of validation functions that this validator can invoke.
+        ValidationFunction func() *ValidationResult
+
+        // ValidationResult is a struct containing whether a validation passed and what was the error in case that
+        // it didn't pass.
+        ValidationResult struct {
+                Err   error
+                Valid bool
+        }
+)
+
+// Validate evaluates all the validation functions passed as an argument and returns a ValidationResult indicating
+// whether the validation passed or not. In case of one of the functions failing the validation, the process will
+// be interrupted and the error will be returned immediately.
+func Validate(functions ...ValidationFunction) *ValidationResult <span class="cov8" title="1">{
+        for _, function := range functions </span><span class="cov8" title="1">{
+                result := function()
+                if !result.Valid || result.Err != nil </span><span class="cov8" title="1">{
+                        return result
+                }</span>
+        }
+
+        <span class="cov8" title="1">return &amp;ValidationResult{Valid: true}</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package loader
+
+import (
+        "context"
+
+        "k8s.io/apimachinery/pkg/types"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+type (
+        // ContextKey is a key that will be used within a context to reference a MockData item.
+        ContextKey int
+
+        // MockData represents the mocked data that will be returned by a mocked loader method.
+        MockData struct {
+                ContextKey ContextKey
+                Err        error
+                Resource   any
+        }
+)
+
+// mockClientCallsKey is the context key for storing client call mocks
+type mockClientCallsKeyType int
+
+const mockClientCallsKey mockClientCallsKeyType = 0
+
+// GetMockedContext creates a new context with the given MockData items.
+// This function now supports both legacy loader mocks (via ContextKey) and
+// new client operation mocks (via ClientCallMock).
+func GetMockedContext(ctx context.Context, data []MockData) context.Context <span class="cov8" title="1">{
+        for _, mockData := range data </span><span class="cov8" title="1">{
+                ctx = context.WithValue(ctx, mockData.ContextKey, mockData)
+        }</span>
+
+        <span class="cov8" title="1">return ctx</span>
+}
+
+// GetMockedContextWithClient creates a new context with mocked client operations
+// and returns both the context and a mock client that should be used in tests.
+// This is the new enhanced function that supports mocking client operations.
+func GetMockedContextWithClient(ctx context.Context, realClient client.Client, loaderMocks []MockData, clientMocks []ClientCallMock) (context.Context, client.Client) <span class="cov8" title="1">{
+        // Add loader mocks (legacy support)
+        for _, mockData := range loaderMocks </span><span class="cov8" title="1">{
+                ctx = context.WithValue(ctx, mockData.ContextKey, mockData)
+        }</span>
+
+        // Add client call mocks
+        <span class="cov8" title="1">if len(clientMocks) &gt; 0 </span><span class="cov8" title="1">{
+                ctx = context.WithValue(ctx, mockClientCallsKey, clientMocks)
+        }</span>
+
+        // Create and return mock client
+        <span class="cov8" title="1">mockClient := NewMockClient(realClient, ctx)
+        return ctx, mockClient</span>
+}
+
+// GetMockedResourceAndErrorFromContext returns the mocked data found in the context passed as an argument. The data is
+// to be found in the contextDataKey key. If not there, a panic will be raised.
+func GetMockedResourceAndErrorFromContext[T any](ctx context.Context, contextKey ContextKey, _ T) (T, error) <span class="cov8" title="1">{
+        var resource T
+        var err error
+
+        value := ctx.Value(contextKey)
+        if value == nil </span><span class="cov8" title="1">{
+                panic("Mocked data not found in the context")</span>
+        }
+
+        <span class="cov8" title="1">data, _ := value.(MockData)
+
+        if data.Resource != nil </span><span class="cov8" title="1">{
+                resource = data.Resource.(T)
+        }</span>
+
+        <span class="cov8" title="1">if data.Err != nil </span><span class="cov8" title="1">{
+                err = data.Err
+        }</span>
+
+        <span class="cov8" title="1">return resource, err</span>
+}
+
+// GetObject loads an object from the cluster. This is a generic function that requires the object to be passed as an
+// argument. The object is modified during the invocation.
+func GetObject(name, namespace string, cli client.Client, ctx context.Context, object client.Object) error <span class="cov8" title="1">{
+        return cli.Get(ctx, types.NamespacedName{
+                Name:      name,
+                Namespace: namespace,
+        }, object)
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package loader
+
+import (
+        "context"
+        "fmt"
+
+        "k8s.io/apimachinery/pkg/api/meta"
+        "k8s.io/apimachinery/pkg/runtime"
+        "k8s.io/apimachinery/pkg/runtime/schema"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+// ClientOperation represents the type of client operation to mock
+type ClientOperation string
+
+const (
+        // OperationGet represents a Get operation
+        OperationGet ClientOperation = "get"
+        // OperationList represents a List operation
+        OperationList ClientOperation = "list"
+        // OperationCreate represents a Create operation
+        OperationCreate ClientOperation = "create"
+        // OperationUpdate represents an Update operation
+        OperationUpdate ClientOperation = "update"
+        // OperationPatch represents a Patch operation
+        OperationPatch ClientOperation = "patch"
+        // OperationDelete represents a Delete operation
+        OperationDelete ClientOperation = "delete"
+        // OperationDeleteAllOf represents a DeleteAllOf operation
+        OperationDeleteAllOf ClientOperation = "deleteallof"
+)
+
+// ClientCallMock represents a mocked client call configuration
+type ClientCallMock struct {
+        // Operation is the type of client operation (create, update, etc.)
+        Operation ClientOperation
+        // ObjectType is the type of object this mock applies to (e.g., &amp;v1.Pod{} or &amp;v1.PodList{})
+        // For most operations this should be a client.Object, but for List operations it can be a client.ObjectList
+        ObjectType any
+        // Err is the error to return (if any)
+        Err error
+        // Result is the object to return for Get operations or to use for modifications
+        Result client.Object
+        // SubResourceName is the name of the subresource (e.g., "status")
+        SubResourceName string
+}
+
+// mockClient is a custom client that intercepts operations and returns mocked responses
+type mockClient struct {
+        client.Client
+        mocks   []ClientCallMock
+        context context.Context
+}
+
+// NewMockClient creates a new mock client that wraps the real client
+func NewMockClient(realClient client.Client, ctx context.Context) client.Client <span class="cov8" title="1">{
+        return &amp;mockClient{
+                Client:  realClient,
+                context: ctx,
+        }
+}</span>
+
+// findMock finds a matching mock for the given operation and object type
+func (m *mockClient) findMock(operation ClientOperation, obj client.Object) *ClientCallMock <span class="cov8" title="1">{
+        // Check if there are mocks in the context
+        if value := m.context.Value(mockClientCallsKey); value != nil </span><span class="cov8" title="1">{
+                if mocks, ok := value.([]ClientCallMock); ok </span><span class="cov8" title="1">{
+                        objType := fmt.Sprintf("%T", obj)
+                        for i := range mocks </span><span class="cov8" title="1">{
+                                mock := &amp;mocks[i]
+                                if mock.Operation == operation </span><span class="cov8" title="1">{
+                                        mockObjType := fmt.Sprintf("%T", mock.ObjectType)
+                                        if mockObjType == objType </span><span class="cov8" title="1">{
+                                                return mock
+                                        }</span>
+                                }
+                        }
+                }
+        }
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Get implements client.Client
+func (m *mockClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error <span class="cov0" title="0">{
+        if mock := m.findMock(OperationGet, obj); mock != nil </span><span class="cov0" title="0">{
+                if mock.Err != nil </span><span class="cov0" title="0">{
+                        return mock.Err
+                }</span>
+                <span class="cov0" title="0">if mock.Result != nil </span><span class="cov0" title="0">{
+                        // Copy the mock result to the object
+                        obj.SetName(mock.Result.GetName())
+                        obj.SetNamespace(mock.Result.GetNamespace())
+                        obj.SetLabels(mock.Result.GetLabels())
+                        obj.SetAnnotations(mock.Result.GetAnnotations())
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        }
+        <span class="cov0" title="0">return m.Client.Get(ctx, key, obj, opts...)</span>
+}
+
+// List implements client.Client
+func (m *mockClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error <span class="cov0" title="0">{
+        // For List operations, we need to check the underlying type
+        if value := m.context.Value(mockClientCallsKey); value != nil </span><span class="cov0" title="0">{
+                if mocks, ok := value.([]ClientCallMock); ok </span><span class="cov0" title="0">{
+                        listType := fmt.Sprintf("%T", list)
+                        for i := range mocks </span><span class="cov0" title="0">{
+                                mock := &amp;mocks[i]
+                                if mock.Operation == OperationList </span><span class="cov0" title="0">{
+                                        mockListType := fmt.Sprintf("%T", mock.ObjectType)
+                                        if mockListType == listType </span><span class="cov0" title="0">{
+                                                if mock.Err != nil </span><span class="cov0" title="0">{
+                                                        return mock.Err
+                                                }</span>
+                                                // For successful List mocks, return empty list or custom result
+                                                <span class="cov0" title="0">return nil</span>
+                                        }
+                                }
+                        }
+                }
+        }
+        <span class="cov0" title="0">return m.Client.List(ctx, list, opts...)</span>
+}
+
+// Create implements client.Client
+func (m *mockClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error <span class="cov8" title="1">{
+        if mock := m.findMock(OperationCreate, obj); mock != nil </span><span class="cov8" title="1">{
+                return mock.Err
+        }</span>
+        <span class="cov0" title="0">return m.Client.Create(ctx, obj, opts...)</span>
+}
+
+// Delete implements client.Client
+func (m *mockClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error <span class="cov0" title="0">{
+        if mock := m.findMock(OperationDelete, obj); mock != nil </span><span class="cov0" title="0">{
+                return mock.Err
+        }</span>
+        <span class="cov0" title="0">return m.Client.Delete(ctx, obj, opts...)</span>
+}
+
+// Update implements client.Client
+func (m *mockClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error <span class="cov0" title="0">{
+        if mock := m.findMock(OperationUpdate, obj); mock != nil </span><span class="cov0" title="0">{
+                return mock.Err
+        }</span>
+        <span class="cov0" title="0">return m.Client.Update(ctx, obj, opts...)</span>
+}
+
+// Patch implements client.Client
+func (m *mockClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error <span class="cov0" title="0">{
+        if mock := m.findMock(OperationPatch, obj); mock != nil </span><span class="cov0" title="0">{
+                return mock.Err
+        }</span>
+        <span class="cov0" title="0">return m.Client.Patch(ctx, obj, patch, opts...)</span>
+}
+
+// DeleteAllOf implements client.Client
+func (m *mockClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error <span class="cov0" title="0">{
+        if mock := m.findMock(OperationDeleteAllOf, obj); mock != nil </span><span class="cov0" title="0">{
+                return mock.Err
+        }</span>
+        <span class="cov0" title="0">return m.Client.DeleteAllOf(ctx, obj, opts...)</span>
+}
+
+// Status implements client.Client
+func (m *mockClient) Status() client.StatusWriter <span class="cov0" title="0">{
+        return &amp;mockStatusWriter{
+                StatusWriter: m.Client.Status(),
+                mockClient:   m,
+        }
+}</span>
+
+// SubResource implements client.Client
+func (m *mockClient) SubResource(subResource string) client.SubResourceClient <span class="cov0" title="0">{
+        return &amp;mockSubResourceClient{
+                SubResourceClient: m.Client.SubResource(subResource),
+                mockClient:        m,
+                subResourceName:   subResource,
+        }
+}</span>
+
+// Scheme implements client.Client
+func (m *mockClient) Scheme() *runtime.Scheme <span class="cov0" title="0">{
+        return m.Client.Scheme()
+}</span>
+
+// RESTMapper implements client.Client
+func (m *mockClient) RESTMapper() meta.RESTMapper <span class="cov0" title="0">{
+        return m.Client.RESTMapper()
+}</span>
+
+// GroupVersionKindFor implements client.Client
+func (m *mockClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) <span class="cov0" title="0">{
+        return m.Client.GroupVersionKindFor(obj)
+}</span>
+
+// IsObjectNamespaced implements client.Client
+func (m *mockClient) IsObjectNamespaced(obj runtime.Object) (bool, error) <span class="cov0" title="0">{
+        return m.Client.IsObjectNamespaced(obj)
+}</span>
+
+// mockStatusWriter wraps the status writer to intercept status updates
+type mockStatusWriter struct {
+        client.StatusWriter
+        mockClient *mockClient
+}
+
+// Update implements client.StatusWriter
+func (m *mockStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error <span class="cov0" title="0">{
+        if mock := m.mockClient.findMock(OperationUpdate, obj); mock != nil &amp;&amp; mock.SubResourceName == "status" </span><span class="cov0" title="0">{
+                return mock.Err
+        }</span>
+        <span class="cov0" title="0">return m.StatusWriter.Update(ctx, obj, opts...)</span>
+}
+
+// Patch implements client.StatusWriter
+func (m *mockStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error <span class="cov0" title="0">{
+        if mock := m.mockClient.findMock(OperationPatch, obj); mock != nil &amp;&amp; mock.SubResourceName == "status" </span><span class="cov0" title="0">{
+                return mock.Err
+        }</span>
+        <span class="cov0" title="0">return m.StatusWriter.Patch(ctx, obj, patch, opts...)</span>
+}
+
+// Create implements client.StatusWriter (added in newer versions of controller-runtime)
+func (m *mockStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error <span class="cov0" title="0">{
+        if mock := m.mockClient.findMock(OperationCreate, obj); mock != nil &amp;&amp; mock.SubResourceName == "status" </span><span class="cov0" title="0">{
+                return mock.Err
+        }</span>
+        <span class="cov0" title="0">return m.StatusWriter.Create(ctx, obj, subResource, opts...)</span>
+}
+
+// mockSubResourceClient wraps the subresource client
+type mockSubResourceClient struct {
+        client.SubResourceClient
+        mockClient      *mockClient
+        subResourceName string
+}
+
+// Get implements client.SubResourceClient
+func (m *mockSubResourceClient) Get(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceGetOption) error <span class="cov0" title="0">{
+        if mock := m.mockClient.findMock(OperationGet, obj); mock != nil &amp;&amp; mock.SubResourceName == m.subResourceName </span><span class="cov0" title="0">{
+                return mock.Err
+        }</span>
+        <span class="cov0" title="0">return m.SubResourceClient.Get(ctx, obj, subResource, opts...)</span>
+}
+
+// Create implements client.SubResourceClient
+func (m *mockSubResourceClient) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error <span class="cov0" title="0">{
+        if mock := m.mockClient.findMock(OperationCreate, obj); mock != nil &amp;&amp; mock.SubResourceName == m.subResourceName </span><span class="cov0" title="0">{
+                return mock.Err
+        }</span>
+        <span class="cov0" title="0">return m.SubResourceClient.Create(ctx, obj, subResource, opts...)</span>
+}
+
+// Update implements client.SubResourceClient
+func (m *mockSubResourceClient) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error <span class="cov0" title="0">{
+        if mock := m.mockClient.findMock(OperationUpdate, obj); mock != nil &amp;&amp; mock.SubResourceName == m.subResourceName </span><span class="cov0" title="0">{
+                return mock.Err
+        }</span>
+        <span class="cov0" title="0">return m.SubResourceClient.Update(ctx, obj, opts...)</span>
+}
+
+// Patch implements client.SubResourceClient
+func (m *mockSubResourceClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error <span class="cov0" title="0">{
+        if mock := m.mockClient.findMock(OperationPatch, obj); mock != nil &amp;&amp; mock.SubResourceName == m.subResourceName </span><span class="cov0" title="0">{
+                return mock.Err
+        }</span>
+        <span class="cov0" title="0">return m.SubResourceClient.Patch(ctx, obj, patch, opts...)</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">/*
+Copyright 2022.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package metadata
+
+import (
+        "errors"
+        "strings"
+
+        v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// AddAnnotations copies the map into the resource's Annotations map.
+// When the destination map is nil, then the map will be created.
+// The unexported function addEntries is called with args passed.
+func AddAnnotations(obj v1.Object, entries map[string]string) error <span class="cov8" title="1">{
+        if obj == nil </span><span class="cov8" title="1">{
+                return errors.New("object cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">if obj.GetAnnotations() == nil </span><span class="cov8" title="1">{
+                obj.SetAnnotations(map[string]string{})
+        }</span>
+        <span class="cov8" title="1">addEntries(entries, obj.GetAnnotations())
+
+        return nil</span>
+}
+
+// AddLabels copies the map into the resource's Labels map.
+// When the destination map is nil, then the map will be created.
+// The unexported function addEntries is called with args passed.
+func AddLabels(obj v1.Object, entries map[string]string) error <span class="cov8" title="1">{
+        if obj == nil </span><span class="cov8" title="1">{
+                return errors.New("object cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">if obj.GetLabels() == nil </span><span class="cov8" title="1">{
+                obj.SetLabels(map[string]string{})
+        }</span>
+        <span class="cov8" title="1">addEntries(entries, obj.GetLabels())
+
+        return nil</span>
+}
+
+// CopyAnnotationsByPrefix copies all annotations from a source object to a destination object where the key matches
+// the specified sourcePrefix.
+func CopyAnnotationsByPrefix(source, destination v1.Object, prefix string) error <span class="cov8" title="1">{
+        if source == nil || destination == nil </span><span class="cov8" title="1">{
+                return errors.New("object cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">if destination.GetAnnotations() == nil </span><span class="cov8" title="1">{
+                destination.SetAnnotations(make(map[string]string))
+        }</span>
+        <span class="cov8" title="1">copyByPrefix(source.GetAnnotations(), destination.GetAnnotations(), prefix)
+
+        return nil</span>
+}
+
+// CopyAnnotationsWithPrefixReplacement copies all annotations from a source object to a destination object where the
+// key matches the specified sourcePrefix. The source prefix will be replaced with the destination prefix.
+func CopyAnnotationsWithPrefixReplacement(source, destination v1.Object, sourcePrefix, destinationPrefix string) error <span class="cov8" title="1">{
+        if source == nil || destination == nil </span><span class="cov8" title="1">{
+                return errors.New("object cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">if destination.GetAnnotations() == nil </span><span class="cov8" title="1">{
+                destination.SetAnnotations(make(map[string]string))
+        }</span>
+
+        <span class="cov8" title="1">copyWithPrefixReplacement(source.GetAnnotations(), destination.GetAnnotations(), sourcePrefix, destinationPrefix)
+
+        return nil</span>
+}
+
+// CopyLabelsByPrefix copies all labels from a source object to a destination object where the key matches the
+// specified sourcePrefix.
+func CopyLabelsByPrefix(source, destination v1.Object, prefix string) error <span class="cov8" title="1">{
+        if source == nil || destination == nil </span><span class="cov8" title="1">{
+                return errors.New("object cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">if destination.GetLabels() == nil </span><span class="cov8" title="1">{
+                destination.SetLabels(make(map[string]string))
+        }</span>
+
+        <span class="cov8" title="1">copyByPrefix(source.GetLabels(), destination.GetLabels(), prefix)
+
+        return nil</span>
+}
+
+// CopyLabelsWithPrefixReplacement copies all labels from a source object to a destination object where the key matches
+// the specified sourcePrefix. If destinationPrefix is different from sourcePrefix, the sourcePrefix will be replaced
+// while performing the copy.
+func CopyLabelsWithPrefixReplacement(source, destination v1.Object, sourcePrefix, destinationPrefix string) error <span class="cov8" title="1">{
+        if source == nil || destination == nil </span><span class="cov8" title="1">{
+                return errors.New("object cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">if destination.GetLabels() == nil </span><span class="cov8" title="1">{
+                destination.SetLabels(make(map[string]string))
+        }</span>
+
+        <span class="cov8" title="1">copyWithPrefixReplacement(source.GetLabels(), destination.GetLabels(), sourcePrefix, destinationPrefix)
+
+        return nil</span>
+}
+
+// DeleteAnnotation deletes the annotation specified by name from the referenced object.
+// If the annotation doesn't exist it's a no-op.
+func DeleteAnnotation(obj v1.Object, key string) error <span class="cov8" title="1">{
+        if obj == nil </span><span class="cov8" title="1">{
+                return errors.New("object cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">annotations := obj.GetAnnotations()
+        if annotations == nil </span><span class="cov8" title="1">{
+                return nil // nothing to delete
+        }</span>
+
+        <span class="cov8" title="1">delete(annotations, key)
+
+        return nil</span>
+}
+
+// DeleteLabel deletes the label specified by name from the referenced object.
+// If the label doesn't exist it's a no-op.
+func DeleteLabel(obj v1.Object, key string) error <span class="cov8" title="1">{
+        if obj == nil </span><span class="cov8" title="1">{
+                return errors.New("object cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">labels := obj.GetLabels()
+        if labels == nil </span><span class="cov8" title="1">{
+                return nil // nothing to delete
+        }</span>
+
+        <span class="cov8" title="1">delete(labels, key)
+
+        return nil</span>
+}
+
+// GetAnnotationsWithPrefix is a method that returns a map of key/value pairs matching a prefix string.
+// The unexported function filterByPrefix is called with args passed.
+func GetAnnotationsWithPrefix(obj v1.Object, prefix string) (map[string]string, error) <span class="cov8" title="1">{
+        if obj == nil </span><span class="cov8" title="1">{
+                return map[string]string{}, errors.New("object cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">return filterByPrefix(obj.GetAnnotations(), prefix), nil</span>
+}
+
+// GetLabelsWithPrefix is a method that returns a map of key/value pairs matching a prefix string.
+// The unexported function filterByPrefix is called with args passed.
+func GetLabelsWithPrefix(obj v1.Object, prefix string) (map[string]string, error) <span class="cov8" title="1">{
+        if obj == nil </span><span class="cov8" title="1">{
+                return map[string]string{}, errors.New("object cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">return filterByPrefix(obj.GetLabels(), prefix), nil</span>
+}
+
+// HasAnnotation checks whether a given annotation exists or not.
+func HasAnnotation(obj v1.Object, key string) bool <span class="cov8" title="1">{
+        _, ok := obj.GetAnnotations()[key]
+        return ok
+}</span>
+
+// HasAnnotationWithValue checks if an annotation exists and has the given value.
+func HasAnnotationWithValue(obj v1.Object, key, value string) bool <span class="cov8" title="1">{
+        val, ok := obj.GetAnnotations()[key]
+        return ok &amp;&amp; val == value
+}</span>
+
+// HasLabel checks whether a given Label exists or not.
+func HasLabel(obj v1.Object, key string) bool <span class="cov8" title="1">{
+        _, ok := obj.GetLabels()[key]
+        return ok
+}</span>
+
+// HasLabelWithValue checks if a label exists and has the given value.
+func HasLabelWithValue(obj v1.Object, key, value string) bool <span class="cov8" title="1">{
+        val, ok := obj.GetLabels()[key]
+        return ok &amp;&amp; val == value
+}</span>
+
+// SetAnnotation adds a new annotation to the referenced object or updates its value if it already exists.
+func SetAnnotation(obj v1.Object, key string, value string) error <span class="cov8" title="1">{
+        if obj == nil </span><span class="cov8" title="1">{
+                return errors.New("object cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">if annotations := obj.GetAnnotations(); annotations == nil </span><span class="cov8" title="1">{
+                obj.SetAnnotations(map[string]string{key: value})
+        }</span> else<span class="cov8" title="1"> {
+                annotations[key] = value
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// SetLabel adds a new label to the referenced object or updates its value if it already exists.
+func SetLabel(obj v1.Object, key string, value string) error <span class="cov8" title="1">{
+        if obj == nil </span><span class="cov8" title="1">{
+                return errors.New("object cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">if labels := obj.GetLabels(); labels == nil </span><span class="cov8" title="1">{
+                obj.SetLabels(map[string]string{key: value})
+        }</span> else<span class="cov8" title="1"> {
+                labels[key] = value
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// addEntries copies key/value pairs in the source map adding them into the destination map.
+// The unexported function safeCopy is used to copy, and avoids clobbering existing keys in the destination map.
+func addEntries(source, destination map[string]string) <span class="cov8" title="1">{
+        for key, val := range source </span><span class="cov8" title="1">{
+                safeCopy(destination, key, val)
+        }</span>
+}
+
+// copyByPrefix copies key/value pairs from a source map to a destination map where the key matches the specified prefix.
+func copyByPrefix(source, destination map[string]string, prefix string) <span class="cov8" title="1">{
+        copyWithPrefixReplacement(source, destination, prefix, prefix)
+}</span>
+
+// copyWithPrefixReplacement copies key/value pairs from a source map to a destination map where the key matches the
+// specified sourcePrefix. The source prefix will be replaced with the destination prefix.
+func copyWithPrefixReplacement(source, destination map[string]string, sourcePrefix, destinationPrefix string) <span class="cov8" title="1">{
+        for key, value := range source </span><span class="cov8" title="1">{
+                if strings.HasPrefix(key, sourcePrefix) </span><span class="cov8" title="1">{
+                        newKey := key
+                        if sourcePrefix != destinationPrefix </span><span class="cov8" title="1">{
+                                newKey = strings.Replace(key, sourcePrefix, destinationPrefix, 1)
+                        }</span>
+                        <span class="cov8" title="1">destination[newKey] = value</span>
+                }
+        }
+}
+
+// filterByPrefix returns a map of key/value pairs contained in src that matches the prefix.
+// When the prefix is empty/nil, the source map is returned.
+// When source key does not contain the prefix string, no copy happens.
+func filterByPrefix(entries map[string]string, prefix string) map[string]string <span class="cov8" title="1">{
+        if len(prefix) == 0 </span><span class="cov0" title="0">{
+                return entries
+        }</span>
+        <span class="cov8" title="1">dst := map[string]string{}
+        for key, val := range entries </span><span class="cov8" title="1">{
+                if strings.HasPrefix(key, prefix) </span><span class="cov8" title="1">{
+                        dst[key] = val
+                }</span>
+        }
+        <span class="cov8" title="1">return dst</span>
+}
+
+// safeCopy conditionally copies a given key/value pair into a map.
+// When a key is already present in the map, no copy happens.
+func safeCopy(destination map[string]string, key, val string) <span class="cov8" title="1">{
+        if _, err := destination[key]; !err </span><span class="cov8" title="1">{
+                destination[key] = val
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">/*
+Copyright 2023 Red Hat Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package predicates
+
+import (
+        "github.com/konflux-ci/operator-toolkit/utils"
+        "sigs.k8s.io/controller-runtime/pkg/event"
+        "sigs.k8s.io/controller-runtime/pkg/predicate"
+)
+
+// IgnoreBackups implements a default create predicate function to ignore all create events triggered by backup tools.
+type IgnoreBackups struct {
+        predicate.Funcs
+}
+
+// Create returns false if the object associated with the create event contains any of the expected backup labels.
+// It will return true otherwise.
+func (IgnoreBackups) Create(e event.CreateEvent) bool <span class="cov8" title="1">{
+        return !utils.IsObjectRestoredFromBackup(e.Object)
+}</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package predicates
+
+import (
+        "sigs.k8s.io/controller-runtime/pkg/client"
+        "sigs.k8s.io/controller-runtime/pkg/event"
+        "sigs.k8s.io/controller-runtime/pkg/predicate"
+)
+
+// IgnoreAllPredicate implements a default update predicate function to ignore all events.
+//
+// This predicate will skip any kind of event. It will be useful in cases in which a For clause has to be defined but
+// no reconcile should happen over those resources.
+type IgnoreAllPredicate struct {
+        predicate.Funcs
+}
+
+// Create implements default CreateEvent filter to ignore any resource create.
+func (IgnoreAllPredicate) Create(e event.CreateEvent) bool <span class="cov0" title="0">{
+        return false
+}</span>
+
+// Delete implements default DeleteEvent filter to ignore any resource delete.
+func (IgnoreAllPredicate) Delete(e event.DeleteEvent) bool <span class="cov0" title="0">{
+        return false
+}</span>
+
+// Generic implements default GenericEvent filter to ignore any resource generic.
+func (IgnoreAllPredicate) Generic(e event.GenericEvent) bool <span class="cov0" title="0">{
+        return false
+}</span>
+
+// Update implements default UpdateEvent filter to ignore any resource update.
+func (IgnoreAllPredicate) Update(e event.UpdateEvent) bool <span class="cov0" title="0">{
+        return false
+}</span>
+
+// NewObjectsPredicate implements a default update predicate function on Generation unchanged.
+//
+// This predicate will skip update events that have a change in the object's metadata.generation field.
+// The metadata.generation field of an object is incremented by the API server when writes are made to the spec field of
+// an object. This allows a controller to ignore update events where the spec has unchanged, and only the metadata
+// and/or status fields are changed.
+type NewObjectsPredicate struct {
+        predicate.Funcs
+}
+
+// Delete implements default DeleteEvent filter to ignore any resource delete.
+func (NewObjectsPredicate) Delete(e event.DeleteEvent) bool <span class="cov0" title="0">{
+        return false
+}</span>
+
+// Generic implements default GenericEvent filter to ignore any resource generic.
+func (NewObjectsPredicate) Generic(e event.GenericEvent) bool <span class="cov0" title="0">{
+        return false
+}</span>
+
+// Update implements default UpdateEvent filter to ignore any resource update.
+func (NewObjectsPredicate) Update(e event.UpdateEvent) bool <span class="cov0" title="0">{
+        return false
+}</span>
+
+// TypedNewObjectsPredicate implements a default typed predicate function on new objects only.
+//
+// This predicate will skip update, delete, and generic events, and only trigger on object creation.
+// This is the typed equivalent of NewObjectsPredicate.
+type TypedNewObjectsPredicate[T client.Object] struct {
+        predicate.TypedFuncs[T]
+}
+
+// Delete implements default TypedDeleteEvent filter to ignore any resource delete.
+func (TypedNewObjectsPredicate[T]) Delete(e event.TypedDeleteEvent[T]) bool <span class="cov0" title="0">{
+        return false
+}</span>
+
+// Generic implements default TypedGenericEvent filter to ignore any resource generic.
+func (TypedNewObjectsPredicate[T]) Generic(e event.TypedGenericEvent[T]) bool <span class="cov0" title="0">{
+        return false
+}</span>
+
+// Update implements default TypedUpdateEvent filter to ignore any resource update.
+func (TypedNewObjectsPredicate[T]) Update(e event.TypedUpdateEvent[T]) bool <span class="cov0" title="0">{
+        return false
+}</span>
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package predicates
+
+import (
+        "sigs.k8s.io/controller-runtime/pkg/client"
+        "sigs.k8s.io/controller-runtime/pkg/event"
+        "sigs.k8s.io/controller-runtime/pkg/predicate"
+)
+
+// GenerationUnchangedPredicate implements a default update predicate function on Generation unchanged.
+//
+// This predicate will skip update events that have a change in the object's metadata.generation field.
+// The metadata.generation field of an object is incremented by the API server when writes are made to the spec field of
+// an object. This allows a controller to ignore update events where the spec has unchanged, and only the metadata
+// and/or status fields are changed.
+type GenerationUnchangedPredicate struct {
+        predicate.Funcs
+}
+
+// Update implements default UpdateEvent filter for validating generation change.
+func (GenerationUnchangedPredicate) Update(e event.UpdateEvent) bool <span class="cov0" title="0">{
+        if e.ObjectOld == nil || e.ObjectNew == nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">return e.ObjectNew.GetGeneration() == e.ObjectOld.GetGeneration()</span>
+}
+
+// GenerationUnchangedOnUpdatePredicate implements a default update predicate function on Generation unchanged.
+//
+// This predicate will skip any event except updates. In the case of update events that have a change in the
+// object's metadata.generation field, those events will be skipped as well. The metadata.generation field of an object
+// is incremented by the API server when writes are made to the spec field of an object. This allows a controller to
+// ignore update events where the spec has unchanged, and only the metadata and/or status fields are changed.
+type GenerationUnchangedOnUpdatePredicate struct {
+        predicate.Funcs
+}
+
+// Create implements default CreateEvent filter for validating generation change.
+func (GenerationUnchangedOnUpdatePredicate) Create(e event.CreateEvent) bool <span class="cov0" title="0">{
+        return false
+}</span>
+
+// Delete implements default DeleteEvent filter for validating generation change.
+func (GenerationUnchangedOnUpdatePredicate) Delete(e event.DeleteEvent) bool <span class="cov0" title="0">{
+        return false
+}</span>
+
+// Generic implements default GenericEvent filter for validating generation change.
+func (GenerationUnchangedOnUpdatePredicate) Generic(e event.GenericEvent) bool <span class="cov0" title="0">{
+        return false
+}</span>
+
+// Update implements default UpdateEvent filter for validating generation change.
+func (GenerationUnchangedOnUpdatePredicate) Update(e event.UpdateEvent) bool <span class="cov0" title="0">{
+        if e.ObjectOld == nil || e.ObjectNew == nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">return e.ObjectNew.GetGeneration() == e.ObjectOld.GetGeneration()</span>
+}
+
+// TypedGenerationChangedPredicate implements a default typed predicate function on Generation changes. Because only Update
+// func is defined, Create, Delete, and Generic will return true
+//
+// This predicate will skip any event except updates. In the case of update events that have a change in the
+// object's metadata.generation field, those events will be processed. The metadata.generation field of an object
+// is incremented by the API server when writes are made to the spec field of an object. This allows a controller to
+// only process update events where the spec has changed, ignoring updates where only metadata and/or status fields are changed.
+type TypedGenerationChangedPredicate[T client.Object] struct {
+        predicate.TypedFuncs[T]
+}
+
+// Update implements default TypedUpdateEvent filter for validating generation change.
+func (TypedGenerationChangedPredicate[T]) Update(e event.TypedUpdateEvent[T]) bool <span class="cov0" title="0">{
+        return e.ObjectNew.GetGeneration() != e.ObjectOld.GetGeneration()
+}</span>
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">/*
+Copyright 2023 Red Hat Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package utils
+
+import "sigs.k8s.io/controller-runtime/pkg/client"
+
+var backupLabels = []string{
+        "velero.io/backup-name",
+        "velero.io/restore-name",
+}
+
+// IsObjectRestoredFromBackup returns whether the object passed as an argument was restored from a backup tool or not.
+func IsObjectRestoredFromBackup(object client.Object) bool <span class="cov8" title="1">{
+        for _, label := range backupLabels </span><span class="cov8" title="1">{
+                if _, ok := object.GetLabels()[label]; ok </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+
+        <span class="cov8" title="1">return false</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

@@ -61,7 +61,7 @@
 				
 				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (68.0%)</option>
 				
-				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller_service_account.go (79.0%)</option>
+				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller_service_account.go (76.1%)</option>
 				
 				<option value="file4">github.com/konflux-ci/image-controller/internal/controller/imagerepository_notifications.go (75.2%)</option>
 				
@@ -1974,7 +1974,7 @@ func (r *ImageRepositoryReconciler) linkSecretToServiceAccount(ctx context.Conte
         }</span>
 
         <span class="cov8" title="1">if shouldUpdateServiceAccount </span><span class="cov8" title="1">{
-                if err := r.Client.Update(ctx, serviceAccount); err != nil </span><span class="cov8" title="1">{
+                if err := r.Client.Update(ctx, serviceAccount); err != nil </span><span class="cov0" title="0">{
                         log.Error(err, "failed to update service account", l.Action, l.ActionUpdate)
                         return err
                 }</span>
@@ -2140,7 +2140,7 @@ func (r *ImageRepositoryReconciler) VerifyAndFixSecretsLinking(ctx context.Conte
 
         if isComponentLinked(imageRepository) </span><span class="cov8" title="1">{
                 // link secret to service account if isn't linked already
-                if err := r.linkSecretToServiceAccount(ctx, componentSaName, pushSecretName, imageRepository.Namespace, false); err != nil </span><span class="cov8" title="1">{
+                if err := r.linkSecretToServiceAccount(ctx, componentSaName, pushSecretName, imageRepository.Namespace, false); err != nil </span><span class="cov0" title="0">{
                         log.Error(err, "failed to link secret to service account", componentSaName, "SecretName", pushSecretName, l.Action, l.ActionUpdate)
                         return err
                 }</span>

@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22413787396",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22446435596",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -49,12 +49,12 @@
           "coverage": 100.0
         },
         {
-          "package": "github.com/konflux-ci/build-service/pkg/git/gitlab",
-          "coverage": 5.6
-        },
-        {
           "package": "github.com/konflux-ci/build-service/pkg/git/github",
           "coverage": 0.0
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git/gitlab",
+          "coverage": 5.6
         }
       ]
     },
@@ -102,7 +102,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 71.5,
+      "coverage": 71.3,
       "status": "ok",
       "packages": [
         {
@@ -111,7 +111,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 72.5
+          "coverage": 72.2
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -168,12 +168,12 @@
           "coverage": 84.0
         },
         {
-          "package": "github.com/konflux-ci/internal-services/tekton/utils",
-          "coverage": 0.0
-        },
-        {
           "package": "github.com/konflux-ci/internal-services/tekton",
           "coverage": 97.7
+        },
+        {
+          "package": "github.com/konflux-ci/internal-services/tekton/utils",
+          "coverage": 0.0
         },
         {
           "package": "github.com/konflux-ci/internal-services/api/v1alpha1",
@@ -203,6 +203,37 @@
       ]
     },
     {
+      "repo": "konflux-ci/operator-toolkit",
+      "coverage": 56.7,
+      "status": "ok",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/loader",
+          "coverage": 34.4
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/controller",
+          "coverage": 17.9
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/predicates",
+          "coverage": 4.8
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/utils",
+          "coverage": 100.0
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/conditions",
+          "coverage": 100.0
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/metadata",
+          "coverage": 98.9
+        }
+      ]
+    },
+    {
       "repo": "konflux-ci/project-controller",
       "coverage": 59.3,
       "status": "ok",
@@ -217,7 +248,7 @@
         },
         {
           "package": "github.com/konflux-ci/project-controller/internal/controller",
-          "coverage": 74.1
+          "coverage": 73.6
         }
       ]
     },
