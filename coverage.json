@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22448097796",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22449209004",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -99,6 +99,12 @@
           "coverage": 87.8
         }
       ]
+    },
+    {
+      "repo": "konflux-ci/coverport",
+      "coverage": null,
+      "status": "failed",
+      "packages": []
     },
     {
       "repo": "konflux-ci/devlake",
@@ -358,12 +364,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.4,
+      "coverage": 57.1,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.4
+          "coverage": 57.1
         }
       ]
     },
