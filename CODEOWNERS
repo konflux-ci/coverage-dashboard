@@ -21,7 +21,8 @@
 /repos/release-service.yaml @querti @mmalina @elenagerman
 /repos/internal-services.yaml @querti @mmalina
 
-/repos/sprayproxy.yaml @jkhelil
+/repos/sprayproxy.yaml @konflux-ci/qe
+/repos/kueue-external-admission.yaml @gbenhaim @filariow @enkeefe00
 /repos/coverport.yaml @konflux-ci/qe
 /repos/devlake.yaml @konflux-ci/konflux-devprod-team
 /repos/operator-toolkit.yaml @konflux-ci/release-service-maintainers
@@ -32,3 +33,5 @@
 /repos/build-service.yaml @konflux-ci/build-maintainers
 /repos/workspace-manager.yaml @yftacherzog @gbenhaim @Omeramsc @avi-biton
 /repos/segment-bridge.yaml @Omeramsc
+
+/repos/may.yaml @konflux-ci/infrastructure
