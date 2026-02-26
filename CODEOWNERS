@@ -22,6 +22,9 @@
 /repos/internal-services.yaml @querti @mmalina
 
 /repos/qe-tools.yaml @psturc @Dannyb48
+/repos/coverport.yaml @konflux-ci/qe
+/repos/devlake.yaml @konflux-ci/konflux-devprod-team
+/repos/operator-toolkit.yaml @konflux-ci/release-service-maintainers
 /repos/image-controller.yaml @konflux-ci/build-maintainers
 /repos/coverage-dashboard.yaml @konflux-ci/Vanguard
 /repos/application-api.yaml @konflux-ci/build-maintainers @konflux-ci/integration-service-maintainers
@@ -29,3 +32,5 @@
 /repos/build-service.yaml @konflux-ci/build-maintainers
 /repos/workspace-manager.yaml @yftacherzog @gbenhaim @Omeramsc @avi-biton
 /repos/segment-bridge.yaml @Omeramsc
+
+/repos/may.yaml @konflux-ci/infrastructure
