@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22449209004",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22460177356",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 52.8,
+      "coverage": 52.6,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 78.9
+          "coverage": 78.6
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/common",
@@ -114,7 +114,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 71.3,
+      "coverage": 71.1,
       "status": "ok",
       "packages": [
         {
@@ -123,7 +123,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 72.2
+          "coverage": 71.9
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -195,6 +195,27 @@
     },
     {
       "repo": "konflux-ci/konflux-ci",
+      "coverage": null,
+      "status": "failed",
+      "packages": []
+    },
+    {
+      "repo": "konflux-ci/kueue-external-admission",
+      "coverage": 12.3,
+      "status": "ok",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/kueue-external-admission/internal/controller",
+          "coverage": 0.0
+        },
+        {
+          "package": "github.com/konflux-ci/kueue-external-admission/cmd",
+          "coverage": 19.8
+        }
+      ]
+    },
+    {
+      "repo": "konflux-ci/may",
       "coverage": null,
       "status": "failed",
       "packages": []
@@ -364,12 +385,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 57.1,
+      "coverage": 58.4,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 57.1
+          "coverage": 58.4
         }
       ]
     },
