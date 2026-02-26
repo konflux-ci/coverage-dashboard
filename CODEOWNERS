@@ -21,6 +21,7 @@
 /repos/release-service.yaml @querti @mmalina @elenagerman
 /repos/internal-services.yaml @querti @mmalina
 
+/repos/e2e-tests.yaml @konflux-ci/qe
 /repos/coverport.yaml @konflux-ci/qe
 /repos/devlake.yaml @konflux-ci/konflux-devprod-team
 /repos/operator-toolkit.yaml @konflux-ci/release-service-maintainers
