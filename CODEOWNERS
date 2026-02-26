@@ -22,6 +22,7 @@
 /repos/internal-services.yaml @querti @mmalina
 
 /repos/coverport.yaml @konflux-ci/qe
+/repos/devlake.yaml @konflux-ci/konflux-devprod-team
 /repos/operator-toolkit.yaml @konflux-ci/release-service-maintainers
 /repos/image-controller.yaml @konflux-ci/build-maintainers
 /repos/coverage-dashboard.yaml @konflux-ci/Vanguard
