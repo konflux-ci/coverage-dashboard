@@ -21,6 +21,7 @@
 /repos/release-service.yaml @querti @mmalina @elenagerman
 /repos/internal-services.yaml @querti @mmalina
 
+/repos/kite-bridge-operator.yaml @JoaoPedroPP 
 /repos/operator-toolkit.yaml @konflux-ci/release-service-maintainers
 /repos/image-controller.yaml @konflux-ci/build-maintainers
 /repos/coverage-dashboard.yaml @konflux-ci/Vanguard
