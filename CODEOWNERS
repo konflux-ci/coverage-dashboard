@@ -21,6 +21,7 @@
 /repos/release-service.yaml @querti @mmalina @elenagerman
 /repos/internal-services.yaml @querti @mmalina
 
+/repos/namespace-generator.yaml @konflux-ci/Vanguard @gbenhaim
 /repos/image-rbac-proxy.yaml @konflux-ci/integration-service-maintainers
 /repos/kargo.yaml @ifireball
 /repos/repository-validator.yaml @gbenhaim
