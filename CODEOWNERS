@@ -22,6 +22,10 @@
 /repos/internal-services.yaml @querti @mmalina
 
 /repos/konflux-build-cli.yaml @konflux-ci/build-maintainers
+/repos/kargo.yaml @ifireball
+/repos/repository-validator.yaml @gbenhaim
+/repos/sprayproxy.yaml @konflux-ci/qe
+/repos/kueue-external-admission.yaml @gbenhaim @filariow @enkeefe00
 /repos/coverport.yaml @konflux-ci/qe
 /repos/devlake.yaml @konflux-ci/konflux-devprod-team
 /repos/operator-toolkit.yaml @konflux-ci/release-service-maintainers
