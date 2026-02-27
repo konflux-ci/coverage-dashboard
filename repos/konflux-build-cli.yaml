@@ -1,0 +1,21 @@
+name: konflux-ci/konflux-build-cli
+exclude_dirs:
+    - vendor/
+    - .github/
+    - .tekton/
+    - hack/
+    - proto/
+    - test/
+    - tests/
+    - integration-tests/
+    - integration_tests/
+    - /fake(/|$)
+    - /mock(s)?(/|$)
+    - /e2e(-tests)?(/|$)
+    - docs/
+exclude_files:
+    - zz_generated.deepcopy.go
+    - openapi_generated.go
+    - '*.pb.go'
+    - mock_*.go
+    - '*_mock.go'
