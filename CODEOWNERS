@@ -21,6 +21,7 @@
 /repos/release-service.yaml @querti @mmalina @elenagerman
 /repos/internal-services.yaml @querti @mmalina
 
+/repos/renovate-log-analyzer.yaml @konflux-ci/mintmaker-maintainers
 /repos/kargo.yaml @ifireball
 /repos/repository-validator.yaml @gbenhaim
 /repos/sprayproxy.yaml @konflux-ci/qe
