@@ -22,6 +22,7 @@
 /repos/internal-services.yaml @querti @mmalina
 
 /repos/image-rbac-proxy.yaml @konflux-ci/integration-service-maintainers
+/repos/kargo.yaml @ifireball
 /repos/repository-validator.yaml @gbenhaim
 /repos/sprayproxy.yaml @konflux-ci/qe
 /repos/kueue-external-admission.yaml @gbenhaim @filariow @enkeefe00
