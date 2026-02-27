@@ -8,6 +8,7 @@ exclude_dirs:
     - test/
     - tests/
     - integration-tests/
+    - integration_tests/
     - /fake(/|$)
     - /mock(s)?(/|$)
     - /e2e(-tests)?(/|$)
