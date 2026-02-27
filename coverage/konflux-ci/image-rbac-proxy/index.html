@@ -1,0 +1,867 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>handlers: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">image-rbac-proxy/pkg/handlers/auth.go (83.9%)</option>
+				
+				<option value="file1">image-rbac-proxy/pkg/handlers/backend.go (87.0%)</option>
+				
+				<option value="file2">image-rbac-proxy/pkg/handlers/oauth.go (67.4%)</option>
+				
+				<option value="file3">image-rbac-proxy/pkg/handlers/ping.go (66.7%)</option>
+				
+				<option value="file4">image-rbac-proxy/pkg/handlers/quay_auth.go (90.3%)</option>
+				
+				<option value="file5">image-rbac-proxy/pkg/middleware/authz.go (87.7%)</option>
+				
+				<option value="file6">image-rbac-proxy/pkg/utils/error.go (100.0%)</option>
+				
+				<option value="file7">image-rbac-proxy/pkg/utils/memcache.go (0.0%)</option>
+				
+				<option value="file8">image-rbac-proxy/pkg/utils/token.go (90.9%)</option>
+				
+				<option value="file9">image-rbac-proxy/pkg/utils/url.go (75.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package handlers
+
+import (
+        "context"
+        "encoding/json"
+        "net/http"
+        "os"
+
+        authenticationv1 "k8s.io/api/authentication/v1"
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        "github.com/sirupsen/logrus"
+        "k8s.io/client-go/kubernetes"
+        "k8s.io/client-go/rest"
+
+        "image-rbac-proxy/pkg/utils"
+)
+
+// AuthHandler issues auth token for podman
+func AuthHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        // Use the password as the token
+        _, token, ok := r.BasicAuth()
+        if !ok </span><span class="cov8" title="1">{
+                utils.ErrorHTTPResponse(w, utils.Unauthorized, "No basic auth credentials provided")
+                return
+        }</span>
+
+        <span class="cov8" title="1">username := ""
+        claims := utils.TokenClaims(token)
+        if claims != nil </span><span class="cov8" title="1">{
+                if claims.Issuer == os.Getenv("DEX_URL") </span><span class="cov8" title="1">{
+                        // Verify user's token issued by dex
+                        username, _ = VerifyIDToken(token)
+                }</span> else<span class="cov8" title="1"> {
+                        // Verify serive account's token issued by OpenShift
+                        username = VerifyServiceAccount(token)
+                }</span>
+        }
+        <span class="cov8" title="1">if username != "" </span><span class="cov8" title="1">{
+                logrus.Printf("Verified user: %s", username)
+                data := map[string]string{
+                        "token": token,
+                }
+                w.Header().Set("Content-Type", "application/json")
+                json.NewEncoder(w).Encode(data)
+        }</span> else<span class="cov8" title="1"> {
+                utils.ErrorHTTPResponse(w, utils.Unauthorized, "Token is invalid or expired")
+        }</span>
+}
+
+func VerifyServiceAccount(token string) string <span class="cov8" title="1">{
+        config := &amp;rest.Config{
+                Host:        os.Getenv("CLUSTER_URL"),
+                BearerToken: os.Getenv("OAUTH_TOKEN"),
+        }
+
+        // Create a Kubernetes client
+        client, err := kubernetes.NewForConfig(config)
+        if err != nil </span><span class="cov0" title="0">{
+                logrus.Errorf("Error creating Kubernetes client: %s", err)
+                return ""
+        }</span>
+
+        // Verify service account token
+        <span class="cov8" title="1">tr := &amp;authenticationv1.TokenReview{
+                Spec: authenticationv1.TokenReviewSpec{
+                        Token:     token,
+                },
+        }
+        response, err := client.AuthenticationV1().TokenReviews().Create(context.Background(), tr, metav1.CreateOptions{})
+
+        if err != nil </span><span class="cov8" title="1">{
+                logrus.Errorf("Token review failed with error: %s", err)
+                return ""
+        }</span>
+
+        <span class="cov8" title="1">if !response.Status.Authenticated </span><span class="cov0" title="0">{
+                if response.Status.Error != "" </span><span class="cov0" title="0">{
+                        logrus.Errorf("Token is not authenticated: %s", response.Status.Error)
+                }</span>
+                <span class="cov0" title="0">return ""</span>
+        }
+
+        <span class="cov8" title="1">return response.Status.User.Username</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package handlers
+
+import (
+        "net/http"
+        "net/http/httputil"
+        "net/url"
+
+        "github.com/sirupsen/logrus"
+
+        "image-rbac-proxy/pkg/utils"
+)
+
+var BackendRegistry *BackendProxy
+
+// BackendProxy is a ReverseProxy pointer for the backend registry
+type BackendProxy struct {
+        URL       string
+        Proxy     *httputil.ReverseProxy
+        Auth      BackendAuth
+}
+
+// BackendAuth provides methods to authenticate to a backend registry
+type BackendAuth interface {
+        AuthorizationHeader(*BackendProxy, string) (string, error)
+}
+
+// RegistryHandler is the handler that enforces authentication
+func RegistryHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        if r.URL.Path == "/v2/" </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">bp := BackendRegistry
+        repoName := utils.RepoFromPath(r.URL.Path)
+
+        header, err := bp.Auth.AuthorizationHeader(bp, repoName)
+        if err != nil </span><span class="cov8" title="1">{
+                logrus.Errorf("Unable to fetch credentials for registry backend: %s", err)
+                utils.ErrorHTTPResponse(w, utils.Unavailable, "Server error encountered while fetching credentials")
+                return
+        }</span>
+        <span class="cov8" title="1">r.Header.Set("Authorization", header)
+
+        bp.ProxyHandler(w, r)</span>
+}
+
+// ProxyHandler simply proxies the request to the backend
+func (bp *BackendProxy) ProxyHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        if bp.Proxy == nil </span><span class="cov8" title="1">{
+                bp.Initialize(r)
+        }</span>
+
+        <span class="cov8" title="1">bp.Proxy.ServeHTTP(w, r)</span>
+}
+
+// Initialize sets up the transport and client for the reverse proxy
+func (bp *BackendProxy) Initialize(r *http.Request) <span class="cov8" title="1">{
+        // create the reverse proxy
+        bp.Proxy = &amp;httputil.ReverseProxy{
+                Director: func(req *http.Request) </span><span class="cov8" title="1">{
+                        req.URL.Host = bp.GetURL().Host
+                        req.URL.Scheme = bp.GetURL().Scheme
+                        req.Host = bp.GetURL().Host
+                }</span>,
+                ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) <span class="cov0" title="0">{
+                        logrus.WithError(err).Error("Backend request failed")
+                        utils.ErrorHTTPResponse(w, utils.Unavailable, "Server error encountered while handling request")
+                        return
+                }</span>,
+        }
+}
+
+// GetURL returns a URL from the configured string
+func (bp *BackendProxy) GetURL() *url.URL <span class="cov8" title="1">{
+        u, _ := url.Parse(bp.URL)
+        return u
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package handlers
+
+import (
+        "context"
+        "os"
+        "crypto/rand"
+        "encoding/base64"
+        "net/http"
+
+        "github.com/coreos/go-oidc/v3/oidc"
+        "github.com/sirupsen/logrus"
+        "golang.org/x/oauth2"
+
+        "image-rbac-proxy/pkg/utils"
+)
+
+func newProvider() *oidc.Provider <span class="cov8" title="1">{
+        provider, err := oidc.NewProvider(context.Background(), os.Getenv("DEX_URL"))
+        if err != nil </span><span class="cov0" title="0">{
+                logrus.Errorf("Error oidc provider: %s", err)
+                return nil
+        }</span>
+        <span class="cov8" title="1">return provider</span>
+}
+
+func getOauthConfig() oauth2.Config <span class="cov8" title="1">{
+        provider := newProvider()
+        if provider == nil </span><span class="cov0" title="0">{
+                return oauth2.Config{}
+        }</span>
+
+        <span class="cov8" title="1">oauth2Config := oauth2.Config{
+                ClientID:     os.Getenv("DEX_CLIENT_ID"),
+                ClientSecret: os.Getenv("DEX_CLIENT_SECRET"),
+                RedirectURL:  os.Getenv("PROXY_URL") + "/oauth/callback",
+                Endpoint:     provider.Endpoint(),
+                Scopes:       []string{oidc.ScopeOpenID, "email", "groups"},
+        }
+
+        return oauth2Config</span>
+}
+
+func newState() string <span class="cov8" title="1">{
+        b := make([]byte, 32)
+        rand.Read(b)
+        return base64.URLEncoding.EncodeToString(b)
+}</span>
+
+// OauthHandler redirects user to dex
+func OauthHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        oauth2Config := getOauthConfig()
+        state := newState()
+        if oauth2Config.ClientID != "" </span><span class="cov8" title="1">{
+                http.Redirect(w, r, oauth2Config.AuthCodeURL(state), http.StatusFound)
+        }</span> else<span class="cov0" title="0"> {
+                utils.ErrorHTTPResponse(w, utils.Unavailable, "Error getting oauth config")
+                return
+        }</span>
+}
+
+// OauthCallbackHandler issues oauth token
+func OauthCallbackHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        oauth2Config := getOauthConfig()
+        if oauth2Config.ClientID == "" </span><span class="cov0" title="0">{
+                utils.ErrorHTTPResponse(w, utils.Unavailable, "Error getting oauth config")
+                return
+        }</span>
+
+        // Exchange code for token
+        <span class="cov8" title="1">oauth2Token, err := oauth2Config.Exchange(context.Background(), r.URL.Query().Get("code"))
+        if err != nil </span><span class="cov0" title="0">{
+                utils.ErrorHTTPResponse(w, utils.Unavailable, "Error getting token from dex")
+                return
+        }</span>
+
+        // Extract the ID Token from OAuth2 token
+        <span class="cov8" title="1">rawIDToken, ok := oauth2Token.Extra("id_token").(string)
+        if !ok </span><span class="cov0" title="0">{
+                utils.ErrorHTTPResponse(w, utils.Unavailable, "Missing id_token")
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Write([]byte(rawIDToken))</span>
+}
+
+func VerifyIDToken(token string) (string, []string) <span class="cov8" title="1">{
+        provider := newProvider()
+        if provider == nil </span><span class="cov0" title="0">{
+                return "", []string{}
+        }</span>
+        <span class="cov8" title="1">idTokenVerifier := provider.Verifier(&amp;oidc.Config{ClientID: os.Getenv("DEX_CLIENT_ID")})
+        idToken, err := idTokenVerifier.Verify(context.Background(), token)
+        if err != nil </span><span class="cov0" title="0">{
+                logrus.Errorf("Error verifying token: %s", err)
+                return "", []string{}
+        }</span>
+
+        // Extract name
+        <span class="cov8" title="1">var claims struct {
+                Email  string   `json:"email"`
+                Groups []string `json:"groups"`
+        }
+        idToken.Claims(&amp;claims)
+        return claims.Email, claims.Groups</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package handlers
+
+import (
+        "net/http"
+
+        "github.com/sirupsen/logrus"
+)
+
+// PingHandler simply responds with a pong
+func PingHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        _, err := w.Write([]byte("pong"))
+        if err != nil </span><span class="cov0" title="0">{
+                logrus.Errorf("Ping failed with error: %s", err)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package handlers
+
+import (
+        "context"
+        "encoding/json"
+        "errors"
+        "fmt"
+        "io"
+        "net/http"
+        "net/url"
+        "time"
+
+        "github.com/google/go-containerregistry/pkg/name"
+        "github.com/google/go-containerregistry/pkg/v1/remote/transport"
+        "github.com/sirupsen/logrus"
+
+        "image-rbac-proxy/pkg/utils"
+)
+
+// TokenAuth contains credentials to be exchanged for a token
+type TokenAuth struct {
+        username    string
+        password    string
+        tokenClient *http.Client
+}
+
+type tokenResponse struct {
+        Token       string
+}
+
+// NewTokenAuth constructs a TokenAuth struct
+func NewTokenAuth(user, pass string) *TokenAuth <span class="cov8" title="1">{
+        return &amp;TokenAuth{username: user, password: pass}
+}</span>
+
+// AuthorizationHeader returns an Authorization header to be sent upstream
+func (a *TokenAuth) AuthorizationHeader(bp *BackendProxy, repo string) (string, error) <span class="cov8" title="1">{
+        if a == nil </span><span class="cov0" title="0">{
+                return "", nil
+        }</span>
+
+        <span class="cov8" title="1">if len(a.username) == 0 || len(a.password) == 0 </span><span class="cov8" title="1">{
+                return "", errors.New("username and password are not specified")
+        }</span>
+
+        <span class="cov8" title="1">var rawToken string
+        // Check cache for token
+        if utils.CacheClient != nil </span><span class="cov8" title="1">{
+                err := utils.CacheClient.Get(repo, &amp;rawToken)
+                if err != nil </span><span class="cov8" title="1">{
+                        logrus.Error(err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">if len(rawToken) == 0 || !utils.IsValidToken(rawToken) </span><span class="cov8" title="1">{
+                t, err := a.requestToken(bp.URL, repo)
+                if err != nil </span><span class="cov8" title="1">{
+                        return "", fmt.Errorf("unable to request access token for repo %s: %s", repo, err)
+                }</span>
+                <span class="cov8" title="1">rawToken = t</span>
+        }
+
+        // Return the token
+        <span class="cov8" title="1">return "Bearer " + rawToken, nil</span>
+}
+
+func (a *TokenAuth) requestToken(registryURL string, repo string) (string, error) <span class="cov8" title="1">{
+        // Initialize HTTP client if needed
+        if a.tokenClient == nil </span><span class="cov8" title="1">{
+                a.tokenClient = &amp;http.Client{}
+        }</span>
+
+        // Obtain auth challenge from the backend registry
+        <span class="cov8" title="1">registryAsURL, err := url.Parse(registryURL)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("unable parse registry url: %s", err)
+        }</span>
+
+        <span class="cov8" title="1">registry, err := name.NewRegistry(registryAsURL.Host)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("unable create new registry: %s", err)
+        }</span>
+
+        <span class="cov8" title="1">challenge, err := transport.Ping(context.Background(), registry, a.tokenClient.Transport)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("unable to get auth challenge from backend registry: %s", err)
+        }</span>
+
+        <span class="cov8" title="1">if len(challenge.Parameters) == 0 </span><span class="cov8" title="1">{
+                return "", errors.New("no auth challenge presented by backend registry")
+        }</span>
+
+        // Build token request
+        <span class="cov8" title="1">tokenURL, err := url.Parse(challenge.Parameters["realm"])
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("unable parse token realm url: %s", err)
+        }</span>
+
+        <span class="cov8" title="1">params := url.Values{}
+        params.Add("service", challenge.Parameters["service"])
+        params.Add("client_id", "image-rbac-proxy")
+        params.Add("scope", fmt.Sprintf("repository:%s:%s", repo, transport.PullScope))
+        tokenURL.RawQuery = params.Encode()
+
+        // Get token
+        tokenReq, _ := http.NewRequest("GET", tokenURL.String(), nil)
+        tokenReq.SetBasicAuth(a.username, a.password)
+        resp, err := a.tokenClient.Do(tokenReq)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("unable to request token from backend registry: %s", err)
+        }</span>
+
+        <span class="cov8" title="1">defer resp.Body.Close()
+        body, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("unable to read body from token response: %s", err)
+        }</span>
+
+        <span class="cov8" title="1">if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("invalid status received from token endpoint: %s", body)
+        }</span>
+
+        <span class="cov8" title="1">var tokenResp tokenResponse
+        err = json.Unmarshal(body, &amp;tokenResp)
+        if err != nil </span><span class="cov0" title="0">{
+                logrus.Error(err)
+        }</span>
+
+        <span class="cov8" title="1">if len(tokenResp.Token) == 0 </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("no token received in response")
+        }</span>
+        <span class="cov8" title="1">token := tokenResp.Token
+
+        // Store the token
+        if utils.CacheClient != nil </span><span class="cov8" title="1">{
+                claims := utils.TokenClaims(token)
+                ttl := claims.ExpiresAt - time.Now().Unix() - 30
+                err = utils.CacheClient.Set(repo, token, int(ttl))
+                if err != nil </span><span class="cov0" title="0">{
+                        logrus.Error(err)
+                }</span>
+        }
+        <span class="cov8" title="1">return token, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package middleware
+
+import (
+        "context"
+        "fmt"
+        "net/http"
+        "os"
+        "strings"
+
+        authorizationv1 "k8s.io/api/authorization/v1"
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        "github.com/sirupsen/logrus"
+        "k8s.io/client-go/kubernetes"
+        "k8s.io/client-go/rest"
+
+        "image-rbac-proxy/pkg/handlers"
+        "image-rbac-proxy/pkg/utils"
+)
+
+// Auth is middleware to extract a token from a request and verify if it can access repo
+func Authz(next http.Handler) http.Handler <span class="cov8" title="1">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                // Enforce auth if needed
+                if strings.HasPrefix(r.URL.Path, "/v2") </span><span class="cov8" title="1">{
+                        logrus.Printf("%s %s", r.Method, r.URL.Path)
+                        token := getToken(r)
+
+                        // Issue an auth challenge and error if no token
+                        if token == "" </span><span class="cov8" title="1">{
+                                challenge := fmt.Sprintf("Bearer realm=\"%s/auth\"", os.Getenv("PROXY_URL"))
+                                w.Header().Add("WWW-Authenticate", challenge)
+                                utils.ErrorHTTPResponse(w, utils.Unauthorized, "Access to the requested resource is not authorized")
+                                return
+                        }</span> else<span class="cov8" title="1"> {
+                                if r.URL.Path == "/v2/" </span><span class="cov8" title="1">{
+                                        return
+                                }</span>
+
+                                <span class="cov8" title="1">repoName := utils.RepoFromPath(r.URL.Path)
+                                if repoName == "" </span><span class="cov0" title="0">{
+                                        utils.ErrorHTTPResponse(w, utils.Unauthorized, "Proxy has no access to the requested resource")
+                                        return
+                                }</span>
+                                <span class="cov8" title="1">quay_namespace := strings.Split(repoName, "/")[0]
+                                ocp_namespace := strings.Split(repoName, "/")[1]
+                                if quay_namespace != os.Getenv("BACKEND_NAMESPACE") </span><span class="cov8" title="1">{
+                                        utils.ErrorHTTPResponse(w, utils.Unauthorized, "Proxy has no access to " + quay_namespace)
+                                        return
+                                }</span>
+
+                                // Get username from token
+                                <span class="cov8" title="1">var username string
+                                var groups []string
+                                claims := utils.TokenClaims(token)
+                                if claims != nil </span><span class="cov8" title="1">{
+                                        if claims.Issuer == os.Getenv("DEX_URL") </span><span class="cov0" title="0">{
+                                                // Verify user's token issued by dex
+                                                username, groups = handlers.VerifyIDToken(token)
+                                        }</span> else<span class="cov8" title="1"> {
+                                                // Verify serive account's token issued by OpenShift
+                                                username = handlers.VerifyServiceAccount(token)
+                                                groups = append(groups, "system:authenticated")
+                                        }</span>
+                                }
+                                <span class="cov8" title="1">if username == "" </span><span class="cov0" title="0">{
+                                        utils.ErrorHTTPResponse(w, utils.Unauthorized, "Token is invalid or expired")
+                                        return
+                                }</span>
+
+                                // Check permission of the user
+                                <span class="cov8" title="1">authorized := verifyUserPremission(username, groups, ocp_namespace)
+                                if !authorized </span><span class="cov8" title="1">{
+                                        utils.ErrorHTTPResponse(w, utils.Unauthorized, "You do not have permission to read imagerepositories in " + ocp_namespace)
+                                        return
+                                }</span>
+                        }
+                }
+
+                // Call the next handler
+                <span class="cov8" title="1">next.ServeHTTP(w, r)</span>
+        })
+}
+
+func getToken(r *http.Request) (string) <span class="cov8" title="1">{
+        token := ""
+        authParts := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+
+        if strings.ToLower(authParts[0]) == "bearer" </span><span class="cov8" title="1">{
+                token = authParts[1]
+        }</span>
+        <span class="cov8" title="1">return token</span>
+}
+
+func verifyUserPremission(user string, groups []string, namespace string) bool <span class="cov8" title="1">{
+        authorized := false
+        config := &amp;rest.Config{
+                Host:        os.Getenv("CLUSTER_URL"),
+                BearerToken: os.Getenv("OAUTH_TOKEN"),
+        }
+
+        // Create a Kubernetes client
+        client, err := kubernetes.NewForConfig(config)
+        if err != nil </span><span class="cov0" title="0">{
+                logrus.Errorf("Error creating Kubernetes client: %s", err)
+                return authorized
+        }</span>
+
+        <span class="cov8" title="1">verbs := []string{"get", "list", "watch"}
+
+        for _, verb := range verbs </span><span class="cov8" title="1">{
+                // Define the permission we want to check
+                sar := &amp;authorizationv1.SubjectAccessReview{
+                        Spec: authorizationv1.SubjectAccessReviewSpec{
+                                User:               user,
+                                Groups:             groups,
+                                ResourceAttributes: &amp;authorizationv1.ResourceAttributes{
+                                        Group:     "appstudio.redhat.com",
+                                        Version:   "v1alpha1",
+                                        Namespace: namespace,
+                                        Verb:      verb,
+                                        Resource:  "imagerepositories",
+                                },
+                        },
+                }
+
+                // Perform the SubjectAccessReview to check the user's permissions
+                sarResponse, err := client.AuthorizationV1().SubjectAccessReviews().Create(context.Background(), sar, metav1.CreateOptions{})
+                if err != nil </span><span class="cov8" title="1">{
+                        logrus.Errorf("Error performing SubjectAccessReview: %s", err)
+                }</span>
+                <span class="cov8" title="1">if sarResponse.Status.Allowed </span><span class="cov8" title="1">{
+                        authorized = true
+                        break</span>
+                }
+        }
+
+        <span class="cov8" title="1">return authorized</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package utils
+
+import (
+        "encoding/json"
+        "net/http"
+)
+
+// ErrorResponse represents an error formatted for the Distribution API
+type ErrorResponse struct {
+        Errors []Error `json:"errors"`
+}
+
+// Error represents an error represented by the Distribution API
+type Error struct {
+        Code    string   `json:"code"`
+        Message string   `json:"message"`
+        Detail  []string `json:"detail,omitempty"`
+}
+
+// Unauthorized is returned when authentication is required
+const Unauthorized = "UNAUTHORIZED"
+
+// Unavailable is returned when there is a backend service error
+const Unavailable = "UNAVAILABLE"
+
+// ErrorString returns a JSON string representation of an ErrorResponse
+func ErrorString(code, msg string) string <span class="cov8" title="1">{
+        e := Error{
+                Code:    code,
+                Message: msg,
+        }
+        resp, _ := json.Marshal(ErrorResponse{[]Error{e}})
+        return string(resp)
+}</span>
+
+// ErrorHTTPResponse writes an error response that is understood by Distribution clients
+func ErrorHTTPResponse(w http.ResponseWriter, ec string, msg string) <span class="cov8" title="1">{
+        body := ErrorString(ec, msg)
+
+        var status int
+        switch ec </span>{
+        case Unauthorized:<span class="cov8" title="1">
+                status = http.StatusUnauthorized</span>
+        case Unavailable:<span class="cov8" title="1">
+                status = http.StatusServiceUnavailable</span>
+        default:<span class="cov8" title="1">
+                status = http.StatusInternalServerError</span>
+        }
+
+        <span class="cov8" title="1">w.Header().Add("Content-Type", "application/json")
+        w.Header().Add("Docker-Distribution-API-Version", "registry/2.0")
+        w.WriteHeader(status)
+        w.Write([]byte(body))</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package utils
+
+import (
+        "encoding/json"
+        "errors"
+        "fmt"
+
+        "github.com/bradfitz/gomemcache/memcache"
+        "github.com/sirupsen/logrus"
+)
+
+var CacheClient cacheClient
+
+type cacheClient interface {
+        Get(key string, val interface{}) error
+        Set(key string, val interface{}, ttl int) error
+}
+
+type memCache struct {
+        client         *memcache.Client
+}
+
+// Get retrieves a key from memcache
+func (c memCache) Get(key string, val interface{}) error <span class="cov0" title="0">{
+        if c.client == nil </span><span class="cov0" title="0">{
+                return errors.New("memcached client is not initialized")
+        }</span>
+
+        <span class="cov0" title="0">item, err := c.client.Get(key)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("unable to get key from memcache: %s", err)
+        }</span>
+        <span class="cov0" title="0">err = json.Unmarshal(item.Value, val)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("unable to parse item from memcache: %s", err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Set stores a key to memcache with specified TTL
+func (c memCache) Set(key string, val interface{}, ttl int) error <span class="cov0" title="0">{
+        if c.client == nil </span><span class="cov0" title="0">{
+                return errors.New("memcached client is not initialized")
+        }</span>
+
+        <span class="cov0" title="0">bytes, err := json.Marshal(val)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("unable to marshal item: %s", err)
+        }</span>
+
+        <span class="cov0" title="0">item := &amp;memcache.Item{
+                Key:        key,
+                Value:      bytes,
+                Expiration: int32(ttl),
+        }
+        err = c.client.Set(item)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("unable to store item: %s", err)
+        }</span>
+        <span class="cov0" title="0">return err</span>
+}
+
+// Generates a memcache client
+func InitCacheClient(servers []string)<span class="cov0" title="0">{
+        logrus.Infof("Memcache servers: %+v", servers)
+        CacheClient = memCache{
+                client: memcache.New(servers...),
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package utils
+
+import (
+        "time"
+
+        jwt "github.com/dgrijalva/jwt-go"
+)
+
+func TokenClaims(t string) *jwt.StandardClaims <span class="cov8" title="1">{
+        token, _ := jwt.ParseWithClaims(t, &amp;jwt.StandardClaims{}, nil)
+        if token == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">claims, ok := token.Claims.(*jwt.StandardClaims)
+        if !ok </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">return claims</span>
+}
+
+func IsValidToken(t string) bool <span class="cov8" title="1">{
+        claims := TokenClaims(t)
+        if claims != nil &amp;&amp; claims.Valid() == nil &amp;&amp; claims.ExpiresAt &gt; time.Now().Add(30*time.Second).Unix() </span><span class="cov8" title="1">{
+                return true
+        }</span>
+        <span class="cov8" title="1">return false</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package utils
+
+import "regexp"
+
+var repoMatch = regexp.MustCompile(`/v2/(\S+)/(?:manifests|blobs|tags|referrers)/`)
+
+// RepoFromPath returns a repository from a registry API path
+func RepoFromPath(path string) string <span class="cov8" title="1">{
+        match := repoMatch.FindStringSubmatch(path)
+        if len(match) &gt; 1 </span><span class="cov8" title="1">{
+                return match[1]
+        }</span>
+        <span class="cov0" title="0">return ""</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

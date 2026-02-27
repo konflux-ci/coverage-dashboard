@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22494570979",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22497989992",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -114,7 +114,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 71.2,
+      "coverage": 71.3,
       "status": "ok",
       "packages": [
         {
@@ -123,11 +123,30 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 72.0
+          "coverage": 72.2
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
           "coverage": 70.5
+        }
+      ]
+    },
+    {
+      "repo": "konflux-ci/image-rbac-proxy",
+      "coverage": 78.0,
+      "status": "ok",
+      "packages": [
+        {
+          "package": "image-rbac-proxy/pkg/handlers",
+          "coverage": 82.1
+        },
+        {
+          "package": "image-rbac-proxy/pkg/utils",
+          "coverage": 53.1
+        },
+        {
+          "package": "image-rbac-proxy/pkg/middleware",
+          "coverage": 87.7
         }
       ]
     },
@@ -255,12 +274,12 @@
           "coverage": 17.9
         },
         {
-          "package": "github.com/konflux-ci/operator-toolkit/predicates",
-          "coverage": 4.8
-        },
-        {
           "package": "github.com/konflux-ci/operator-toolkit/utils",
           "coverage": 100.0
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/predicates",
+          "coverage": 4.8
         },
         {
           "package": "github.com/konflux-ci/operator-toolkit/conditions",
@@ -402,12 +421,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.4,
+      "coverage": 57.1,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.4
+          "coverage": 57.1
         }
       ]
     },
