@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22589863255",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22596373971",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 78.7
+          "coverage": 78.8
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
@@ -76,6 +76,12 @@
           "coverage": 75.0
         }
       ]
+    },
+    {
+      "repo": "konflux-ci/ci-helper-app",
+      "coverage": null,
+      "status": "failed",
+      "packages": []
     },
     {
       "repo": "konflux-ci/coverage-dashboard",
@@ -273,6 +279,45 @@
       ]
     },
     {
+      "repo": "konflux-ci/multi-platform-controller",
+      "coverage": 53.6,
+      "status": "ok",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun",
+          "coverage": 74.3
+        },
+        {
+          "package": "github.com/konflux-ci/multi-platform-controller/cmd/otp",
+          "coverage": 46.3
+        },
+        {
+          "package": "github.com/konflux-ci/multi-platform-controller/pkg/ibm",
+          "coverage": 10.9
+        },
+        {
+          "package": "github.com/konflux-ci/multi-platform-controller/pkg/aws",
+          "coverage": 38.0
+        },
+        {
+          "package": "github.com/konflux-ci/multi-platform-controller/pkg/config",
+          "coverage": 95.7
+        },
+        {
+          "package": "github.com/konflux-ci/multi-platform-controller/pkg/util",
+          "coverage": 100.0
+        },
+        {
+          "package": "github.com/konflux-ci/multi-platform-controller/pkg/cloud",
+          "coverage": 100.0
+        },
+        {
+          "package": "github.com/konflux-ci/multi-platform-controller/pkg/metrics",
+          "coverage": 67.7
+        }
+      ]
+    },
+    {
       "repo": "konflux-ci/namespace-generator",
       "coverage": null,
       "status": "failed",
@@ -307,12 +352,12 @@
           "coverage": 17.9
         },
         {
-          "package": "github.com/konflux-ci/operator-toolkit/utils",
-          "coverage": 100.0
-        },
-        {
           "package": "github.com/konflux-ci/operator-toolkit/predicates",
           "coverage": 4.8
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/utils",
+          "coverage": 100.0
         },
         {
           "package": "github.com/konflux-ci/operator-toolkit/conditions",
@@ -369,12 +414,12 @@
           "coverage": 79.2
         },
         {
-          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
-          "coverage": 96.2
-        },
-        {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan",
           "coverage": 90.0
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
+          "coverage": 96.2
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/author",
@@ -393,12 +438,12 @@
           "coverage": 78.6
         },
         {
-          "package": "github.com/konflux-ci/release-service/syncer",
-          "coverage": 90.0
-        },
-        {
           "package": "github.com/konflux-ci/release-service/tekton/utils",
           "coverage": 94.6
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/syncer",
+          "coverage": 90.0
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release",
@@ -449,23 +494,23 @@
           "coverage": 84.4
         },
         {
-          "package": "github.com/redhat-appstudio/segment-bridge.git/scripts",
-          "coverage": 50.0
-        },
-        {
           "package": "github.com/redhat-appstudio/segment-bridge.git/querygen",
           "coverage": 98.2
+        },
+        {
+          "package": "github.com/redhat-appstudio/segment-bridge.git/scripts",
+          "coverage": 50.0
         }
       ]
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.4,
+      "coverage": 57.1,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.4
+          "coverage": 57.1
         }
       ]
     },
