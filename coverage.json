@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22501190885",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22560610288",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -49,12 +49,12 @@
           "coverage": 100.0
         },
         {
-          "package": "github.com/konflux-ci/build-service/pkg/git/gitlab",
-          "coverage": 5.6
-        },
-        {
           "package": "github.com/konflux-ci/build-service/pkg/git/github",
           "coverage": 0.0
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git/gitlab",
+          "coverage": 5.6
         }
       ]
     },
@@ -114,7 +114,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 71.1,
+      "coverage": 71.3,
       "status": "ok",
       "packages": [
         {
@@ -123,7 +123,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 71.8
+          "coverage": 72.2
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -280,12 +280,12 @@
           "coverage": 17.9
         },
         {
-          "package": "github.com/konflux-ci/operator-toolkit/utils",
-          "coverage": 100.0
-        },
-        {
           "package": "github.com/konflux-ci/operator-toolkit/predicates",
           "coverage": 4.8
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/utils",
+          "coverage": 100.0
         },
         {
           "package": "github.com/konflux-ci/operator-toolkit/conditions",
@@ -354,12 +354,12 @@
           "coverage": 91.4
         },
         {
-          "package": "github.com/konflux-ci/release-service/metadata",
-          "coverage": 100.0
-        },
-        {
           "package": "github.com/konflux-ci/release-service/controllers/release",
           "coverage": 83.7
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/metadata",
+          "coverage": 100.0
         },
         {
           "package": "github.com/konflux-ci/release-service/loader",
@@ -416,23 +416,23 @@
           "coverage": 84.4
         },
         {
-          "package": "github.com/redhat-appstudio/segment-bridge.git/scripts",
-          "coverage": 50.0
-        },
-        {
           "package": "github.com/redhat-appstudio/segment-bridge.git/querygen",
           "coverage": 98.2
+        },
+        {
+          "package": "github.com/redhat-appstudio/segment-bridge.git/scripts",
+          "coverage": 50.0
         }
       ]
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.4,
+      "coverage": 57.1,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.4
+          "coverage": 57.1
         }
       ]
     },
