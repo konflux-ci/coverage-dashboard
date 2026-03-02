@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22560610288",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22583570651",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 52.6,
+      "coverage": 52.8,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 78.6
+          "coverage": 78.9
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/common",
@@ -49,12 +49,12 @@
           "coverage": 100.0
         },
         {
-          "package": "github.com/konflux-ci/build-service/pkg/git/github",
-          "coverage": 0.0
-        },
-        {
           "package": "github.com/konflux-ci/build-service/pkg/git/gitlab",
           "coverage": 5.6
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git/github",
+          "coverage": 0.0
         }
       ]
     },
@@ -114,7 +114,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 71.3,
+      "coverage": 71.4,
       "status": "ok",
       "packages": [
         {
@@ -123,7 +123,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 72.2
+          "coverage": 72.4
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -152,7 +152,7 @@
     },
     {
       "repo": "konflux-ci/integration-service",
-      "coverage": 68.4,
+      "coverage": 68.5,
       "status": "ok",
       "packages": [
         {
@@ -177,7 +177,7 @@
         },
         {
           "package": "github.com/konflux-ci/integration-service/cmd/snapshotgc",
-          "coverage": 79.2
+          "coverage": 79.5
         }
       ]
     },
@@ -246,6 +246,33 @@
       "packages": []
     },
     {
+      "repo": "konflux-ci/mintmaker",
+      "coverage": 45.1,
+      "status": "ok",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/mintmaker/tools/osv-generator",
+          "coverage": 78.3
+        },
+        {
+          "package": "github.com/konflux-ci/mintmaker/internal/controller",
+          "coverage": 64.4
+        },
+        {
+          "package": "github.com/konflux-ci/mintmaker/internal/tekton",
+          "coverage": 0.0
+        },
+        {
+          "package": "github.com/konflux-ci/mintmaker/internal/component/github",
+          "coverage": 17.9
+        },
+        {
+          "package": "github.com/konflux-ci/mintmaker/internal/utils",
+          "coverage": 21.3
+        }
+      ]
+    },
+    {
       "repo": "konflux-ci/namespace-generator",
       "coverage": null,
       "status": "failed",
@@ -280,12 +307,12 @@
           "coverage": 17.9
         },
         {
-          "package": "github.com/konflux-ci/operator-toolkit/predicates",
-          "coverage": 4.8
-        },
-        {
           "package": "github.com/konflux-ci/operator-toolkit/utils",
           "coverage": 100.0
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/predicates",
+          "coverage": 4.8
         },
         {
           "package": "github.com/konflux-ci/operator-toolkit/conditions",
@@ -366,12 +393,12 @@
           "coverage": 78.6
         },
         {
-          "package": "github.com/konflux-ci/release-service/syncer",
-          "coverage": 90.0
-        },
-        {
           "package": "github.com/konflux-ci/release-service/tekton/utils",
           "coverage": 94.6
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/syncer",
+          "coverage": 90.0
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release",

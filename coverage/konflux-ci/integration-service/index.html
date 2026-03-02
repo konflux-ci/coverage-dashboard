@@ -61,7 +61,7 @@
 				
 				<option value="file2">github.com/konflux-ci/integration-service/api/v1beta2/integrationtestscenario_types.go (100.0%)</option>
 				
-				<option value="file3">github.com/konflux-ci/integration-service/cmd/snapshotgc/snapshotgc.go (79.2%)</option>
+				<option value="file3">github.com/konflux-ci/integration-service/cmd/snapshotgc/snapshotgc.go (79.5%)</option>
 				
 				<option value="file4">github.com/konflux-ci/integration-service/git/github/github.go (79.4%)</option>
 				
@@ -480,6 +480,7 @@ import (
         "sort"
         "strconv"
         "strings"
+        "time"
 
         "github.com/go-logr/logr"
         applicationapiv1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
@@ -505,7 +506,9 @@ var (
 )
 
 const (
-        // Annotation that can be manually added by users to preven the deleion of a snapshot
+        // Annotation that can be manually added by users to preven the deletion of a snapshot, they can also
+        // define the TTL of snapshot by providing time in following format: 10h28m9s
+        // in case the format is not correct the snapshot is considered to deletion
         KeepSnapshotAnnotation = "test.appstudio.openshift.io/keep-snapshot"
         // PRStatusAnnotation contains the status of the PR, it is marked as "merged" when the push build pipelinerun is triggered
         PRStatusAnnotation = "test.appstudio.openshift.io/pr-status"
@@ -573,7 +576,7 @@ func garbageCollectSnapshots(
                         "count of unassociated snapshots", len(candidates),
                 )
 
-                candidates, keptPrSnapshots, keptNonPrSnapshots := filterSnapshotsWithKeepSnapshotAnnotation(candidates)
+                candidates, keptPrSnapshots, keptNonPrSnapshots := filterSnapshotsWithKeepSnapshotAnnotation(candidates, logger)
                 localPrSnapshotsToKeep -= keptPrSnapshots
                 // Both the Snapshots associated with Releases and ones that have been marked with
                 // the keep snapshot annotation count against the non-PR limit
@@ -760,17 +763,50 @@ func isNonPrSnapshot(
         <span class="cov8" title="1">return false</span>
 }
 
+// Returns true if snapshots TTL has expired, for TTL snapshot annotation only
+// Returns false otherwise
+func isPastTTL(
+        snapshot applicationapiv1alpha1.Snapshot,
+        logger logr.Logger,
+) bool <span class="cov8" title="1">{
+        currentTime := metav1.Now()
+        creationTime := snapshot.GetCreationTimestamp().Time
+        if creationTime.IsZero() </span><span class="cov0" title="0">{
+                return false
+        }</span>
+        <span class="cov8" title="1">label, found := snapshot.GetAnnotations()["test.appstudio.openshift.io/keep-snapshot"]
+        ttl, _ := time.ParseDuration(label)
+        if ttl.String() == "0s" </span><span class="cov8" title="1">{
+                logger.V(1).Info(
+                        "Keep-snapshot annotation has invalid value, snapshot will be garbage collected if it is pull-request type.",
+                        "namespace", snapshot.Namespace,
+                        "snapshot.name", snapshot.Name,
+                )
+                return true
+        }</span> else<span class="cov8" title="1"> {
+                // calculate diff between creationTimestamp and currentTime()
+                diff := currentTime.Sub(creationTime)
+                if diff &gt;= ttl &amp;&amp; found </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+        <span class="cov0" title="0">return false</span>
+}
+
 // Removes snapshots with the KeepSnapshotAnnotation from the list of candidate
 // snapshots.  Returns a new slice without the reserved snapshots plus the
 // number of PR and non-pr snapshots that were reserved
+// also checks if the TTL format for keep-snapshot has been provided and remove snapshot
+// in case it lives past TTL
 func filterSnapshotsWithKeepSnapshotAnnotation(
         snapshots []applicationapiv1alpha1.Snapshot,
+        logger logr.Logger,
 ) ([]applicationapiv1alpha1.Snapshot, int, int) <span class="cov8" title="1">{
         nonReservedSnapshots := make([]applicationapiv1alpha1.Snapshot, 0, len(snapshots))
         keptNonPrSnapshots := 0
         keptPrSnapshots := 0
         for _, snap := range snapshots </span><span class="cov8" title="1">{
-                if metadata.HasAnnotationWithValue(&amp;snap, "test.appstudio.openshift.io/keep-snapshot", "true") </span><span class="cov8" title="1">{
+                if metadata.HasAnnotationWithValue(&amp;snap, "test.appstudio.openshift.io/keep-snapshot", "true") || (metadata.HasAnnotation(&amp;snap, "test.appstudio.openshift.io/keep-snapshot") &amp;&amp; !isPastTTL(snap, logger)) </span><span class="cov8" title="1">{
                         if isNonPrSnapshot(snap) </span><span class="cov8" title="1">{
                                 keptNonPrSnapshots++
                         }</span> else<span class="cov8" title="1"> {

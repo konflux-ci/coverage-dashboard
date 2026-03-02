@@ -1,0 +1,2873 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>github: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/konflux-ci/mintmaker/internal/component/github/cache.go (75.0%)</option>
+				
+				<option value="file1">github.com/konflux-ci/mintmaker/internal/component/github/github.go (0.0%)</option>
+				
+				<option value="file2">github.com/konflux-ci/mintmaker/internal/controller/common.go (0.0%)</option>
+				
+				<option value="file3">github.com/konflux-ci/mintmaker/internal/controller/dependencyupdatecheck_controller.go (64.6%)</option>
+				
+				<option value="file4">github.com/konflux-ci/mintmaker/internal/controller/event_controller.go (75.2%)</option>
+				
+				<option value="file5">github.com/konflux-ci/mintmaker/internal/controller/pipelinerun_controller.go (92.3%)</option>
+				
+				<option value="file6">github.com/konflux-ci/mintmaker/internal/tekton/pipeline_run_builder.go (0.0%)</option>
+				
+				<option value="file7">github.com/konflux-ci/mintmaker/internal/utils/random.go (75.0%)</option>
+				
+				<option value="file8">github.com/konflux-ci/mintmaker/internal/utils/sanitize.go (100.0%)</option>
+				
+				<option value="file9">github.com/konflux-ci/mintmaker/internal/utils/utils.go (0.0%)</option>
+				
+				<option value="file10">github.com/konflux-ci/mintmaker/tools/osv-generator/cve_parser.go (81.6%)</option>
+				
+				<option value="file11">github.com/konflux-ci/mintmaker/tools/osv-generator/generator.go (72.9%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package github
+
+import (
+        "sync"
+        "sync/atomic"
+        "time"
+
+        "github.com/konflux-ci/mintmaker/internal/config"
+)
+
+// StaleAllowedCache refreshes data in the background while optionally
+// serving stale data to maintain low latency during refreshes.
+type StaleAllowedCache struct {
+        data              sync.Map
+        expiry            atomic.Value
+        refreshMutex      sync.Mutex
+        refreshInProgress bool
+        refreshDone       chan struct{}
+        refreshPeriod     time.Duration
+        refreshFunc       func() (interface{}, error)
+}
+
+func NewStaleAllowedCache(refreshPeriod time.Duration, refreshFunc func() (interface{}, error)) *StaleAllowedCache <span class="cov8" title="1">{
+        expiryTime := time.Now().Add(refreshPeriod)
+        c := &amp;StaleAllowedCache{
+                refreshPeriod: refreshPeriod,
+                refreshFunc:   refreshFunc,
+        }
+        c.expiry.Store(expiryTime)
+        return c
+}</span>
+
+// Get returns data from the cache, possibly stale data if a refresh
+// is currently in progress. On first access, this call will block
+// until data is available.
+func (c *StaleAllowedCache) Get(key string) (interface{}, bool) <span class="cov8" title="1">{
+        value, ok := c.data.Load(key)
+        expiryTime := c.expiry.Load().(time.Time)
+
+        needsRefresh := !ok || time.Now().After(expiryTime)
+        if !needsRefresh </span><span class="cov8" title="1">{
+                return value, ok
+        }</span>
+        // Refresh the cache and get data
+        <span class="cov8" title="1">return c.getWithRefresh(key)</span>
+}
+
+func (c *StaleAllowedCache) getWithRefresh(key string) (interface{}, bool) <span class="cov8" title="1">{
+        c.refreshMutex.Lock()
+
+        // There is refresh in progress, wait for it to be finished and get the data
+        if c.refreshInProgress </span><span class="cov8" title="1">{
+                done := c.refreshDone
+                c.refreshMutex.Unlock()
+
+                &lt;-done
+                return c.data.Load(key)
+        }</span>
+
+        // Re-check if data exists and is still fresh after acquiring the lock.
+        // Another goroutine may have completed a refresh while we were waiting.
+        <span class="cov8" title="1">value, exists := c.data.Load(key)
+        expiryTime := c.expiry.Load().(time.Time)
+        if exists &amp;&amp; !time.Now().After(expiryTime) </span><span class="cov0" title="0">{
+                c.refreshMutex.Unlock()
+                return value, true
+        }</span>
+
+        // We're going to refresh the cache
+        <span class="cov8" title="1">c.refreshInProgress = true
+        c.refreshDone = make(chan struct{})
+        refreshDone := c.refreshDone
+        c.refreshMutex.Unlock()
+
+        cleanup := func() </span><span class="cov8" title="1">{
+                c.refreshMutex.Lock()
+                c.refreshInProgress = false
+                close(refreshDone) // Signal that refresh is complete
+                c.refreshMutex.Unlock()
+        }</span>
+
+        // We have existing data, return it and refresh in background
+        <span class="cov8" title="1">if exists </span><span class="cov8" title="1">{
+                // Refresh in background
+                go func() </span><span class="cov8" title="1">{
+                        defer cleanup()
+                        // Call the refresh function
+                        if newData, err := c.refreshFunc(); err == nil </span><span class="cov8" title="1">{
+                                c.data.Store(key, newData)
+                                c.expiry.Store(time.Now().Add(c.refreshPeriod))
+                        }</span>
+                }()
+                // Return current data (which might be old)
+                <span class="cov8" title="1">return value, true</span>
+        }
+
+        // No existing data, perform refresh synchronously
+        <span class="cov8" title="1">defer cleanup()
+
+        // Call the refresh function
+        newData, err := c.refreshFunc()
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, false
+        }</span>
+        // Store the new data and return it
+        <span class="cov8" title="1">c.data.Store(key, newData)
+        c.expiry.Store(time.Now().Add(c.refreshPeriod))
+        return newData, true</span>
+}
+
+type TokenInfo struct {
+        Token     string
+        ExpiresAt time.Time
+}
+
+type TokenCache struct {
+        mu      sync.RWMutex
+        entries map[string]TokenInfo
+}
+
+func (c *TokenCache) Set(key string, tokenInfo TokenInfo) <span class="cov0" title="0">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        c.entries[key] = tokenInfo
+}</span>
+
+func (c *TokenCache) Get(key string) (TokenInfo, bool) <span class="cov0" title="0">{
+        c.mu.RLock()
+        defer c.mu.RUnlock()
+
+        entry, exists := c.entries[key]
+        if !exists </span><span class="cov0" title="0">{
+                return TokenInfo{}, false
+        }</span>
+        <span class="cov0" title="0">cfg := config.Get().GitHub
+        // when token is close to expiring, we can't use it
+        if time.Until(entry.ExpiresAt) &lt; cfg.TokenMinValidity </span><span class="cov0" title="0">{
+                return TokenInfo{}, false
+        }</span>
+
+        <span class="cov0" title="0">return entry, true</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package github
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "net/http"
+        "strconv"
+        "strings"
+        "sync"
+        "time"
+
+        ghinstallation "github.com/bradleyfalzon/ghinstallation/v2"
+        "github.com/google/go-github/v82/github"
+        "golang.org/x/oauth2"
+        corev1 "k8s.io/api/core/v1"
+        "k8s.io/apimachinery/pkg/types"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+
+        appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
+
+        "github.com/konflux-ci/mintmaker/internal/component/base"
+        "github.com/konflux-ci/mintmaker/internal/config"
+        "github.com/konflux-ci/mintmaker/internal/utils"
+)
+
+//TODO: doc about only supporting GitHub with the installed GitHub App
+
+var (
+        ghAppInstallationsCache     *StaleAllowedCache
+        ghAppInstallationInitOnce   sync.Once
+        ghAppInstallationTokenCache TokenCache
+        ghAppID                     int64
+        ghAppPrivateKey             []byte
+        ghUserID                    int64
+        ghAppSlug                   string
+        // vars for mocking purposes, during testing
+        GetRenovateConfigFn func(registrySecret *corev1.Secret, currentBranch string) (string, error)
+        GetTokenFn          func() (string, error)
+)
+
+type AppInstallation struct {
+        InstallationID int64
+        Repositories   []string
+}
+
+type Component struct {
+        base.BaseComponent
+        AppID         int64
+        AppPrivateKey []byte
+        client        client.Client
+        ctx           context.Context
+}
+
+func getAppIDAndKey(ctx context.Context, client client.Client) (int64, []byte, error) <span class="cov0" title="0">{
+        if ghAppID != 0 &amp;&amp; ghAppPrivateKey != nil </span><span class="cov0" title="0">{
+                return ghAppID, ghAppPrivateKey, nil
+        }</span>
+        //Check if GitHub Application is used, if not then skip
+        <span class="cov0" title="0">appSecret := corev1.Secret{}
+        appSecretKey := types.NamespacedName{Namespace: "mintmaker", Name: "pipelines-as-code-secret"}
+        if err := client.Get(ctx, appSecretKey, &amp;appSecret); err != nil </span><span class="cov0" title="0">{
+                return 0, nil, err
+        }</span>
+
+        // validate content of the fields
+        <span class="cov0" title="0">num, err := strconv.ParseInt(string(appSecret.Data["github-application-id"]), 10, 64)
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, nil, fmt.Errorf("failed to parse GitHub APP ID: %w", err)
+        }</span>
+        <span class="cov0" title="0">ghAppID = num
+        ghAppPrivateKey = appSecret.Data["github-private-key"]
+        return ghAppID, ghAppPrivateKey, nil</span>
+}
+
+func NewComponent(ctx context.Context, comp *appstudiov1alpha1.Component, client client.Client, giturl string, versions []string) (*Component, error) <span class="cov0" title="0">{
+        appID, appPrivateKey, err := getAppIDAndKey(ctx, client)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get GitHub APP ID and private key: %w", err)
+        }</span>
+        // TODO: a helper to validate and parse the git url
+        <span class="cov0" title="0">platform, err := utils.GetGitPlatform(giturl)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">host, err := utils.GetGitHost(giturl)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">repository, err := utils.GetGitPath(giturl)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;Component{
+                BaseComponent: base.BaseComponent{
+                        Name:        comp.Name,
+                        Namespace:   comp.Namespace,
+                        Application: comp.Spec.Application,
+                        Platform:    platform,
+                        Host:        host,
+                        GitURL:      giturl,
+                        Repository:  repository,
+                        Versions:    versions,
+                },
+                AppID:         appID,
+                AppPrivateKey: appPrivateKey,
+                client:        client,
+                ctx:           ctx,
+        }, nil</span>
+}
+
+func (c *Component) GetBranches() []string <span class="cov0" title="0">{
+        if len(c.Versions) == 0 </span><span class="cov0" title="0">{
+                branch, err := c.getDefaultBranch()
+                if err != nil </span><span class="cov0" title="0">{
+                        return []string{}
+                }</span>
+                <span class="cov0" title="0">return []string{branch}</span>
+        }
+        <span class="cov0" title="0">return c.Versions</span>
+}
+
+func (c *Component) getInstallationID() (int64, error) <span class="cov0" title="0">{
+        var installationID int64
+        found := false
+
+        appInstallations, err := c.getAppInstallations()
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, err
+        }</span>
+
+        <span class="cov0" title="0">for _, installation := range appInstallations </span><span class="cov0" title="0">{
+                for _, repo := range installation.Repositories </span><span class="cov0" title="0">{
+                        repo = strings.TrimSuffix(strings.TrimPrefix(repo, "/"), "/")
+                        if repo == c.Repository </span><span class="cov0" title="0">{
+                                installationID = installation.InstallationID
+                                found = true
+                                break</span>
+                        }
+                }
+                <span class="cov0" title="0">if found </span><span class="cov0" title="0">{
+                        break</span>
+                }
+        }
+        <span class="cov0" title="0">if !found </span><span class="cov0" title="0">{
+                return 0, fmt.Errorf("repository %s not found in any GitHub App installation", c.Repository)
+        }</span>
+        <span class="cov0" title="0">return installationID, nil</span>
+}
+
+func (c *Component) GetToken() (string, error) <span class="cov0" title="0">{
+
+        if GetTokenFn != nil </span><span class="cov0" title="0">{
+                return GetTokenFn()
+        }</span>
+
+        <span class="cov0" title="0">installationID, err := c.getInstallationID()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to get installation ID: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">tokenKey := fmt.Sprintf("installation_%d", installationID)
+        cfg := config.Get().GitHub
+        if ghAppInstallationTokenCache.entries == nil </span><span class="cov0" title="0">{
+                ghAppInstallationTokenCache.entries = make(map[string]TokenInfo)
+        }</span>
+
+        // when token exists and within the threshold, a valid token is returned
+        <span class="cov0" title="0">if tokenInfo, ok := ghAppInstallationTokenCache.Get(tokenKey); ok </span><span class="cov0" title="0">{
+                return tokenInfo.Token, nil
+        }</span>
+        // when token doesn't exist or not within the threshold, we generate a new token and update the cache
+        <span class="cov0" title="0">itr, err := ghinstallation.New(
+                http.DefaultTransport,
+                c.AppID,
+                installationID,
+                c.AppPrivateKey,
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("error creating installation transport: %w", err)
+        }</span>
+        <span class="cov0" title="0">token, err := itr.Token(context.Background())
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("error getting installation token: %w", err)
+        }</span>
+        <span class="cov0" title="0">tokenInfo := TokenInfo{
+                Token: token, ExpiresAt: time.Now().Add(cfg.TokenTTL),
+        }
+        ghAppInstallationTokenCache.Set(tokenKey, tokenInfo)
+
+        return tokenInfo.Token, nil</span>
+}
+
+func (c *Component) getAppInstallations() ([]AppInstallation, error) <span class="cov0" title="0">{
+        // Initialize the cache if it hasn't been initialized yet
+        ghAppInstallationInitOnce.Do(func() </span><span class="cov0" title="0">{
+                ghAppInstallationsCache = NewStaleAllowedCache(2*time.Hour, func() (interface{}, error) </span><span class="cov0" title="0">{
+                        return c.fetchAppInstallations()
+                }</span>)
+        })
+
+        // Get from cache - this will block until initial data is loaded if this is the first access.
+        // May return stale data if a background refresh is in progress, which is acceptable for
+        // app installation data since it's not a hard requirement to process with real-time data.
+        <span class="cov0" title="0">data, ok := ghAppInstallationsCache.Get("installations")
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get GitHub app installations")
+        }</span>
+
+        <span class="cov0" title="0">return data.([]AppInstallation), nil</span>
+}
+
+// fetchAppInstallations fetches GitHub App installations and corresponding repositories
+// in each installation
+func (c *Component) fetchAppInstallations() ([]AppInstallation, error) <span class="cov0" title="0">{
+        var appInstallations []AppInstallation
+
+        itr, err := ghinstallation.NewAppsTransport(http.DefaultTransport, c.AppID, c.AppPrivateKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">client := github.NewClient(&amp;http.Client{Transport: itr})
+        _, _, err = client.Apps.Get(context.Background(), "")
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to load GitHub app metadata, %w", err)
+        }</span>
+
+        <span class="cov0" title="0">opt := &amp;github.RepositoryListByOrgOptions{
+                ListOptions: github.ListOptions{PerPage: 100},
+        }
+        for </span><span class="cov0" title="0">{
+                installations, resp, err := client.Apps.ListInstallations(context.Background(), &amp;opt.ListOptions)
+                if err != nil </span><span class="cov0" title="0">{
+                        if resp != nil &amp;&amp; resp.Response != nil &amp;&amp; resp.Response.StatusCode != 0 </span><span class="cov0" title="0">{
+                                switch resp.StatusCode </span>{
+                                case 401:<span class="cov0" title="0">
+                                        return nil, fmt.Errorf("GitHub Application private key does not match Application ID")</span>
+                                case 404:<span class="cov0" title="0">
+                                        return nil, fmt.Errorf("GitHub Application with given ID does not exist")</span>
+                                }
+                        }
+                        <span class="cov0" title="0">return nil, fmt.Errorf("error getting GitHub Application installations: %w", err)</span>
+                }
+                <span class="cov0" title="0">for _, installation := range installations </span><span class="cov0" title="0">{
+                        appInstall := AppInstallation{
+                                InstallationID: installation.GetID(),
+                        }
+
+                        itr, err := ghinstallation.New(http.DefaultTransport, c.AppID, installation.GetID(), c.AppPrivateKey)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return nil, fmt.Errorf("error creating installation transport: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">installationClient := github.NewClient(&amp;http.Client{Transport: itr})
+                        repoOpt := &amp;github.ListOptions{PerPage: 100}
+                        for </span><span class="cov0" title="0">{
+                                repos, repoResp, err := installationClient.Apps.ListRepos(context.Background(), repoOpt)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        // If App is installed with insufficient permission, this ListRepos call
+                                        // will return error, we should just skip checking this installation
+                                        // TODO: error logging
+                                        break</span>
+                                }
+                                <span class="cov0" title="0">for _, repo := range repos.Repositories </span><span class="cov0" title="0">{
+                                        appInstall.Repositories = append(appInstall.Repositories, repo.GetFullName())
+                                }</span>
+                                <span class="cov0" title="0">if repoResp.NextPage == 0 </span><span class="cov0" title="0">{
+                                        break</span>
+                                }
+                                <span class="cov0" title="0">repoOpt.Page = repoResp.NextPage</span>
+                        }
+                        <span class="cov0" title="0">appInstallations = append(appInstallations, appInstall)</span>
+                }
+                <span class="cov0" title="0">if resp.NextPage == 0 </span><span class="cov0" title="0">{
+                        break</span>
+                }
+                <span class="cov0" title="0">opt.Page = resp.NextPage</span>
+        }
+
+        <span class="cov0" title="0">return appInstallations, nil</span>
+}
+
+func (c *Component) getDefaultBranch() (string, error) <span class="cov0" title="0">{
+        token, err := c.GetToken()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to get GitHub token: %w", err)
+        }</span>
+        <span class="cov0" title="0">ts := oauth2.StaticTokenSource(
+                &amp;oauth2.Token{AccessToken: token},
+        )
+        tc := oauth2.NewClient(context.Background(), ts)
+        client := github.NewClient(tc)
+        parts := strings.Split(c.Repository, "/")
+        if len(parts) != 2 </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("invalid repository format: %s", c.Repository)
+        }</span>
+        <span class="cov0" title="0">owner := parts[0]
+        repo := parts[1]
+        repositoryInfo, _, err := client.Repositories.Get(context.Background(), owner, repo)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to get repository information: %w", err)
+        }</span>
+        <span class="cov0" title="0">if repositoryInfo.DefaultBranch == nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("repository default branch is nil")
+        }</span>
+        <span class="cov0" title="0">return *repositoryInfo.DefaultBranch, nil</span>
+}
+
+func (c *Component) GetAPIEndpoint() string <span class="cov0" title="0">{
+        return fmt.Sprintf("https://api.%s/", c.Host)
+}</span>
+
+func (c *Component) getAppSlug() (string, error) <span class="cov0" title="0">{
+        if ghAppSlug != "" </span><span class="cov0" title="0">{
+                return ghAppSlug, nil
+        }</span>
+
+        <span class="cov0" title="0">appID, appPrivateKey, err := getAppIDAndKey(c.ctx, c.client)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov0" title="0">itr, err := ghinstallation.NewAppsTransport(http.DefaultTransport, appID, appPrivateKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov0" title="0">client := github.NewClient(&amp;http.Client{Transport: itr})
+        app, _, err := client.Apps.Get(context.Background(), "")
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to load GitHub app metadata, %w", err)
+        }</span>
+
+        <span class="cov0" title="0">ghAppSlug = app.GetSlug()
+        return ghAppSlug, nil</span>
+}
+
+func (c *Component) getUserId(username string) (int64, error) <span class="cov0" title="0">{
+        if ghUserID != 0 </span><span class="cov0" title="0">{
+                return ghUserID, nil
+        }</span>
+        // No need to add auth here as User API is public
+        <span class="cov0" title="0">client := github.NewClient(&amp;http.Client{})
+
+        user, _, err := client.Users.Get(context.Background(), username)
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, fmt.Errorf("failed to get user information: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">ghUserID = user.GetID()
+        return ghUserID, nil</span>
+}
+
+func (c *Component) GetRenovateConfig(registrySecret *corev1.Secret, currentBranch string) (string, error) <span class="cov0" title="0">{
+        if GetRenovateConfigFn != nil </span><span class="cov0" title="0">{
+                return GetRenovateConfigFn(registrySecret, currentBranch)
+        }</span>
+
+        <span class="cov0" title="0">baseConfig, err := c.GetRenovateBaseConfig(c.ctx, c.client)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        // Add component-specific hostRules if registrySecret is provided
+        <span class="cov0" title="0">if registrySecret != nil </span><span class="cov0" title="0">{
+                hostRules, err := c.GetHostRules(c.ctx, registrySecret)
+                if err == nil &amp;&amp; len(hostRules) &gt; 0 </span><span class="cov0" title="0">{
+                        baseConfig["hostRules"] = hostRules
+                }</span>
+        }
+        <span class="cov0" title="0">appSlug, err := c.getAppSlug()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov0" title="0">botId, err := c.getUserId(appSlug + "[bot]")
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov0" title="0">baseConfig["gitAuthor"] = fmt.Sprintf("%s &lt;%d+%s[bot]@users.noreply.github.com&gt;", appSlug, botId, appSlug)
+        baseConfig["username"] = fmt.Sprintf("%s[bot]", appSlug)
+        baseConfig["platform"] = c.Platform
+        baseConfig["endpoint"] = c.GetAPIEndpoint()
+
+        // TODO: perhaps in the future let's validate all these values
+
+        repo := map[string]interface{}{
+                "baseBranchPatterns": []string{currentBranch},
+                "repository":         c.Repository,
+        }
+        baseConfig["repositories"] = []interface{}{repo}
+        updatedConfig, err := json.MarshalIndent(baseConfig, "", "  ")
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov0" title="0">return string(updatedConfig), nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package controller
+
+import (
+        "context"
+
+        appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
+        mmv1alpha1 "github.com/konflux-ci/mintmaker/api/v1alpha1"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+// Get only components that match a given namespace/application/componentname
+func getFilteredComponents(ctx context.Context, namespaces []mmv1alpha1.NamespaceSpec, apiClient client.Client) ([]appstudiov1alpha1.Component, error) <span class="cov0" title="0">{
+        components := []appstudiov1alpha1.Component{}
+        err := error(nil)
+
+        // Iterate namespaces and create query filtered by namespace
+        for _, namespace := range namespaces </span><span class="cov0" title="0">{
+                namespaceComponentList := &amp;appstudiov1alpha1.ComponentList{}
+                listOps := &amp;client.ListOptions{
+                        Namespace: namespace.Namespace,
+                }
+                if err := apiClient.List(ctx, namespaceComponentList, listOps); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                // No applications specified -&gt; add all Namespace components, start processing next namespace
+                <span class="cov0" title="0">if len(namespace.Applications) == 0 </span><span class="cov0" title="0">{
+                        components = append(components, namespaceComponentList.Items...)
+                        continue</span>
+                }
+                // Applications specified -&gt; iterate and filter by application
+                <span class="cov0" title="0">for _, application := range namespace.Applications </span><span class="cov0" title="0">{
+                        appMatchingComponents := []appstudiov1alpha1.Component{}
+                        for _, component := range namespaceComponentList.Items </span><span class="cov0" title="0">{
+                                if application.Application == component.Spec.Application </span><span class="cov0" title="0">{
+                                        appMatchingComponents = append(appMatchingComponents, component)
+                                }</span>
+                        }
+                        // No components specified for an application -&gt; add all application components, start processing next application
+                        <span class="cov0" title="0">if len(application.Components) == 0 </span><span class="cov0" title="0">{
+                                components = append(components, appMatchingComponents...)
+                                continue</span>
+                        }
+                        // Components specified -&gt; add components with matching names
+                        <span class="cov0" title="0">for _, filterComponent := range application.Components </span><span class="cov0" title="0">{
+                                for _, component := range appMatchingComponents </span><span class="cov0" title="0">{
+                                        if filterComponent == mmv1alpha1.Component(component.Name) </span><span class="cov0" title="0">{
+                                                components = append(components, component)
+                                                break</span>
+                                        }
+                                }
+                        }
+                }
+        }
+
+        <span class="cov0" title="0">return components, err</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package controller
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "slices"
+        "time"
+
+        corev1 "k8s.io/api/core/v1"
+        "k8s.io/apimachinery/pkg/api/errors"
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        "k8s.io/apimachinery/pkg/runtime"
+        "k8s.io/apimachinery/pkg/types"
+        "k8s.io/client-go/tools/record"
+        ctrl "sigs.k8s.io/controller-runtime"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+        "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+        "sigs.k8s.io/controller-runtime/pkg/event"
+        ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
+        "sigs.k8s.io/controller-runtime/pkg/predicate"
+
+        tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+
+        appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
+
+        mmv1alpha1 "github.com/konflux-ci/mintmaker/api/v1alpha1"
+        "github.com/konflux-ci/mintmaker/internal/component"
+        "github.com/konflux-ci/mintmaker/internal/config"
+        . "github.com/konflux-ci/mintmaker/internal/constant"
+        mintmakermetrics "github.com/konflux-ci/mintmaker/internal/metrics"
+        "github.com/konflux-ci/mintmaker/internal/tekton"
+        "github.com/konflux-ci/mintmaker/internal/utils"
+)
+
+const InternalSecretLabelName = "appstudio.redhat.com/internal"
+
+// DependencyUpdateCheckReconciler reconciles a DependencyUpdateCheck object
+type DependencyUpdateCheckReconciler struct {
+        Client client.Client
+        Scheme *runtime.Scheme
+}
+
+func NewDependencyUpdateCheckReconciler(client client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder) *DependencyUpdateCheckReconciler <span class="cov8" title="1">{
+        return &amp;DependencyUpdateCheckReconciler{
+                Client: client,
+                Scheme: scheme,
+        }
+}</span>
+
+// getCAConfigMap returns the first ConfigMap found in mintmaker namespace
+// that has the label 'config.openshift.io/inject-trusted-cabundle: "true"'.
+// If no such ConfigMap is found, it returns nil.
+func (r *DependencyUpdateCheckReconciler) getCAConfigMap(ctx context.Context) (*corev1.ConfigMap, error) <span class="cov8" title="1">{
+        configMapList := &amp;corev1.ConfigMapList{}
+        labelSelector := client.MatchingLabels{"config.openshift.io/inject-trusted-cabundle": "true"}
+        listOptions := []client.ListOption{
+                client.InNamespace(MintMakerNamespaceName),
+                labelSelector,
+        }
+        err := r.Client.List(ctx, configMapList, listOptions...)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">if len(configMapList.Items) &gt; 0 </span><span class="cov0" title="0">{
+                // Just return the configmap
+                return &amp;configMapList.Items[0], nil
+        }</span>
+
+        <span class="cov8" title="1">return nil, nil</span>
+}
+
+// Returns a merged docker config that contains all image registry secrets
+// linked to the component's build-pipeline ServiceAccount.
+func (r *DependencyUpdateCheckReconciler) getMergedDockerConfigJson(ctx context.Context, comp component.GitComponent) ([]byte, error) <span class="cov8" title="1">{
+        log := ctrllog.FromContext(ctx).WithName("getMergedDockerConfigJson")
+
+        componentNamespace := comp.GetNamespace()
+        serviceAccountName := "build-pipeline-" + comp.GetName()
+        serviceAccount := &amp;corev1.ServiceAccount{}
+        if err := r.Client.Get(ctx, types.NamespacedName{Namespace: componentNamespace, Name: serviceAccountName}, serviceAccount); err != nil </span><span class="cov8" title="1">{
+                if errors.IsNotFound(err) </span><span class="cov8" title="1">{
+                        log.Info("service account not found in component namespace", "service-account", serviceAccountName)
+                        return nil, nil
+                }</span>
+                <span class="cov0" title="0">log.Error(err, "unable to get service account in component namespace", "service-account", serviceAccountName)
+                return nil, err</span>
+        }
+
+        <span class="cov8" title="1">mergedAuths := make(map[string]interface{})
+        for _, secretRef := range serviceAccount.Secrets </span><span class="cov8" title="1">{
+                var secret corev1.Secret
+                if err := r.Client.Get(ctx, types.NamespacedName{Namespace: componentNamespace, Name: secretRef.Name}, &amp;secret); err != nil </span><span class="cov0" title="0">{
+                        if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                                log.Info("secret not found in component namespace", "secret", secretRef.Name)
+                                continue</span>
+                        }
+                        <span class="cov0" title="0">log.Error(err, "unable to get secret in component namespace", "secret", secretRef.Name)
+                        return nil, err</span>
+                }
+
+                <span class="cov8" title="1">if secret.Type != corev1.SecretTypeDockerConfigJson </span><span class="cov8" title="1">{
+                        continue</span> // Skip Secrets with type other than DockerConfigJson
+                }
+
+                <span class="cov8" title="1">if value, exists := secret.Labels[InternalSecretLabelName]; exists &amp;&amp; value == "true" </span><span class="cov8" title="1">{
+                        continue</span> // Skip Secrets labeled as internal
+                }
+
+                <span class="cov8" title="1">data, exists := secret.Data[corev1.DockerConfigJsonKey]
+                if !exists </span><span class="cov0" title="0">{
+                        log.Info("skipping secret with missing section", "secret", secret.Name, "section", corev1.DockerConfigJsonKey)
+                        continue</span>
+                }
+                <span class="cov8" title="1">var dockerConfig map[string]interface{}
+                if err := json.Unmarshal(data, &amp;dockerConfig); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov8" title="1">auths, exists := dockerConfig["auths"].(map[string]interface{})
+                if !exists </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov8" title="1">for registry, creds := range auths </span><span class="cov8" title="1">{
+                        mergedAuths[registry] = creds
+                }</span>
+        }
+
+        <span class="cov8" title="1">if len(mergedAuths) == 0 </span><span class="cov8" title="1">{
+                log.Info("merged auths empty for component")
+                return nil, nil
+        }</span>
+
+        <span class="cov8" title="1">mergedDockerConfig := map[string]interface{}{
+                "auths": mergedAuths,
+        }
+        mergedDockerConfigJson, err := json.Marshal(mergedDockerConfig)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return mergedDockerConfigJson, nil</span>
+}
+
+// createPipelineRun creates and returns a new PipelineRun
+func (r *DependencyUpdateCheckReconciler) createPipelineRun(ctx context.Context, name string, comp component.GitComponent, currentBranch string, kiteSecretName string) (*tektonv1.PipelineRun, error) <span class="cov8" title="1">{
+
+        log := ctrllog.FromContext(ctx).WithName("createPipelineRun")
+
+        var resources []client.Object
+        defer func() </span><span class="cov8" title="1">{
+                if len(resources) &gt; 0 </span><span class="cov0" title="0">{
+                        for _, resource := range resources </span><span class="cov0" title="0">{
+                                // Ignore error
+                                r.Client.Delete(ctx, resource)
+                        }</span>
+                }
+        }()
+
+        // Secret for Renovate token (repository access token) and image registry credentials
+        <span class="cov8" title="1">renovateSecret := &amp;corev1.Secret{
+                ObjectMeta: metav1.ObjectMeta{
+                        Name:      name,
+                        Namespace: MintMakerNamespaceName,
+                },
+                Type:       corev1.SecretTypeOpaque,
+                StringData: map[string]string{},
+        }
+
+        // For GitHub repositories, we intentionally do not set the "renovate-token"
+        // key. GitHub tokens generated from the Konflux GitHub application have a
+        // maximum lifespan of 1 hour. Instead of generating a token that might expire
+        // before the pipelinerun starts, we wait for events with "FailedMount" reason,
+        // which happens when pod try to mount the secret but can't find the key in
+        // secret. Then we populate the token in the event controller at that time to
+        // ensure it's valid for the pipelinerun execution.
+        if comp.GetPlatform() != "github" </span><span class="cov0" title="0">{
+                renovateToken, err := comp.GetToken()
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov0" title="0">renovateSecret.StringData["renovate-token"] = renovateToken</span>
+        }
+
+        // Add a merged docker config to the renovateSecret
+        <span class="cov8" title="1">mergedDockerConfigJson, err := r.getMergedDockerConfigJson(ctx, comp)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error(err, "failed to get a merged docker config for component")
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">if len(mergedDockerConfigJson) != 0 </span><span class="cov8" title="1">{
+                renovateSecret.Data = map[string][]byte{corev1.DockerConfigJsonKey: mergedDockerConfigJson}
+        }</span>
+
+        <span class="cov8" title="1">if err := r.Client.Create(ctx, renovateSecret); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">resources = append(resources, renovateSecret)
+
+        renovateConfig, err := comp.GetRenovateConfig(renovateSecret, currentBranch)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">renovateJsConfig := "module.exports = " + renovateConfig
+        // Create ConfigMap for Renovate global configuration
+        renovateConfigMap := &amp;corev1.ConfigMap{
+                ObjectMeta: metav1.ObjectMeta{
+                        Name:      name,
+                        Namespace: MintMakerNamespaceName,
+                },
+                Data: map[string]string{
+                        "config.js": renovateJsConfig,
+                },
+        }
+
+        if err := r.Client.Create(ctx, renovateConfigMap); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">resources = append(resources, renovateConfigMap)
+
+        // Create Secret for RPM activation key to access RPMs that require subscription
+        activationKey, org, rpmKeyErr := comp.GetRPMActivationKey(ctx, r.Client)
+        var rpmSecret *corev1.Secret = nil
+        if rpmKeyErr != nil </span><span class="cov8" title="1">{
+                log.Info(rpmKeyErr.Error())
+        }</span> else<span class="cov0" title="0"> {
+                rpmSecret = &amp;corev1.Secret{
+                        ObjectMeta: metav1.ObjectMeta{
+                                Name:      name + "-rpm-key",
+                                Namespace: MintMakerNamespaceName,
+                        },
+                        Type: corev1.SecretTypeOpaque,
+                        StringData: map[string]string{
+                                "activationkey": activationKey,
+                                "org":           org,
+                        },
+                }
+
+                if err := r.Client.Create(ctx, rpmSecret); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov0" title="0">resources = append(resources, rpmSecret)</span>
+        }
+
+        // Creating the pipelineRun definition
+        <span class="cov8" title="1">builder := tekton.NewPipelineRunBuilder(name, MintMakerNamespaceName).
+                WithLabels(map[string]string{
+                        "mintmaker.appstudio.redhat.com/application":  comp.GetApplication(),
+                        "mintmaker.appstudio.redhat.com/component":    comp.GetName(),
+                        "mintmaker.appstudio.redhat.com/namespace":    comp.GetNamespace(),
+                        "mintmaker.appstudio.redhat.com/git-platform": comp.GetPlatform(), // (github, gitlab)
+                        "mintmaker.appstudio.redhat.com/git-host":     comp.GetHost(),     // github.com, gitlab.com, gitlab.other.com
+                        "mintmaker.appstudio.redhat.com/repository":   utils.NormalizeLabelValue(comp.GetRepository()),
+                        "mintmaker.appstudio.redhat.com/branch":       utils.NormalizeLabelValue(currentBranch),
+                }).
+                WithTimeouts(nil)
+        builder.WithServiceAccount("mintmaker-controller-manager")
+
+        cmItems := []corev1.KeyToPath{
+                {
+                        Key:  "config.js",
+                        Path: "config.js",
+                },
+        }
+        cmOpts := tekton.NewMountOptions().WithTaskName("build").WithStepNames([]string{"renovate"})
+        builder.WithConfigMap(name, "/etc/renovate/config", cmItems, cmOpts)
+
+        secretItems := []corev1.KeyToPath{
+                {
+                        Key:  "renovate-token",
+                        Path: "renovate-token",
+                },
+        }
+        secretOpts := tekton.NewMountOptions().WithTaskName("build").WithStepNames([]string{"renovate"})
+        builder.WithSecret(name, "/etc/renovate/secret", secretItems, secretOpts)
+
+        if rpmKeyErr == nil </span><span class="cov0" title="0">{
+                rpmSecretItems := []corev1.KeyToPath{
+                        {
+                                Key:  "activationkey",
+                                Path: "rpm-activationkey",
+                        },
+                        {
+                                Key:  "org",
+                                Path: "rpm-org",
+                        },
+                }
+                rpmSecretOpts := tekton.NewMountOptions().WithTaskName("build").WithStepNames([]string{"prepare-rpm-cert"})
+                builder.WithSecret(name+"-rpm-key", "/etc/renovate/secret", rpmSecretItems, rpmSecretOpts)
+        }</span>
+
+        // Check if a ConfigMap with the label `config.openshift.io/inject-trusted-cabundle: "true"` exists.
+        // If such a ConfigMap is found, add a volume to the PipelineRun specification to mount this ConfigMap.
+        // The volume will be mounted at '/etc/pki/ca-trust/extracted/pem' within the PipelineRun Pod.
+        <span class="cov8" title="1">caConfigMap, err := r.getCAConfigMap(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error(err, "Failed to get CAConfigMap - moving on")
+        }</span>
+        <span class="cov8" title="1">if caConfigMap != nil </span><span class="cov0" title="0">{
+                caConfigMapItems := []corev1.KeyToPath{
+                        {
+                                Key:  "ca-bundle.crt",
+                                Path: "tls-ca-bundle.pem",
+                        },
+                }
+                caConfigMapOpts := tekton.NewMountOptions().WithTaskName("build").WithStepNames([]string{"renovate"}).WithReadOnly(true)
+                builder.WithConfigMap(caConfigMap.ObjectMeta.Name, "/etc/pki/ca-trust/extracted/pem", caConfigMapItems, caConfigMapOpts)
+        }</span>
+
+        <span class="cov8" title="1">if _, exists := renovateSecret.Data[corev1.DockerConfigJsonKey]; exists </span><span class="cov8" title="1">{
+                secretItems := []corev1.KeyToPath{
+                        {
+                                Key:  corev1.DockerConfigJsonKey,
+                                Path: "config.json",
+                        },
+                }
+                secretOpts := tekton.NewMountOptions().WithTaskName("build").WithStepNames([]string{"renovate"}).WithReadOnly(true)
+                builder.WithSecret(renovateSecret.ObjectMeta.Name, "/home/renovate/.docker", secretItems, secretOpts)
+        }</span>
+
+        // Add Kite integration if enabled AND token is available
+        <span class="cov8" title="1">if kiteSecretName != "" </span><span class="cov0" title="0">{
+                builder.WithKiteIntegration(config.Get().Kite.APIURL)
+
+                tokenSecretItems := []corev1.KeyToPath{
+                        {
+                                Key:  "token",
+                                Path: "token",
+                        },
+                }
+                tokenSecretOpts := tekton.NewMountOptions().
+                        WithTaskName("build").
+                        WithStepNames([]string{"log-analyzer"}).
+                        WithReadOnly(true)
+                builder.WithSecret(kiteSecretName, "/var/run/secrets/kite", tokenSecretItems, tokenSecretOpts)
+        }</span>
+
+        <span class="cov8" title="1">pipelineRun, err := builder.Build()
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error(err, "failed to build pipeline definition")
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">if err := r.Client.Create(ctx, pipelineRun); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">resources = append(resources, pipelineRun)
+
+        // Set ownership so all resources get deleted once the job is deleted
+        // ownership for renovateSecret
+        if err := controllerutil.SetOwnerReference(pipelineRun, renovateSecret, r.Scheme); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">if err := r.Client.Update(ctx, renovateSecret); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // ownership for RPM secret
+        <span class="cov8" title="1">if rpmKeyErr == nil </span><span class="cov0" title="0">{
+                if err := controllerutil.SetOwnerReference(pipelineRun, rpmSecret, r.Scheme); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov0" title="0">if err := r.Client.Update(ctx, rpmSecret); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+        }
+
+        // ownership for the renovateConfigMap
+        <span class="cov8" title="1">if err := controllerutil.SetOwnerReference(pipelineRun, renovateConfigMap, r.Scheme); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">if err := r.Client.Update(ctx, renovateConfigMap); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">resources = nil
+        return pipelineRun, nil</span>
+}
+
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=dependencyupdatechecks,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=dependencyupdatechecks/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=dependencyupdatechecks/finalizers,verbs=update
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch
+// +kubebuilder:rbac:groups=tekton.dev,resources=pipelineruns,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups=tekton.dev,resources=pipelineruns/finalizers,verbs=update
+// +kubebuilder:rbac:groups=tekton.dev,resources=pipelineruns/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch
+// +kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,resourceNames=anyuid,verbs=use
+
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
+//
+// For more details, check Reconcile and its Result here:
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.3/pkg/reconcile
+func (r *DependencyUpdateCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) <span class="cov8" title="1">{
+
+        log := ctrllog.FromContext(ctx).WithName("DependencyUpdateCheckController")
+        ctx = ctrllog.IntoContext(ctx, log)
+
+        dependencyupdatecheck := &amp;mmv1alpha1.DependencyUpdateCheck{}
+        err := r.Client.Get(ctx, req.NamespacedName, dependencyupdatecheck)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                        return ctrl.Result{}, nil
+                }</span>
+        }
+
+        // If the DependencyUpdateCheck has been handled before, skip it
+        <span class="cov8" title="1">if value, exists := dependencyupdatecheck.Annotations[MintMakerProcessedAnnotationName]; exists &amp;&amp; value == "true" </span><span class="cov8" title="1">{
+                log.Info(fmt.Sprintf("DependencyUpdateCheck has been processed: %v", req.NamespacedName))
+                return ctrl.Result{}, nil
+        }</span>
+
+        // Update the DependencyUpdateCheck to add a processed annotation
+        <span class="cov8" title="1">log.Info(fmt.Sprintf("new DependencyUpdateCheck found: %v", req.NamespacedName))
+
+        // Record metrics for DependencyUpdateCheck creation
+        mintmakermetrics.RecordDependencyUpdateCheckCreation(dependencyupdatecheck.Namespace, dependencyupdatecheck.Name)
+        log.Info("Recorded DependencyUpdateCheck creation metrics", "namespace", dependencyupdatecheck.Namespace, "name", dependencyupdatecheck.Name)
+
+        if dependencyupdatecheck.Annotations == nil </span><span class="cov8" title="1">{
+                dependencyupdatecheck.Annotations = map[string]string{}
+        }</span>
+        <span class="cov8" title="1">dependencyupdatecheck.Annotations[MintMakerProcessedAnnotationName] = "true"
+
+        err = r.Client.Update(ctx, dependencyupdatecheck)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error(err, "failed to update DependencyUpdateCheck annotations")
+                return ctrl.Result{}, nil
+        }</span>
+
+        <span class="cov8" title="1">var gatheredComponents []appstudiov1alpha1.Component
+        if len(dependencyupdatecheck.Spec.Namespaces) &gt; 0 </span><span class="cov0" title="0">{
+                log.Info(fmt.Sprintf("Following components are specified: %v", dependencyupdatecheck.Spec.Namespaces))
+                gatheredComponents, err = getFilteredComponents(ctx, dependencyupdatecheck.Spec.Namespaces, r.Client)
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Error(err, "gathering filtered components has failed")
+                        return ctrl.Result{}, err
+                }</span>
+        } else<span class="cov8" title="1"> {
+                allComponents := &amp;appstudiov1alpha1.ComponentList{}
+                if err := r.Client.List(ctx, allComponents, &amp;client.ListOptions{}); err != nil </span><span class="cov0" title="0">{
+                        log.Error(err, "failed to list Components")
+                        return ctrl.Result{}, err
+                }</span>
+                <span class="cov8" title="1">gatheredComponents = allComponents.Items</span>
+        }
+
+        <span class="cov8" title="1">log.Info(fmt.Sprintf("%d components will be processed", len(gatheredComponents)))
+
+        // Filter out components which have mintmaker disabled
+        componentList := []appstudiov1alpha1.Component{}
+        for _, component := range gatheredComponents </span><span class="cov8" title="1">{
+                if value, exists := component.Annotations[MintMakerDisabledAnnotationName]; !exists || value != "true" </span><span class="cov8" title="1">{
+                        componentList = append(componentList, component)
+                }</span>
+        }
+
+        <span class="cov8" title="1">log.Info("found components with mintmaker disabled", "components", len(gatheredComponents)-len(componentList))
+        if len(componentList) == 0 </span><span class="cov0" title="0">{
+                return ctrl.Result{}, nil
+        }</span>
+
+        // Check for token Secret if Kite integration is enabled (token needed for Kite API requests)
+        // kiteSecretName is only set if Kite integration is enabled and the token secret is found
+        <span class="cov8" title="1">kiteSecretName := ""
+        if cfg := config.Get(); cfg.Kite.Enabled </span><span class="cov0" title="0">{
+                secretList := &amp;corev1.SecretList{}
+                err := r.Client.List(ctx, secretList,
+                        client.InNamespace(MintMakerNamespaceName),
+                        client.MatchingLabels{KiteTokenSecretLabel: "true"},
+                )
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Error(err, "Kite token secret lookup failed - skipping Kite integration")
+                }</span> else<span class="cov0" title="0"> if len(secretList.Items) == 0 </span><span class="cov0" title="0">{
+                        log.Info("Kite token secret not found - skipping Kite integration")
+                }</span> else<span class="cov0" title="0"> {
+                        kiteSecretName = secretList.Items[0].Name
+                        log.Info("Kite token secret found - using it", "secretName", kiteSecretName)
+                }</span>
+        }
+
+        // Track components for which we already created a PipelineRun
+        <span class="cov8" title="1">processedComponents := make([]string, 0)
+
+        timestamp := time.Now().UTC().Format("01021504") // MMDDhhmm, from Go's time formatting reference date "20060102150405"
+        for _, appstudioComponent := range componentList </span><span class="cov8" title="1">{
+                compLog := log.WithValues("component", appstudioComponent.Name,
+                        "componentNamespace", appstudioComponent.Namespace)
+                ctx = ctrllog.IntoContext(ctx, compLog)
+
+                comp, err := component.NewGitComponent(ctx, &amp;appstudioComponent, r.Client)
+                if err != nil </span><span class="cov0" title="0">{
+                        compLog.Error(err, "failed to handle component")
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">branches := comp.GetBranches()
+                if len(branches) == 0 </span><span class="cov0" title="0">{
+                        compLog.Info("no versions (branches) found for component", "component", appstudioComponent.Name)
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">for _, branch := range branches </span><span class="cov8" title="1">{
+                        // We need to create only one PipelineRun for a combination
+                        // of repository+branch. We cannot use repository only,
+                        // because the branch is used in Renovate's baseBranch config option.
+                        host := comp.GetHost()
+                        repository := comp.GetRepository()
+                        key := fmt.Sprintf("%s/%s@%s", host, repository, branch)
+
+                        branchLog := compLog.WithValues("repository", repository,
+                                "branch", branch,
+                                "gitHost", host)
+                        ctx = ctrllog.IntoContext(ctx, branchLog)
+
+                        if slices.Contains(processedComponents, key) </span><span class="cov0" title="0">{
+                                // PipelineRun has already been created for this repo-branch
+                                branchLog.Info("PipelineRun has been created for this component-key", "component-key", key)
+                                continue</span>
+                        } else<span class="cov8" title="1"> {
+                                processedComponents = append(processedComponents, key)
+                        }</span>
+
+                        <span class="cov8" title="1">plrName := fmt.Sprintf("renovate-%s-%s", timestamp, utils.RandomString(8))
+                        pipelinerun, err := r.createPipelineRun(ctx, plrName, comp, branch, kiteSecretName)
+                        if err != nil </span><span class="cov0" title="0">{
+                                branchLog.Error(err, "failed to create PipelineRun")
+                                mintmakermetrics.CountScheduledRunFailure()
+                        }</span> else<span class="cov8" title="1"> {
+                                branchLog.Info("created PipelineRun", "pipelineRun", pipelinerun.Name)
+                                mintmakermetrics.CountScheduledRunSuccess()
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">return ctrl.Result{}, nil</span>
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *DependencyUpdateCheckReconciler) SetupWithManager(mgr ctrl.Manager) error <span class="cov8" title="1">{
+        // We only react to Create events for DependencyUpdateCheck in mintmaker namespace.
+        // Namespace filtering is handled by the manager's cache configuration.
+        return ctrl.NewControllerManagedBy(mgr).
+                For(&amp;mmv1alpha1.DependencyUpdateCheck{}).
+                WithEventFilter(predicate.Funcs{
+                        CreateFunc:  func(e event.CreateEvent) bool </span><span class="cov8" title="1">{ return true }</span>,
+                        DeleteFunc:  func(e event.DeleteEvent) bool <span class="cov8" title="1">{ return false }</span>,
+                        UpdateFunc:  func(e event.UpdateEvent) bool <span class="cov8" title="1">{ return false }</span>,
+                        GenericFunc: func(e event.GenericEvent) bool <span class="cov0" title="0">{ return false }</span>,
+                }).
+                Complete(r)
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package controller
+
+import (
+        "context"
+        "regexp"
+        "strings"
+
+        tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+        corev1 "k8s.io/api/core/v1"
+        apierrors "k8s.io/apimachinery/pkg/api/errors"
+        "k8s.io/apimachinery/pkg/runtime"
+        ctrl "sigs.k8s.io/controller-runtime"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+        "sigs.k8s.io/controller-runtime/pkg/event"
+        ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
+        "sigs.k8s.io/controller-runtime/pkg/predicate"
+
+        appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
+
+        component "github.com/konflux-ci/mintmaker/internal/component"
+)
+
+// EventReconciler reconciles a Event object
+type EventReconciler struct {
+        client.Client
+        Scheme *runtime.Scheme
+}
+
+// markEventAsProcessed adds an annotation to the event indicating it has been processed
+func (r *EventReconciler) markEventAsProcessed(ctx context.Context, event *corev1.Event) error <span class="cov8" title="1">{
+        patchEvent := event.DeepCopy()
+
+        if patchEvent.Annotations == nil </span><span class="cov8" title="1">{
+                patchEvent.Annotations = make(map[string]string)
+        }</span>
+
+        <span class="cov8" title="1">original := patchEvent.DeepCopy()
+        patchEvent.Annotations["mintmaker.appstudio.redhat.com/processed"] = "true"
+
+        patch := client.MergeFrom(original)
+
+        if err := r.Patch(ctx, patchEvent, patch); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;update
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get
+// +kubebuilder:rbac:groups=tekton.dev,resources=pipelineruns,verbs=get;patch
+// +kubebuilder:rbac:groups=tekton.dev,resources=pipelineruns/status,verbs=patch
+
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
+func (r *EventReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) <span class="cov8" title="1">{
+        log := ctrllog.FromContext(ctx).WithName("EventController")
+        ctx = ctrllog.IntoContext(ctx, log)
+
+        var evt corev1.Event
+        var pod corev1.Pod
+        var errMessage string
+        defer func() </span><span class="cov8" title="1">{
+                if evt.Name != "" </span><span class="cov8" title="1">{
+                        if err := r.markEventAsProcessed(ctx, &amp;evt); err != nil </span><span class="cov0" title="0">{
+                                log.Error(err, "failed to mark event as processed", "event", evt.Name)
+                        }</span>
+                }
+
+                // If any error happens and we can't generate the token for the pod,
+                // we should cancel the corresponding pipelinerun, otherwise it will
+                // remains in running state, waiting for the secret to be ready until
+                // timeout.
+                <span class="cov8" title="1">if pod.Name != "" &amp;&amp; errMessage != "" </span><span class="cov8" title="1">{
+                        plrName, ok := pod.Labels["tekton.dev/pipelineRun"]
+                        if !ok </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+
+                        <span class="cov8" title="1">var plr tektonv1.PipelineRun
+                        if err := r.Client.Get(ctx, client.ObjectKey{Namespace: pod.Namespace, Name: plrName}, &amp;plr); err != nil </span><span class="cov0" title="0">{
+                                if apierrors.IsNotFound(err) </span><span class="cov0" title="0">{
+                                        // The PipelineRun is gone, we can't update it.
+                                        return
+                                }</span>
+                                <span class="cov0" title="0">log.Error(err, "unable to get corresponding pipelinerun for cancellation", "pod", pod.Name)
+                                // Cannot proceed if we can't get the PipelineRun.
+                                return</span>
+                        }
+
+                        // Cancel the PipelineRun
+                        <span class="cov8" title="1">original := plr.DeepCopy()
+                        plr.Spec.Status = tektonv1.PipelineRunSpecStatusCancelled
+                        plr.Status.MarkFailed(string(tektonv1.PipelineRunReasonCancelled), "%s", errMessage)
+                        patch := client.MergeFrom(original)
+                        err := r.Patch(ctx, &amp;plr, patch)
+                        if err != nil </span><span class="cov0" title="0">{
+                                log.Error(err, "unable to cancel pipelinerun")
+                        }</span> else<span class="cov8" title="1"> {
+                                log.Info("pipelinerun is cancelled", "reason", errMessage)
+                        }</span>
+                }
+        }()
+
+        <span class="cov8" title="1">if err := r.Client.Get(ctx, req.NamespacedName, &amp;evt); err != nil </span><span class="cov0" title="0">{
+                return ctrl.Result{}, client.IgnoreNotFound(err)
+        }</span>
+
+        // Check that the involved object is a Pod
+        <span class="cov8" title="1">if evt.InvolvedObject.Kind != "Pod" </span><span class="cov8" title="1">{
+                return ctrl.Result{}, nil
+        }</span>
+
+        // Extract volume name from the event message
+        // When the event is triggered by missing Renovate token, the message is in this format:
+        // MountVolume.SetUp failed for volume "secret-renovate-07110345-e8d4c7bf" : references non-existent secret key: renovate-token
+        <span class="cov8" title="1">msgRegex := regexp.MustCompile(`volume "([^"]+)".*references non-existent secret key: renovate-token`)
+        matches := msgRegex.FindStringSubmatch(evt.Message)
+
+        if len(matches) &lt; 2 </span><span class="cov8" title="1">{
+                // This is not an event we're monitoring
+                return ctrl.Result{}, nil
+        }</span>
+        <span class="cov8" title="1">volumeName := matches[1]
+
+        // Get the pod details from the involved object
+        podName := evt.InvolvedObject.Name
+        podNamespace := evt.InvolvedObject.Namespace
+
+        // Get the actual corresponding Pod object for this event
+        if err := r.Client.Get(ctx, client.ObjectKey{Namespace: podNamespace, Name: podName}, &amp;pod); err != nil </span><span class="cov8" title="1">{
+                if apierrors.IsNotFound(err) </span><span class="cov8" title="1">{
+                        // Pod has gone, we can't proceed
+                        return ctrl.Result{}, nil
+                }</span>
+                <span class="cov0" title="0">return ctrl.Result{}, err</span>
+        }
+
+        <span class="cov8" title="1">log = log.WithValues(
+                "component", pod.Labels[MintMakerComponentNameLabel],
+                "componentNamespace", pod.Labels[MintMakerComponentNamespaceLabel],
+                "pipelineRun", pod.Labels["tekton.dev/pipelineRun"],
+                "repository", strings.ReplaceAll(pod.Labels["mintmaker.appstudio.redhat.com/repository"], "_", "/"),
+                "gitHost", pod.Labels["mintmaker.appstudio.redhat.com/git-host"],
+        )
+        ctx = ctrllog.IntoContext(ctx, log)
+        // Find the corresponding secret
+        var secretName string
+        for _, volume := range pod.Spec.Volumes </span><span class="cov8" title="1">{
+                if volume.Name == volumeName &amp;&amp; volume.Secret != nil </span><span class="cov8" title="1">{
+                        secretName = volume.Secret.SecretName
+                        break</span>
+                }
+        }
+        <span class="cov8" title="1">if secretName == "" </span><span class="cov8" title="1">{
+                // Volume doesn't have a corresponding secret, ignore it
+                return ctrl.Result{}, nil
+        }</span>
+
+        // Get the secret
+        <span class="cov8" title="1">var secret corev1.Secret
+        if err := r.Client.Get(ctx, client.ObjectKey{Namespace: podNamespace, Name: secretName}, &amp;secret); err != nil </span><span class="cov0" title="0">{
+                if apierrors.IsNotFound(err) </span><span class="cov0" title="0">{
+                        // Secret doesn't exist, in theory this should not happen unless someone
+                        // deleted the secret by manual, anyway we will ignore this
+                        return ctrl.Result{}, nil
+                }</span>
+                <span class="cov0" title="0">errMessage = err.Error()
+                return ctrl.Result{}, err</span>
+        }
+
+        // Add the missing `renovate-token` key
+        <span class="cov8" title="1">if _, hasKey := secret.Data["renovate-token"]; !hasKey </span><span class="cov8" title="1">{
+                if secret.Data == nil </span><span class="cov8" title="1">{
+                        secret.Data = make(map[string][]byte)
+                }</span>
+
+                <span class="cov8" title="1">componentName := pod.Labels[MintMakerComponentNameLabel]
+                componentNamespace := pod.Labels[MintMakerComponentNamespaceLabel]
+
+                // Get the component
+                var comp appstudiov1alpha1.Component
+                if err := r.Client.Get(ctx, client.ObjectKey{Namespace: componentNamespace, Name: componentName}, &amp;comp); err != nil </span><span class="cov0" title="0">{
+                        if apierrors.IsNotFound(err) </span><span class="cov0" title="0">{
+                                // Component has gone, we can't proceed
+                                return ctrl.Result{}, nil
+                        }</span>
+                        <span class="cov0" title="0">errMessage = err.Error()
+                        return ctrl.Result{}, err</span>
+                }
+
+                // Create GitComponent from Component
+                <span class="cov8" title="1">gitComp, err := component.NewGitComponent(ctx, &amp;comp, r.Client)
+                if err != nil </span><span class="cov0" title="0">{
+                        errMessage = err.Error()
+                        // Do not requeue, the error is not related to the cluster issues
+                        return ctrl.Result{}, nil
+                }</span>
+
+                // When this is a GitHub component, it also refreshes token if needed
+                <span class="cov8" title="1">token, err := gitComp.GetToken()
+                if err != nil </span><span class="cov8" title="1">{
+                        log.Error(err, "failed to generate token for component")
+                        errMessage = err.Error()
+                        // Do not requeue, the error is probably caused by Konflux GitHub
+                        // installation issue, which retry won't help
+                        return ctrl.Result{}, nil
+                }</span>
+
+                // Add the missing Renovate token
+                <span class="cov8" title="1">log.Info("updating renovate token in secret", "secret", secretName)
+                secret.Data["renovate-token"] = []byte(token)
+
+                // Update the secret
+                if err := r.Update(ctx, &amp;secret); err != nil </span><span class="cov0" title="0">{
+                        log.Error(err, "failed to update renovate token in secret", "secret", secretName)
+                        errMessage = err.Error()
+                        return ctrl.Result{}, err
+                }</span>
+        }
+
+        <span class="cov8" title="1">return ctrl.Result{}, nil</span>
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *EventReconciler) SetupWithManager(mgr ctrl.Manager) error <span class="cov8" title="1">{
+        // We only react to Create events for Event in mintmaker namespace.
+        // Namespace filtering is handled by the manager's cache configuration.
+        return ctrl.NewControllerManagedBy(mgr).
+                For(&amp;corev1.Event{}).
+                WithEventFilter(predicate.Funcs{
+                        CreateFunc: func(e event.CreateEvent) bool </span><span class="cov8" title="1">{
+                                evt, ok := e.Object.(*corev1.Event)
+                                if !ok </span><span class="cov0" title="0">{
+                                        return false
+                                }</span>
+                                <span class="cov8" title="1">if evt.Reason != "FailedMount" </span><span class="cov0" title="0">{
+                                        return false
+                                }</span>
+                                <span class="cov8" title="1">if _, exists := evt.Annotations["mintmaker.appstudio.redhat.com/processed"]; exists </span><span class="cov8" title="1">{
+                                        return false
+                                }</span>
+                                <span class="cov8" title="1">return true</span>
+                        },
+                        UpdateFunc: func(e event.UpdateEvent) bool <span class="cov8" title="1">{
+                                return false
+                        }</span>,
+                        DeleteFunc: func(e event.DeleteEvent) bool <span class="cov8" title="1">{
+                                return false
+                        }</span>,
+                        GenericFunc: func(e event.GenericEvent) bool <span class="cov0" title="0">{
+                                return false
+                        }</span>,
+                }).
+                Complete(r)
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package controller
+
+import (
+        "context"
+        "strings"
+        "time"
+
+        "k8s.io/apimachinery/pkg/runtime"
+        "knative.dev/pkg/apis"
+        ctrl "sigs.k8s.io/controller-runtime"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+        "sigs.k8s.io/controller-runtime/pkg/event"
+        "sigs.k8s.io/controller-runtime/pkg/predicate"
+
+        tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+)
+
+var (
+        MintMakerGitPlatformLabel        = "mintmaker.appstudio.redhat.com/git-platform"
+        MintMakerComponentNameLabel      = "mintmaker.appstudio.redhat.com/component"
+        MintMakerComponentNamespaceLabel = "mintmaker.appstudio.redhat.com/namespace"
+)
+
+// PipelineRunReconciler reconciles a PipelineRun object
+type PipelineRunReconciler struct {
+        Client client.Client
+        Scheme *runtime.Scheme
+}
+
+// +kubebuilder:rbac:groups=tekton.dev,resources=pipelineruns,verbs=get;list;watch
+
+func (r *PipelineRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) <span class="cov8" title="1">{
+        return ctrl.Result{}, nil
+}</span>
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *PipelineRunReconciler) SetupWithManager(mgr ctrl.Manager) error <span class="cov8" title="1">{
+        // We only react to Update events for PipelineRun in mintmaker namespace.
+        // Namespace filtering is handled by the manager's cache configuration.
+        return ctrl.NewControllerManagedBy(mgr).
+                For(&amp;tektonv1.PipelineRun{}).
+                WithEventFilter(predicate.Funcs{
+                        CreateFunc: func(e event.CreateEvent) bool </span><span class="cov8" title="1">{
+                                return false
+                        }</span>,
+                        DeleteFunc: func(e event.DeleteEvent) bool <span class="cov8" title="1">{
+                                return false
+                        }</span>,
+                        UpdateFunc: func(e event.UpdateEvent) bool <span class="cov8" title="1">{
+                                if oldPipelineRun, ok := e.ObjectOld.(*tektonv1.PipelineRun); ok </span><span class="cov8" title="1">{
+                                        if newPipelineRun, ok := e.ObjectNew.(*tektonv1.PipelineRun); ok </span><span class="cov8" title="1">{
+                                                if !oldPipelineRun.IsDone() &amp;&amp; newPipelineRun.IsDone() </span><span class="cov8" title="1">{
+                                                        if newPipelineRun.Status.CompletionTime != nil </span><span class="cov8" title="1">{
+                                                                log := ctrl.Log.WithName("PipelineRunController")
+                                                                log.Info(
+                                                                        "PipelineRun finished", "pipelineRun", newPipelineRun.Name,
+                                                                        "component", newPipelineRun.Labels[MintMakerComponentNameLabel],
+                                                                        "componentNamespace", newPipelineRun.Labels[MintMakerComponentNamespaceLabel],
+                                                                        "repository", strings.ReplaceAll(newPipelineRun.Labels["mintmaker.appstudio.redhat.com/repository"], "_", "/"),
+                                                                        "gitHost", newPipelineRun.Labels["mintmaker.appstudio.redhat.com/git-host"],
+                                                                        "completionTime",
+                                                                        newPipelineRun.Status.CompletionTime.Format(time.RFC3339),
+                                                                        "success",
+                                                                        newPipelineRun.Status.GetCondition(apis.ConditionSucceeded).IsTrue(),
+                                                                        "reason",
+                                                                        newPipelineRun.Status.GetCondition(apis.ConditionSucceeded).GetReason(),
+                                                                )
+                                                        }</span>
+                                                        <span class="cov8" title="1">return true</span>
+                                                }
+                                        }
+                                }
+                                <span class="cov8" title="1">return false</span>
+                        },
+                        GenericFunc: func(e event.GenericEvent) bool <span class="cov0" title="0">{
+                                return false
+                        }</span>,
+                }).
+                Complete(r)
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tekton
+
+import (
+        "encoding/json"
+        "fmt"
+        "os"
+        "reflect"
+        "time"
+        "unicode"
+
+        "github.com/hashicorp/go-multierror"
+        . "github.com/konflux-ci/mintmaker/internal/constant"
+        "github.com/konflux-ci/mintmaker/internal/utils"
+        tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+        corev1 "k8s.io/api/core/v1"
+        "k8s.io/apimachinery/pkg/api/resource"
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        "k8s.io/utils/ptr"
+        "k8s.io/utils/strings/slices"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+        "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+)
+
+type PipelineRunBuilder struct {
+        err         *multierror.Error
+        pipelineRun *tektonv1.PipelineRun
+}
+
+type MountOptions struct {
+        // Which task to mount to. If empty, defaults to xxx (e.g., "renovate")
+        TaskName string
+        // Which steps to mount to. If empty, mounts to all steps
+        StepNames []string
+        // If the mount should be read-only. Default is true
+        ReadOnly *bool
+        // The permission mode for the mounted files
+        DefaultMode *int32
+        // Optional specifies whether the ConfigMap/Secret must exist
+        Optional *bool
+}
+
+// NewMountOptions creates a new MountOptions with default values
+func NewMountOptions() *MountOptions <span class="cov0" title="0">{
+        readOnly := true
+        defaultMode := int32(0644)
+        optional := false
+
+        return &amp;MountOptions{
+                TaskName:    "build",
+                StepNames:   []string{},
+                ReadOnly:    &amp;readOnly,
+                DefaultMode: &amp;defaultMode,
+                Optional:    &amp;optional,
+        }
+}</span>
+
+func (o *MountOptions) WithTaskName(taskName string) *MountOptions <span class="cov0" title="0">{
+        o.TaskName = taskName
+        return o
+}</span>
+
+func (o *MountOptions) WithStepNames(stepNames []string) *MountOptions <span class="cov0" title="0">{
+        o.StepNames = stepNames
+        return o
+}</span>
+
+func (o *MountOptions) WithReadOnly(readOnly bool) *MountOptions <span class="cov0" title="0">{
+        o.ReadOnly = &amp;readOnly
+        return o
+}</span>
+
+func (o *MountOptions) WithDefaultMode(mode int32) *MountOptions <span class="cov0" title="0">{
+        o.DefaultMode = &amp;mode
+        return o
+}</span>
+
+func (o *MountOptions) WithOptional(optional bool) *MountOptions <span class="cov0" title="0">{
+        o.Optional = &amp;optional
+        return o
+}</span>
+
+// NewPipelineRunBuilder initializes a new PipelineRunBuilder with the given name prefix and namespace.
+// It sets the name of the PipelineRun to be generated with the provided prefix and sets its namespace.
+func NewPipelineRunBuilder(name, namespace string) *PipelineRunBuilder <span class="cov0" title="0">{
+        var rootUser int64 = 0
+        var normalUser int64 = 1001120000
+        renovateImageURL := os.Getenv(RenovateImageEnvName)
+        if renovateImageURL == "" </span><span class="cov0" title="0">{
+                renovateImageURL = DefaultRenovateImageURL
+        }</span>
+        <span class="cov0" title="0">return &amp;PipelineRunBuilder{
+                pipelineRun: &amp;tektonv1.PipelineRun{
+                        ObjectMeta: metav1.ObjectMeta{
+                                Name:      name,
+                                Namespace: namespace,
+                        },
+                        Spec: tektonv1.PipelineRunSpec{
+                                PipelineSpec: &amp;tektonv1.PipelineSpec{
+                                        Workspaces: []tektonv1.PipelineWorkspaceDeclaration{
+                                                {
+                                                        Name: "shared-data",
+                                                },
+                                        },
+                                        Tasks: []tektonv1.PipelineTask{
+                                                {
+                                                        Name: "build",
+                                                        Workspaces: []tektonv1.WorkspacePipelineTaskBinding{
+                                                                {
+                                                                        Name:      "shared-data",
+                                                                        Workspace: "shared-data",
+                                                                },
+                                                        },
+                                                        TaskSpec: &amp;tektonv1.EmbeddedTask{
+                                                                TaskSpec: tektonv1.TaskSpec{
+                                                                        Workspaces: []tektonv1.WorkspaceDeclaration{
+                                                                                {
+                                                                                        Name: "shared-data",
+                                                                                },
+                                                                        },
+                                                                        Steps: []tektonv1.Step{
+                                                                                {
+                                                                                        Name:   "prepare-db",
+                                                                                        Image:  "quay.io/konflux-ci/mintmaker-osv-database:latest",
+                                                                                        Script: "echo 'Copying OSV database to the shared workspace'; cp -r /data/osv-db /workspace/shared-data",
+                                                                                        SecurityContext: &amp;corev1.SecurityContext{
+                                                                                                Capabilities:             &amp;corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+                                                                                                RunAsNonRoot:             ptr.To(true),
+                                                                                                RunAsUser:                &amp;normalUser,
+                                                                                                AllowPrivilegeEscalation: ptr.To(false),
+                                                                                        },
+                                                                                        ComputeResources: corev1.ResourceRequirements{
+                                                                                                Requests: corev1.ResourceList{
+                                                                                                        "cpu":    resource.MustParse("100m"),
+                                                                                                        "memory": resource.MustParse("512Mi"),
+                                                                                                },
+                                                                                                Limits: corev1.ResourceList{
+                                                                                                        "cpu":    resource.MustParse("100m"),
+                                                                                                        "memory": resource.MustParse("512Mi"),
+                                                                                                },
+                                                                                        },
+                                                                                },
+                                                                                {
+                                                                                        Name:  "prepare-rpm-cert",
+                                                                                        Image: "registry.access.redhat.com/ubi9",
+                                                                                        Script: "[ ! -f \"/etc/renovate/secret/rpm-activationkey\" ] &amp;&amp; echo 'RPM secret not found. Exiting.' &amp;&amp; exit 0;" +
+                                                                                                "echo 'Generating RPM certificate and copying it to shared workspace';" +
+                                                                                                "KEY_NAME=$(cat /etc/renovate/secret/rpm-activationkey);" +
+                                                                                                "ORG_ID=$(cat /etc/renovate/secret/rpm-org);" +
+                                                                                                "subscription-manager register --activationkey=\"$KEY_NAME\" --org=\"$ORG_ID\";" +
+                                                                                                "mkdir -p /workspace/shared-data/rpm-certs;" +
+                                                                                                "cp /etc/pki/entitlement/*-key.pem /workspace/shared-data/rpm-certs/key.pem;" +
+                                                                                                "cp $(find /etc/pki/entitlement -maxdepth 1 -type f -name '*.pem' ! -name '*-key.pem' -print -quit) /workspace/shared-data/rpm-certs/cert.pem",
+                                                                                        SecurityContext: &amp;corev1.SecurityContext{
+                                                                                                Capabilities:             &amp;corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+                                                                                                AllowPrivilegeEscalation: ptr.To(false),
+                                                                                                RunAsUser:                &amp;rootUser,
+                                                                                        },
+                                                                                        ComputeResources: corev1.ResourceRequirements{
+                                                                                                Requests: corev1.ResourceList{
+                                                                                                        "cpu":    resource.MustParse("100m"),
+                                                                                                        "memory": resource.MustParse("256Mi"),
+                                                                                                },
+                                                                                                Limits: corev1.ResourceList{
+                                                                                                        "cpu":    resource.MustParse("100m"),
+                                                                                                        "memory": resource.MustParse("256Mi"),
+                                                                                                },
+                                                                                        },
+                                                                                },
+                                                                                {
+                                                                                        Name:  "renovate",
+                                                                                        Image: renovateImageURL,
+                                                                                        Script: "RENOVATE_TOKEN=$(cat /etc/renovate/secret/renovate-token) " +
+                                                                                                "RENOVATE_CONFIG_FILE=/etc/renovate/config/config.js " +
+                                                                                                "LOG_FILE=/workspace/shared-data/renovate-logs.json " +
+                                                                                                "renovate || true",
+                                                                                        SecurityContext: &amp;corev1.SecurityContext{
+                                                                                                Capabilities:             &amp;corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+                                                                                                RunAsNonRoot:             ptr.To(true),
+                                                                                                RunAsUser:                &amp;normalUser,
+                                                                                                AllowPrivilegeEscalation: ptr.To(false),
+                                                                                        },
+                                                                                        ComputeResources: corev1.ResourceRequirements{
+                                                                                                Requests: corev1.ResourceList{
+                                                                                                        "cpu":    resource.MustParse("300m"),
+                                                                                                        "memory": resource.MustParse("3.5Gi"),
+                                                                                                },
+                                                                                                Limits: corev1.ResourceList{
+                                                                                                        "cpu":    resource.MustParse("300m"),
+                                                                                                        "memory": resource.MustParse("3.5Gi"),
+                                                                                                },
+                                                                                        },
+                                                                                        Env: []corev1.EnvVar{
+                                                                                                {
+                                                                                                        Name:  "HOME",
+                                                                                                        Value: "/home/renovate",
+                                                                                                },
+                                                                                                {
+                                                                                                        Name:  "LOG_LEVEL",
+                                                                                                        Value: "debug",
+                                                                                                },
+                                                                                                {
+                                                                                                        Name:  "LOG_FORMAT",
+                                                                                                        Value: "json",
+                                                                                                },
+                                                                                                {
+                                                                                                        Name:  "OSV_OFFLINE_DISABLE_DOWNLOAD",
+                                                                                                        Value: "true",
+                                                                                                },
+                                                                                                {
+                                                                                                        Name:  "OSV_OFFLINE_ROOT_DIR",
+                                                                                                        Value: "/workspace/shared-data/osv-db",
+                                                                                                },
+                                                                                                {
+                                                                                                        Name:  "DNF_VAR_SSL_CLIENT_KEY",
+                                                                                                        Value: "/workspace/shared-data/rpm-certs/key.pem",
+                                                                                                },
+                                                                                                {
+                                                                                                        Name:  "DNF_VAR_SSL_CLIENT_CERT",
+                                                                                                        Value: "/workspace/shared-data/rpm-certs/cert.pem",
+                                                                                                },
+                                                                                        },
+                                                                                },
+                                                                        },
+                                                                },
+                                                        },
+                                                },
+                                        },
+                                },
+                                Workspaces: []tektonv1.WorkspaceBinding{
+                                        {
+                                                Name:     "shared-data",
+                                                EmptyDir: &amp;corev1.EmptyDirVolumeSource{},
+                                        },
+                                },
+                        },
+                },
+        }</span>
+}
+
+// Build returns the constructed PipelineRun and any accumulated error.
+func (b *PipelineRunBuilder) Build() (*tektonv1.PipelineRun, error) <span class="cov0" title="0">{
+        return b.pipelineRun, b.err.ErrorOrNil()
+}</span>
+
+// WithAnnotations appends or updates annotations to the PipelineRun's metadata.
+// If the PipelineRun does not have existing annotations, it initializes them before adding.
+func (b *PipelineRunBuilder) WithAnnotations(annotations map[string]string) *PipelineRunBuilder <span class="cov0" title="0">{
+        if b.pipelineRun.ObjectMeta.Annotations == nil </span><span class="cov0" title="0">{
+                b.pipelineRun.ObjectMeta.Annotations = make(map[string]string)
+        }</span>
+        <span class="cov0" title="0">for key, value := range annotations </span><span class="cov0" title="0">{
+                b.pipelineRun.ObjectMeta.Annotations[key] = value
+        }</span>
+        <span class="cov0" title="0">return b</span>
+}
+
+// WithFinalizer adds the given finalizer to the PipelineRun's metadata.
+func (b *PipelineRunBuilder) WithFinalizer(finalizer string) *PipelineRunBuilder <span class="cov0" title="0">{
+        controllerutil.AddFinalizer(b.pipelineRun, finalizer)
+        return b
+}</span>
+
+// WithLabels appends or updates labels to the PipelineRun's metadata.
+// If the PipelineRun does not have existing labels, it initializes them before adding.
+func (b *PipelineRunBuilder) WithLabels(labels map[string]string) *PipelineRunBuilder <span class="cov0" title="0">{
+        if b.pipelineRun.ObjectMeta.Labels == nil </span><span class="cov0" title="0">{
+                b.pipelineRun.ObjectMeta.Labels = make(map[string]string)
+        }</span>
+        <span class="cov0" title="0">for key, value := range labels </span><span class="cov0" title="0">{
+                b.pipelineRun.ObjectMeta.Labels[key] = value
+        }</span>
+        <span class="cov0" title="0">return b</span>
+}
+
+// Mounts a ConfigMap to the specified task and steps.
+// - name: ConfigMap name
+// - mountPath: where the ConfigMap should be mounted to
+// - items: items from ConfigMap to be mounted. If nil, all items will be mounted
+// - opts: mount options
+func (b *PipelineRunBuilder) WithConfigMap(name, mountPath string, items []corev1.KeyToPath, opts *MountOptions) *PipelineRunBuilder <span class="cov0" title="0">{
+        if opts == nil </span><span class="cov0" title="0">{
+                opts = &amp;MountOptions{}
+        }</span>
+        <span class="cov0" title="0">if opts.TaskName == "" </span><span class="cov0" title="0">{
+                opts.TaskName = "build"
+        }</span>
+        <span class="cov0" title="0">if opts.ReadOnly == nil </span><span class="cov0" title="0">{
+                readOnly := true
+                opts.ReadOnly = &amp;readOnly
+        }</span>
+
+        <span class="cov0" title="0">for i, task := range b.pipelineRun.Spec.PipelineSpec.Tasks </span><span class="cov0" title="0">{
+                // Add volume when task matches
+                if task.Name == opts.TaskName &amp;&amp; task.TaskSpec != nil </span><span class="cov0" title="0">{
+                        volumeName := fmt.Sprintf("configmap-%s", name)
+                        volume := corev1.Volume{
+                                Name: volumeName,
+                                VolumeSource: corev1.VolumeSource{
+                                        ConfigMap: &amp;corev1.ConfigMapVolumeSource{
+                                                LocalObjectReference: corev1.LocalObjectReference{
+                                                        Name: name,
+                                                },
+                                                Items:       items,
+                                                Optional:    opts.Optional,
+                                                DefaultMode: opts.DefaultMode,
+                                        },
+                                },
+                        }
+                        b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Volumes = append(
+                                b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Volumes,
+                                volume,
+                        )
+
+                        // Add volume mount to specified steps or all steps
+                        volumeMount := corev1.VolumeMount{
+                                Name:      volumeName,
+                                MountPath: mountPath,
+                                ReadOnly:  *opts.ReadOnly,
+                        }
+
+                        for j := range b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Steps </span><span class="cov0" title="0">{
+                                step := &amp;b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Steps[j]
+                                if len(opts.StepNames) == 0 || slices.Contains(opts.StepNames, step.Name) </span><span class="cov0" title="0">{
+                                        step.VolumeMounts = append(step.VolumeMounts, volumeMount)
+                                }</span>
+                        }
+                        <span class="cov0" title="0">break</span>
+                }
+        }
+        // TODO: error when the specified task is not found
+        <span class="cov0" title="0">return b</span>
+}
+
+// Mounts a Secret to the specified task and steps.
+// - name: Secret name
+// - mountPath: where the Secret should be mounted to
+// - items: items from Secret to be mounted. If nil, all items will be mounted
+// - opts: mount options
+func (b *PipelineRunBuilder) WithSecret(name, mountPath string, items []corev1.KeyToPath, opts *MountOptions) *PipelineRunBuilder <span class="cov0" title="0">{
+        if opts == nil </span><span class="cov0" title="0">{
+                opts = &amp;MountOptions{}
+        }</span>
+        <span class="cov0" title="0">if opts.TaskName == "" </span><span class="cov0" title="0">{
+                opts.TaskName = "build"
+        }</span>
+        <span class="cov0" title="0">if opts.ReadOnly == nil </span><span class="cov0" title="0">{
+                readOnly := true
+                opts.ReadOnly = &amp;readOnly
+        }</span>
+
+        // Find the specified task
+        <span class="cov0" title="0">for i, task := range b.pipelineRun.Spec.PipelineSpec.Tasks </span><span class="cov0" title="0">{
+                if task.Name == opts.TaskName &amp;&amp; task.TaskSpec != nil </span><span class="cov0" title="0">{
+                        // Generate unique volume name using random string to avoid conflicts
+                        // when the same secret is mounted multiple times
+                        volumeName := fmt.Sprintf("secret-%s-%s", name, utils.RandomString(8))
+                        volume := corev1.Volume{
+                                Name: volumeName,
+                                VolumeSource: corev1.VolumeSource{
+                                        Secret: &amp;corev1.SecretVolumeSource{
+                                                SecretName:  name,
+                                                Items:       items,
+                                                Optional:    opts.Optional,
+                                                DefaultMode: opts.DefaultMode,
+                                        },
+                                },
+                        }
+                        b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Volumes = append(
+                                b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Volumes,
+                                volume,
+                        )
+
+                        // Add volume mount to specified steps or all steps
+                        volumeMount := corev1.VolumeMount{
+                                Name:      volumeName,
+                                MountPath: mountPath,
+                                ReadOnly:  *opts.ReadOnly,
+                        }
+
+                        for j := range b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Steps </span><span class="cov0" title="0">{
+                                step := &amp;b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Steps[j]
+                                if len(opts.StepNames) == 0 || slices.Contains(opts.StepNames, step.Name) </span><span class="cov0" title="0">{
+                                        step.VolumeMounts = append(step.VolumeMounts, volumeMount)
+                                }</span>
+                        }
+                        <span class="cov0" title="0">break</span>
+                }
+        }
+        // TODO: error when the specified task is not found
+        <span class="cov0" title="0">return b</span>
+}
+
+// WithObjectReferences constructs tektonv1.Param entries for each of the provided client.Objects.
+// Each param name is derived from the object's Kind (with the first letter made lowercase) and
+// the value is a combination of the object's Namespace and Name.
+func (b *PipelineRunBuilder) WithObjectReferences(objects ...client.Object) *PipelineRunBuilder <span class="cov0" title="0">{
+        for _, obj := range objects </span><span class="cov0" title="0">{
+                name := []rune(obj.GetObjectKind().GroupVersionKind().Kind)
+                name[0] = unicode.ToLower(name[0])
+                b.WithParams(tektonv1.Param{
+                        Name: string(name),
+                        Value: tektonv1.ParamValue{
+                                Type:      tektonv1.ParamTypeString,
+                                StringVal: obj.GetNamespace() + "/" + obj.GetName(),
+                        },
+                })
+        }</span>
+        <span class="cov0" title="0">return b</span>
+}
+
+// WithObjectSpecsAsJson constructs tektonv1.Param entries for the Spec field of each of the provided client.Objects.
+// Each param name is derived from the object's Kind (with the first letter made lowercase).
+// The value for each param is the JSON representation of the object's Spec.
+// If an error occurs during extraction or serialization, it's accumulated in the builder's err field using multierror.
+func (b *PipelineRunBuilder) WithObjectSpecsAsJson(objects ...client.Object) *PipelineRunBuilder <span class="cov0" title="0">{
+        for _, obj := range objects </span><span class="cov0" title="0">{
+                name := []rune(obj.GetObjectKind().GroupVersionKind().Kind)
+                name[0] = unicode.ToLower(name[0])
+                value := reflect.ValueOf(obj).Elem().FieldByName("Spec")
+                if !value.IsValid() </span><span class="cov0" title="0">{
+                        b.err = multierror.Append(b.err, fmt.Errorf("failed to extract spec for object: %s", string(name)))
+                        continue</span>
+                }
+                <span class="cov0" title="0">jsonData, err := json.Marshal(value.Interface())
+                if err != nil </span><span class="cov0" title="0">{
+                        b.err = multierror.Append(b.err, fmt.Errorf("failed to serialize spec of object %s to JSON: %v", string(name), err))
+                        continue</span>
+                }
+                <span class="cov0" title="0">b.WithParams(tektonv1.Param{
+                        Name: string(name),
+                        Value: tektonv1.ParamValue{
+                                Type:      tektonv1.ParamTypeString,
+                                StringVal: string(jsonData),
+                        },
+                })</span>
+        }
+        <span class="cov0" title="0">return b</span>
+}
+
+// WithParams appends the provided params to the PipelineRun's spec.
+func (b *PipelineRunBuilder) WithParams(params ...tektonv1.Param) *PipelineRunBuilder <span class="cov0" title="0">{
+        if b.pipelineRun.Spec.Params == nil </span><span class="cov0" title="0">{
+                b.pipelineRun.Spec.Params = make([]tektonv1.Param, 0)
+        }</span>
+        <span class="cov0" title="0">b.pipelineRun.Spec.Params = append(b.pipelineRun.Spec.Params, params...)
+        return b</span>
+}
+
+// WithServiceAccount sets the ServiceAccountName for the PipelineRun's TaskRunTemplate.
+func (b *PipelineRunBuilder) WithServiceAccount(serviceAccount string) *PipelineRunBuilder <span class="cov0" title="0">{
+        b.pipelineRun.Spec.TaskRunTemplate.ServiceAccountName = serviceAccount
+        return b
+}</span>
+
+// WithTimeouts sets the Timeouts for the PipelineRun.
+func (b *PipelineRunBuilder) WithTimeouts(timeouts *tektonv1.TimeoutFields) *PipelineRunBuilder <span class="cov0" title="0">{
+        defaultTimeouts := &amp;tektonv1.TimeoutFields{
+                Pipeline: &amp;metav1.Duration{Duration: 1 * time.Hour},
+        }
+        if timeouts == nil || *timeouts == (tektonv1.TimeoutFields{}) </span><span class="cov0" title="0">{
+                b.pipelineRun.Spec.Timeouts = defaultTimeouts
+        }</span> else<span class="cov0" title="0"> {
+                b.pipelineRun.Spec.Timeouts = timeouts
+        }</span>
+        <span class="cov0" title="0">return b</span>
+}
+
+// WithKiteIntegration adds a log-analyzer step to analyzing Renovate logs and create issues
+// in Kite
+func (b *PipelineRunBuilder) WithKiteIntegration(kiteAPIURL string) *PipelineRunBuilder <span class="cov0" title="0">{
+        var normalUser int64 = 1001120000
+
+        // Find the build task and add log-analyzer step
+        for i, task := range b.pipelineRun.Spec.PipelineSpec.Tasks </span><span class="cov0" title="0">{
+                if task.Name == "build" &amp;&amp; task.TaskSpec != nil </span><span class="cov0" title="0">{
+                        steps := &amp;b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Steps
+                        logAnalyzerStep := tektonv1.Step{
+                                Name:   "log-analyzer",
+                                Image:  "quay.io/konflux-ci/renovate-log-analyzer:latest",
+                                Script: "",
+                                SecurityContext: &amp;corev1.SecurityContext{
+                                        Capabilities:             &amp;corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+                                        RunAsNonRoot:             ptr.To(true),
+                                        RunAsUser:                &amp;normalUser,
+                                        AllowPrivilegeEscalation: ptr.To(false),
+                                },
+                                Env: []corev1.EnvVar{
+                                        {
+                                                Name: "POD_NAME",
+                                                ValueFrom: &amp;corev1.EnvVarSource{
+                                                        FieldRef: &amp;corev1.ObjectFieldSelector{
+                                                                FieldPath: "metadata.name",
+                                                        },
+                                                },
+                                        },
+                                        {
+                                                Name: "NAMESPACE",
+                                                ValueFrom: &amp;corev1.EnvVarSource{
+                                                        FieldRef: &amp;corev1.ObjectFieldSelector{
+                                                                FieldPath: "metadata.labels['mintmaker.appstudio.redhat.com/namespace']",
+                                                        },
+                                                },
+                                        },
+                                        {
+                                                Name: "GIT_HOST",
+                                                ValueFrom: &amp;corev1.EnvVarSource{
+                                                        FieldRef: &amp;corev1.ObjectFieldSelector{
+                                                                FieldPath: "metadata.labels['mintmaker.appstudio.redhat.com/git-host']",
+                                                        },
+                                                },
+                                        },
+                                        {
+                                                Name: "REPOSITORY",
+                                                ValueFrom: &amp;corev1.EnvVarSource{
+                                                        FieldRef: &amp;corev1.ObjectFieldSelector{
+                                                                FieldPath: "metadata.labels['mintmaker.appstudio.redhat.com/repository']",
+                                                        },
+                                                },
+                                        },
+                                        {
+                                                Name: "BRANCH",
+                                                ValueFrom: &amp;corev1.EnvVarSource{
+                                                        FieldRef: &amp;corev1.ObjectFieldSelector{
+                                                                FieldPath: "metadata.labels['mintmaker.appstudio.redhat.com/branch']",
+                                                        },
+                                                },
+                                        },
+                                        {
+                                                Name: "PIPELINE_RUN",
+                                                ValueFrom: &amp;corev1.EnvVarSource{
+                                                        FieldRef: &amp;corev1.ObjectFieldSelector{
+                                                                FieldPath: "metadata.labels['tekton.dev/pipelineRun']",
+                                                        },
+                                                },
+                                        },
+                                        {
+                                                Name:  "KITE_API_URL",
+                                                Value: kiteAPIURL,
+                                        },
+                                        {
+                                                Name:  "LOG_FILE",
+                                                Value: "/workspace/shared-data/renovate-logs.json",
+                                        },
+                                        {
+                                                Name:  "KITE_AUTH_TOKEN_FILE",
+                                                Value: "/var/run/secrets/kite/token",
+                                        },
+                                },
+                        }
+                        *steps = append(*steps, logAnalyzerStep)
+                        break</span>
+                }
+        }
+        <span class="cov0" title="0">return b</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package utils
+
+import (
+        "crypto/rand"
+        "encoding/hex"
+)
+
+func RandomString(length int) string <span class="cov8" title="1">{
+        bytes := make([]byte, length/2+1)
+        if _, err := rand.Read(bytes); err != nil </span><span class="cov0" title="0">{
+                panic("Failed to read from random generator")</span>
+        }
+        <span class="cov8" title="1">return hex.EncodeToString(bytes)[0:length]</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">// Copyright 2025 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package utils
+
+import (
+        "regexp"
+        "strings"
+)
+
+// SanitizeLabelValue sanitizes a string to be valid for Kubernetes label values.
+// It handles common restrictions like maximum length (63 chars) and disallowed characters.
+func NormalizeLabelValue(value string) string <span class="cov8" title="1">{
+        // A valid label must be an empty string or consist of alphanumeric
+        // characters, '-', '_' or '.', and must start and end with an
+        // alphanumeric character
+
+        // Replace forward slashes with underscores (they're not allowed)
+        sanitized := strings.ReplaceAll(value, "/", "_")
+
+        // Ensure the length is within limits of 63
+        if len(sanitized) &gt; 63 </span><span class="cov8" title="1">{
+                sanitized = sanitized[:63]
+        }</span>
+
+        // Strip leading non-alphanumeric characters
+        <span class="cov8" title="1">sanitized = regexp.MustCompile(`^[^A-Za-z0-9]+`).ReplaceAllString(sanitized, "")
+
+        // Strip trailing non-alphanumeric characters
+        sanitized = regexp.MustCompile(`[^A-Za-z0-9]+$`).ReplaceAllString(sanitized, "")
+
+        // Further validation to ensure the sanitized string follows the exact pattern
+        // This would replace any sequences of invalid characters in the middle with a underscore
+        sanitized = regexp.MustCompile(`[^A-Za-z0-9_.-]+`).ReplaceAllString(sanitized, "_")
+
+        return sanitized</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package utils
+
+import (
+        "fmt"
+        "net/url"
+        "strings"
+)
+
+func GetGitPlatform(giturl string) (string, error) <span class="cov0" title="0">{
+        allowedGitPlatforms := []string{"github", "gitlab"}
+        host, err := GetGitHost(giturl)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov0" title="0">var gitPlatform string
+        for _, platform := range allowedGitPlatforms </span><span class="cov0" title="0">{
+                if strings.Contains(host, platform) </span><span class="cov0" title="0">{
+                        gitPlatform = platform
+                        break</span>
+                }
+        }
+        <span class="cov0" title="0">if gitPlatform == "" </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("unsupported git platform for repository %s", giturl)
+        }</span>
+        <span class="cov0" title="0">return gitPlatform, nil</span>
+}
+
+func GetGitHost(giturl string) (string, error) <span class="cov0" title="0">{
+        // Handle SSH URLs (user@host:path)
+        if strings.Contains(giturl, "@") </span><span class="cov0" title="0">{
+                parts := strings.SplitN(giturl, ":", 2)
+                if len(parts) != 2 </span><span class="cov0" title="0">{
+                        return "", fmt.Errorf("invalid SSH URL format: %s", giturl)
+                }</span>
+                <span class="cov0" title="0">hostPart := strings.SplitN(parts[0], "@", 2)
+                if len(hostPart) != 2 </span><span class="cov0" title="0">{
+                        return "", fmt.Errorf("invalid SSH URL format: %s", giturl)
+                }</span>
+                <span class="cov0" title="0">return hostPart[1], nil</span>
+        }
+
+        <span class="cov0" title="0">u, err := url.Parse(giturl)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov0" title="0">host := u.Hostname()
+
+        return host, nil</span>
+}
+
+func GetGitPath(giturl string) (string, error) <span class="cov0" title="0">{
+        giturl = strings.TrimSuffix(strings.TrimSuffix(giturl, "/"), ".git")
+        // Handle SSH URLs (user@host:path)
+        if strings.Contains(giturl, "@") </span><span class="cov0" title="0">{
+                parts := strings.SplitN(giturl, ":", 2)
+                if len(parts) != 2 </span><span class="cov0" title="0">{
+                        return "", fmt.Errorf("invalid SSH URL format: %s", giturl)
+                }</span>
+                <span class="cov0" title="0">return strings.TrimPrefix(parts[1], "/"), nil</span>
+        }
+
+        <span class="cov0" title="0">u, err := url.Parse(giturl)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov0" title="0">path := strings.TrimPrefix(u.Path, "/")
+        return path, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package osv_generator
+
+import (
+        "encoding/json"
+        "fmt"
+        "io"
+        "net/http"
+        "os"
+        "regexp"
+        "strings"
+        "time"
+
+        "github.com/dchest/uniuri"
+)
+
+func retryGet(url string, maxRetries int, backoff time.Duration) (string, error) <span class="cov8" title="1">{
+        var lastErr error
+
+        for i := 0; i &lt; maxRetries; i++ </span><span class="cov8" title="1">{
+                resp, err := http.Get(url)
+                if err == nil &amp;&amp; resp.StatusCode == http.StatusOK </span><span class="cov8" title="1">{
+                        defer resp.Body.Close()
+                        body, err := io.ReadAll(resp.Body)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return "", fmt.Errorf("could not read response body: %w", err)
+                        }</span>
+                        <span class="cov8" title="1">return string(body), nil</span>
+                }
+
+                <span class="cov0" title="0">if resp != nil </span><span class="cov0" title="0">{
+                        resp.Body.Close()
+                }</span>
+                <span class="cov0" title="0">lastErr = err
+
+                fmt.Printf("Retry %d/%d failed: %v\n", i+1, maxRetries, err)
+                time.Sleep(backoff)
+                backoff *= 2</span>
+        }
+
+        <span class="cov0" title="0">return "", fmt.Errorf("all retries failed: %w", lastErr)</span>
+}
+
+// Download CSAF VEX file from given URL and store into a VEX struct
+func GetVEXFromUrl(url string) (VEX, error) <span class="cov8" title="1">{
+        body, err := retryGet(url, 5, time.Second)
+        if err != nil </span><span class="cov0" title="0">{
+                return VEX{}, err
+        }</span>
+
+        <span class="cov8" title="1">var vexData VEX
+
+        if err := json.Unmarshal([]byte(body), &amp;vexData); err != nil </span><span class="cov0" title="0">{
+                return VEX{}, fmt.Errorf("could not unmarshal JSON: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">fmt.Printf("Found %d vulnerabilities at %s\n", len(vexData.Vulnerabilities), url)
+        return vexData, nil</span>
+}
+
+// Convert VEX data to OSV format
+func ConvertToOSV(vexData VEX, containerVulns bool) []OSV <span class="cov8" title="1">{
+        var vulnerabilities []OSV
+        var affectedList []*Affected
+
+        // Get list of affected packages
+        if !containerVulns </span><span class="cov8" title="1">{
+                affectedList = getAffectedListRPMs(vexData)
+        }</span> else<span class="cov8" title="1"> {
+                affectedList = getAffectedListContainers(vexData)
+                // if there are no affected containers, skip creating a vulnerability
+                if len(affectedList) == 0 </span><span class="cov0" title="0">{
+                        return vulnerabilities
+                }</span>
+        }
+
+        <span class="cov8" title="1">for _, vulnerability := range vexData.Vulnerabilities </span><span class="cov8" title="1">{
+                // Create OSV vulnerability object for each CVE
+                osvVulnerability := OSV{
+                        IdInternal:    uniuri.New(),
+                        SchemaVersion: "1.6.0",
+                        Id:            vulnerability.Cve,
+                        DatabaseSpecific: &amp;DatabaseSpecific{
+                                Severity: vexData.Document.AggregateSeverity.Text,
+                                CWEids:   []string{vulnerability.Cwe.Id},
+                        },
+                        Modified:   time.Now().Format("2006-01-02T15:04:05Z"),
+                        Published:  getPublishedDate(vulnerability),
+                        Summary:    getSummary(vulnerability),
+                        Details:    getDetails(vulnerability),
+                        References: getReferencesList(vulnerability),
+                        Affected:   affectedList,
+                }
+
+                vulnerabilities = append(vulnerabilities, osvVulnerability)
+        }</span>
+        <span class="cov8" title="1">return vulnerabilities</span>
+}
+
+// Save all CVEs to an OSV file
+func StoreToFile(filename string, convertedVulnerabilities []OSV) error <span class="cov8" title="1">{
+        file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("error accessing file: %v", err)
+        }</span>
+        <span class="cov8" title="1">defer file.Close()
+        encoder := json.NewEncoder(file)
+
+        for _, v := range convertedVulnerabilities </span><span class="cov8" title="1">{
+                if err := encoder.Encode(v); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("could not encode OSV data: %v", err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Get list of affected RPM packages from VEX data
+func getAffectedListRPMs(vex VEX) []*Affected <span class="cov8" title="1">{
+        var affectedList []*Affected
+
+        // Traverse dependencies tree
+        for _, branch := range vex.ProductTree.Branches </span><span class="cov8" title="1">{
+                for _, subBranch := range branch.Branches </span><span class="cov8" title="1">{
+                        if subBranch.Category == "architecture" </span><span class="cov8" title="1">{
+                                for _, subSubBranch := range subBranch.Branches </span><span class="cov8" title="1">{
+                                        // Collect only RPM dependencies
+                                        if !strings.HasPrefix(subSubBranch.Product.ProductIdentificationHelper.Purl, "pkg:rpm") </span><span class="cov8" title="1">{
+                                                continue</span>
+                                        }
+
+                                        // Parse name and version from pURL
+                                        <span class="cov8" title="1">re := regexp.MustCompile(`(pkg:rpm(?:mod)?/(?:redhat/)?([^@]+))@([^?]+)`)
+                                        matches := re.FindStringSubmatch(subSubBranch.Product.ProductIdentificationHelper.Purl)
+                                        purl, packageName, version := matches[1], matches[2], matches[3]
+
+                                        affectedPackage := Affected{
+                                                Package: &amp;Package{
+                                                        Ecosystem: "RPM",
+                                                        Name:      packageName,
+                                                        Purl:      purl,
+                                                },
+                                                Ranges: []*Range{
+                                                        {
+                                                                Type: "ECOSYSTEM",
+                                                                Events: []*Event{
+                                                                        {
+                                                                                Introduced: "0.0.0",
+                                                                        },
+                                                                        {
+                                                                                Fixed: version,
+                                                                        },
+                                                                },
+                                                        },
+                                                },
+                                        }
+
+                                        // There will be duplicated dependencied from different architectures, store data once
+                                        if !contains(affectedList, affectedPackage) </span><span class="cov8" title="1">{
+                                                affectedList = append(affectedList, &amp;affectedPackage)
+                                        }</span>
+                                }
+                        }
+                }
+        }
+        <span class="cov8" title="1">return affectedList</span>
+}
+
+func getAffectedListContainers(vex VEX) []*Affected <span class="cov8" title="1">{
+        var affectedList []*Affected
+
+        // Traverse dependencies tree
+        for _, branch := range vex.ProductTree.Branches </span><span class="cov8" title="1">{
+                for _, subBranch := range branch.Branches </span><span class="cov8" title="1">{
+                        if subBranch.Category == "architecture" </span><span class="cov8" title="1">{
+                                for _, subSubBranch := range subBranch.Branches </span><span class="cov8" title="1">{
+                                        // Collect only container dependencies
+                                        if !strings.HasPrefix(subSubBranch.Product.ProductIdentificationHelper.Purl, "pkg:oci") </span><span class="cov8" title="1">{
+                                                continue</span>
+                                        }
+
+                                        // Parse name and version from pURL
+                                        <span class="cov8" title="1">re := regexp.MustCompile(`pkg:oci/.*&amp;repository_url=([^&amp;]+)`)
+                                        matches := re.FindStringSubmatch(subSubBranch.Product.ProductIdentificationHelper.Purl)
+                                        repositoryUrl := matches[1]
+
+                                        affectedPackage := Affected{
+                                                Package: &amp;Package{
+                                                        Ecosystem: "Docker",
+                                                        Name:      repositoryUrl,
+                                                        Purl:      subSubBranch.Product.ProductIdentificationHelper.Purl,
+                                                },
+                                                Ranges: []*Range{},
+                                        }
+                                        // CVE data only contain the registry.redhat.io domain. But some images are also
+                                        // accessible through registry.access.redhat.com. Create entries for those images
+                                        // so that their vulnerabilities can be matched as well.
+                                        affectedPackageOldRegistry := Affected{
+                                                Package: &amp;Package{
+                                                        Ecosystem: "Docker",
+                                                        Name:      strings.ReplaceAll(repositoryUrl, "registry.redhat.io", "registry.access.redhat.com"),
+                                                        Purl:      strings.ReplaceAll(subSubBranch.Product.ProductIdentificationHelper.Purl, "registry.redhat.io", "registry.access.redhat.com"),
+                                                },
+                                                Ranges: []*Range{},
+                                        }
+
+                                        // There will be duplicated dependencies from different architectures, store data once
+                                        if !contains(affectedList, affectedPackage) </span><span class="cov8" title="1">{
+                                                affectedList = append(affectedList, &amp;affectedPackage)
+                                        }</span>
+                                        <span class="cov8" title="1">if !contains(affectedList, affectedPackageOldRegistry) </span><span class="cov0" title="0">{
+                                                affectedList = append(affectedList, &amp;affectedPackageOldRegistry)
+                                        }</span>
+                                }
+                        }
+                }
+        }
+        <span class="cov8" title="1">return affectedList</span>
+}
+
+func getReferencesList(vulnerability *Vulnerability) []*Reference <span class="cov8" title="1">{
+        var references []*Reference
+
+        for _, reference := range vulnerability.References </span><span class="cov8" title="1">{
+                if reference.Category == "self" </span><span class="cov8" title="1">{
+                        references = append(references, &amp;Reference{
+                                Type: "REPORT",
+                                Url:  reference.Url,
+                        })
+                }</span> else<span class="cov8" title="1"> {
+                        references = append(references, &amp;Reference{
+                                Type: "WEB",
+                                Url:  reference.Url,
+                        })
+                }</span>
+        }
+        <span class="cov8" title="1">return references</span>
+}
+
+func getDetails(vulnerability *Vulnerability) string <span class="cov8" title="1">{
+        for _, note := range vulnerability.Notes </span><span class="cov8" title="1">{
+                if note.Category == "description" </span><span class="cov8" title="1">{
+                        return note.Text
+                }</span>
+        }
+        <span class="cov0" title="0">panic("No CVE details found")</span>
+}
+
+func getSummary(vulnerability *Vulnerability) string <span class="cov8" title="1">{
+        for _, note := range vulnerability.Notes </span><span class="cov8" title="1">{
+                if note.Category == "summary" </span><span class="cov8" title="1">{
+                        return note.Text
+                }</span>
+        }
+        <span class="cov0" title="0">panic("No CVE summary found")</span>
+}
+
+func getPublishedDate(vulnerability *Vulnerability) string <span class="cov8" title="1">{
+        t, err := time.Parse("2006-01-02T15:04:05+00:00", vulnerability.DiscoveryDate)
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Printf("Error parsing time for %s: %v\n", vulnerability.Cve, err)
+                panic(err)</span>
+        }
+        <span class="cov8" title="1">return t.Format("2006-01-02T15:04:05Z")</span>
+}
+
+func contains(affectedList []*Affected, affectedPackage Affected) bool <span class="cov8" title="1">{
+        for _, item := range affectedList </span><span class="cov8" title="1">{
+                if item.Package.Name == affectedPackage.Package.Name </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+        <span class="cov8" title="1">return false</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package osv_generator
+
+import (
+        "encoding/csv"
+        "fmt"
+        "net/http"
+        "sort"
+        "strings"
+        "time"
+)
+
+const URL = "https://security.access.redhat.com/data/csaf/v2/advisories"
+
+// Get a list of advisory filenames from releases.csv that were released
+// within the specified number of days from the current time. The advisory
+// filenames in releases.csv are sorted by released date, newest first.
+func getAdvisoryListByReleases(days int) ([]string, error) <span class="cov8" title="1">{
+        response, err := http.Get(fmt.Sprintf("%s/%s", URL, "releases.csv"))
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Println("Error downloading file:", err)
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">defer response.Body.Close()
+
+        // Load all advisories from the document
+        csvReader := csv.NewReader(response.Body)
+        records, err := csvReader.ReadAll()
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Println("Error parsing CSV:", err)
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">var advisories []string
+        dateThreshold := time.Now().AddDate(0, 0, -days)
+
+        // Filter out those which are not older than the specified amount of `days`
+        for _, record := range records </span><span class="cov8" title="1">{
+                advisoryDate, err := time.Parse(time.RFC3339, record[1])
+                if err != nil </span><span class="cov0" title="0">{
+                        fmt.Println("Error parsing date:", err)
+                        return nil, err
+                }</span>
+
+                <span class="cov8" title="1">advisories = append(advisories, record[0])
+
+                if advisoryDate.Before(dateThreshold) </span><span class="cov0" title="0">{
+                        // All recently modified advisories were found
+                        fmt.Printf("Found %d new advisories\n", len(advisories))
+                        break</span>
+                }
+        }
+
+        <span class="cov8" title="1">return advisories, nil</span>
+}
+
+// Get list of new advisories sorted by name, returns maximum of `limit` advisories
+func getAdvisoryListByModified(limit int) ([]string, error) <span class="cov8" title="1">{
+        response, err := http.Get(fmt.Sprintf("%s/%s", URL, "changes.csv"))
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Println("Error downloading file:", err)
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">defer response.Body.Close()
+
+        // Load all advisories from the document
+        csvReader := csv.NewReader(response.Body)
+        records, err := csvReader.ReadAll()
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Println("Error parsing CSV:", err)
+                return nil, err
+        }</span>
+
+        // Sort records by name in descending order to get newest advisories first
+        <span class="cov8" title="1">sort.Slice(records, func(i, j int) bool </span><span class="cov8" title="1">{
+                return records[i][0] &gt; records[j][0]
+        }</span>)
+
+        <span class="cov8" title="1">var advisories []string
+        for _, record := range records </span><span class="cov8" title="1">{
+                // Add only RHSA advisories for now
+                if strings.Contains(record[0], "rhsa-") </span><span class="cov8" title="1">{
+                        advisories = append(advisories, record[0])
+                        if len(advisories) == limit </span><span class="cov0" title="0">{
+                                break</span>
+                        }
+                }
+        }
+        <span class="cov8" title="1">return advisories, nil</span>
+}
+
+// Extract advisory data from the given URL, store as list of OSV objects
+func extractAdvisory(advisory string, containerVulns bool) []OSV <span class="cov8" title="1">{
+        vexVulnerability, err := GetVEXFromUrl(fmt.Sprintf("%s/%s", URL, advisory))
+        if err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+        <span class="cov8" title="1">convertedVulnerabilities := ConvertToOSV(vexVulnerability, containerVulns)
+        return convertedVulnerabilities</span>
+}
+
+// Generate OSV vulnerabilities from CSAF VEX data and store to a file
+func GenerateOSV(filename string, containerVulns bool, days int) error <span class="cov8" title="1">{
+        var osvList []OSV
+        advisories, err := getAdvisoryListByReleases(days)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // Extract vulnerability data and convert to OSV format
+        <span class="cov8" title="1">advisoryChan := make(chan []OSV)
+        for _, advisory := range advisories </span><span class="cov8" title="1">{
+                go func(advisory string) </span><span class="cov8" title="1">{
+                        advisoryChan &lt;- extractAdvisory(advisory, containerVulns)
+                }</span>(advisory)
+        }
+        <span class="cov8" title="1">for range advisories </span><span class="cov8" title="1">{
+                osvList = append(osvList, &lt;-advisoryChan...)
+        }</span>
+
+        <span class="cov8" title="1">if err := StoreToFile(filename, osvList); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
