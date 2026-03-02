@@ -71,7 +71,7 @@
 				
 				<option value="file7">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission/webhook.go (96.2%)</option>
 				
-				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (84.0%)</option>
+				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (84.1%)</option>
 				
 				<option value="file9">github.com/konflux-ci/release-service/controllers/release/controller.go (70.6%)</option>
 				
@@ -351,6 +351,18 @@ func (r *Release) HasTenantPipelineProcessingFinished() bool <span class="cov8" 
 // HasReleaseFinished checks whether the Release has finished, regardless of the result.
 func (r *Release) HasReleaseFinished() bool <span class="cov8" title="1">{
         return r.hasPhaseFinished(releasedConditionType)
+}</span>
+
+// AreAllProcessingPhasesFinished returns true when all processing phases (tenant collectors,
+// managed collectors, tenant, managed, and final) have finished, regardless of result or skip.
+// This should be used to gate any stop operation in the release adapter, or else we risk leaving
+// lingering resources around as the release would be ended before cleanups may run.
+func (r *Release) AreAllProcessingPhasesFinished() bool <span class="cov8" title="1">{
+        return r.HasTenantCollectorsPipelineProcessingFinished() &amp;&amp;
+                r.HasManagedCollectorsPipelineProcessingFinished() &amp;&amp;
+                r.HasTenantPipelineProcessingFinished() &amp;&amp;
+                r.HasManagedPipelineProcessingFinished() &amp;&amp;
+                r.HasFinalPipelineProcessingFinished()
 }</span>
 
 // IsAttributed checks whether the Release was marked as attributed.
@@ -2077,8 +2089,13 @@ func (a *adapter) EnsureReleaseIsCompleted() (controller.OperationResult, error)
 // it is marked as releasing. If the Release has finished, no other operation after this one will be executed.
 func (a *adapter) EnsureReleaseIsRunning() (controller.OperationResult, error) <span class="cov8" title="1">{
         if a.release.HasReleaseFinished() </span><span class="cov8" title="1">{
-                return controller.StopProcessing()
-        }</span>
+                if !a.release.AreAllProcessingPhasesFinished() </span><span class="cov8" title="1">{
+                        a.logger.Info("EnsureReleaseIsRunning: release finished but not all phases finished, continuing so we can complete properly",
+                                "Release", fmt.Sprintf("%s/%s", a.release.Namespace, a.release.Name))
+                        return controller.ContinueProcessing()
+                }</span>
+                <span class="cov8" title="1">return controller.StopProcessing()</span>
+        }
 
         <span class="cov8" title="1">if !a.release.IsReleasing() </span><span class="cov8" title="1">{
                 patch := client.MergeFrom(a.release.DeepCopy())
@@ -2541,6 +2558,12 @@ func (a *adapter) EnsureReleaseIsValid() (controller.OperationResult, error) <sp
         // IsReleasing will be false if MarkReleaseFailed was called
         <span class="cov8" title="1">if a.release.IsReleasing() </span><span class="cov8" title="1">{
                 a.release.MarkValidated()
+                return controller.RequeueOnErrorOrContinue(a.client.Status().Patch(a.ctx, a.release, patch))
+        }</span>
+
+        <span class="cov8" title="1">if !a.release.AreAllProcessingPhasesFinished() </span><span class="cov8" title="1">{
+                a.logger.Info("EnsureReleaseIsValid: release finished but not all phases finished, continuing so we can complete properly",
+                        "Release", fmt.Sprintf("%s/%s", a.release.Namespace, a.release.Name))
                 return controller.RequeueOnErrorOrContinue(a.client.Status().Patch(a.ctx, a.release, patch))
         }</span>
 
