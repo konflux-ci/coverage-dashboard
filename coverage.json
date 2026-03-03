@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22607430524",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22628146829",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 52.8,
+      "coverage": 52.7,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 78.9
+          "coverage": 78.7
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
@@ -119,8 +119,14 @@
       "packages": []
     },
     {
+      "repo": "konflux-ci/dockerfile-json",
+      "coverage": null,
+      "status": "failed",
+      "packages": []
+    },
+    {
       "repo": "konflux-ci/image-controller",
-      "coverage": 71.1,
+      "coverage": 71.3,
       "status": "ok",
       "packages": [
         {
@@ -129,7 +135,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 71.9
+          "coverage": 72.1
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -201,12 +207,12 @@
           "coverage": 100.0
         },
         {
-          "package": "github.com/konflux-ci/internal-services/loader",
-          "coverage": 84.0
-        },
-        {
           "package": "github.com/konflux-ci/internal-services/tekton",
           "coverage": 97.7
+        },
+        {
+          "package": "github.com/konflux-ci/internal-services/loader",
+          "coverage": 84.0
         },
         {
           "package": "github.com/konflux-ci/internal-services/tekton/utils",
@@ -352,12 +358,12 @@
           "coverage": 17.9
         },
         {
-          "package": "github.com/konflux-ci/operator-toolkit/predicates",
-          "coverage": 4.8
-        },
-        {
           "package": "github.com/konflux-ci/operator-toolkit/utils",
           "coverage": 100.0
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/predicates",
+          "coverage": 4.8
         },
         {
           "package": "github.com/konflux-ci/operator-toolkit/conditions",
@@ -505,12 +511,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.4,
+      "coverage": 57.1,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.4
+          "coverage": 57.1
         }
       ]
     },
