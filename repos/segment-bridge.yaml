@@ -1,0 +1,28 @@
+name: konflux-ci/segment-bridge
+exclude_dirs:
+    - vendor/
+    - .github/
+    - .tekton/
+    - hack/
+    - proto/
+    - test/
+    - tests/
+    - integration-tests/
+    - /fake(/|$)
+    - /mock(s)?(/|$)
+    - /e2e(-tests)?(/|$)
+    - docs/
+    - containerfixture/
+    - testfixture/
+    - webfixture/
+    - kwok/
+    - fetch-uj-records/
+    - uid_map/
+    - ws_map/
+    - splunk/
+exclude_files:
+    - zz_generated.deepcopy.go
+    - openapi_generated.go
+    - '*.pb.go'
+    - mock_*.go
+    - '*_mock.go'
