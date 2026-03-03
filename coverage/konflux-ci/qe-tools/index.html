@@ -1,0 +1,642 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>oci: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/konflux-ci/qe-tools/pkg/oci/artifact_scanner.go (0.0%)</option>
+				
+				<option value="file1">github.com/konflux-ci/qe-tools/pkg/oci/blob_handler.go (0.0%)</option>
+				
+				<option value="file2">github.com/konflux-ci/qe-tools/pkg/oci/controller.go (0.0%)</option>
+				
+				<option value="file3">github.com/konflux-ci/qe-tools/pkg/oci/repository_fetcher.go (0.0%)</option>
+				
+				<option value="file4">github.com/konflux-ci/qe-tools/pkg/oci/tag_processor.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package oci
+
+import (
+        "fmt"
+        "io"
+        "os"
+        "path/filepath"
+        "regexp"
+        "slices"
+        "time"
+
+        "github.com/konflux-ci/qe-tools/pkg/utils"
+)
+
+// NewArtifactScanner creates a new instance of ArtifactScanner.
+// It requires a valid ScannerConfig.
+func NewArtifactScanner(cfg ScannerConfig) (*ArtifactScanner, error) <span class="cov0" title="0">{
+        return &amp;ArtifactScanner{
+                config:       cfg,
+                FilesPathMap: FilesPathMap{},
+        }, nil
+}</span>
+
+// Run method processes pulls the OCI artifact and stores required files (their path and content)
+// in the map (ArtifactsFilesPathMap).
+func (as *ArtifactScanner) Run() error <span class="cov0" title="0">{
+        artifactDirPath, err := os.MkdirTemp("", "artifact-content")
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create temporary director for pulling OCI artifact to: %+v", err)
+        }</span>
+        <span class="cov0" title="0">as.artifactDirPath = artifactDirPath
+
+        if err := as.pullAndExtractOciArtifact(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to pull OCI artifact: %+v", err)
+        }</span>
+
+        <span class="cov0" title="0">if err := as.processExtractedFiles(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to process extracted files: %+v", err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (as *ArtifactScanner) pullAndExtractOciArtifact() error <span class="cov0" title="0">{
+        cacheDir, err := os.MkdirTemp("", "")
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">ctrl, err := NewController(as.artifactDirPath, cacheDir)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">repo, tag, err := utils.ParseRepoAndTag(as.config.OciArtifactReference)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">if err := ctrl.ProcessTag(repo, tag, time.Now().Format(time.RFC1123)); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// processExtractedFiles is a helper function to process extracted files.
+func (as *ArtifactScanner) processExtractedFiles() error <span class="cov0" title="0">{
+        err := filepath.Walk(as.artifactDirPath, func(filePath string, info os.FileInfo, err error) error </span><span class="cov0" title="0">{
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to visit file in path %s: %+v", filePath, err)
+                }</span>
+                <span class="cov0" title="0">if as.isRequiredFile(filePath) </span><span class="cov0" title="0">{
+                        if err := as.initArtifactsFilesPathMap(info.Name(), filePath); err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+                }
+                <span class="cov0" title="0">return nil</span>
+        })
+
+        <span class="cov0" title="0">return err</span>
+}
+
+// initArtifactsFilesPathMap is  function to initialise/update the ArtifactsFilesPathMap with content
+// of a file with given file path and file name
+func (as *ArtifactScanner) initArtifactsFilesPathMap(fileName, filePath string) error <span class="cov0" title="0">{
+        file, err := os.Open(filepath.Clean(filePath))
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">fileData, err := io.ReadAll(file)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">artifact := Artifact{Content: string(fileData), Filename: fileName}
+
+        as.FilesPathMap[FilePath(filePath)] = artifact
+
+        return nil</span>
+}
+
+// isRequiredFile is a helper function to check if a file with given 'ArtifactFullPath',
+// matches the file-name filter(s) defined within ScannerConfig struct
+func (as *ArtifactScanner) isRequiredFile(filePath string) bool <span class="cov0" title="0">{
+        return slices.ContainsFunc(as.config.FileNameFilter, func(s string) bool </span><span class="cov0" title="0">{
+                re := regexp.MustCompile(s)
+                return re.MatchString(filePath)
+        }</span>)
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package oci
+
+import (
+        "compress/gzip"
+        "fmt"
+        "io"
+        "os"
+        "path/filepath"
+        "strings"
+)
+
+// GzFileInfo holds information about a gzipped file and its directory.
+type GzFileInfo struct {
+        // FilePath represents the full path to the gzipped file.
+        FilePath string
+
+        // DirPath represents the directory where the gzipped file are stored.
+        DirPath string
+}
+
+// GetGzFilesFromDir retrieves all .gz files in the specified directory
+func (c *Controller) GetGzFilesFromDir(dir string) ([]GzFileInfo, error) <span class="cov0" title="0">{
+        var gzFiles []GzFileInfo
+
+        err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error </span><span class="cov0" title="0">{
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov0" title="0">if !info.IsDir() &amp;&amp; strings.HasSuffix(info.Name(), ".gz") </span><span class="cov0" title="0">{
+                        gzFiles = append(gzFiles, GzFileInfo{
+                                FilePath: path,
+                                DirPath:  filepath.Dir(path),
+                        })
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        })
+
+        <span class="cov0" title="0">return gzFiles, err</span>
+}
+
+// ExtractGzFile extracts a .gz file to the specified output directory.
+// It decompresses the .gz file into its original file.
+func (c *Controller) ExtractGzFile(gzFilePath, destDir string) error <span class="cov0" title="0">{
+        // #nosec G304
+        gzFile, err := os.Open(gzFilePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to open .gz file: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer gzFile.Close()
+
+        gzFileStats, err := os.Stat(gzFilePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get stat for .gz file: %w", err)
+        }</span>
+
+        // If the file size is 0, it's considered empty. Return nil to skip extraction
+        <span class="cov0" title="0">if gzFileStats.Size() == 0 </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">gzReader, err := gzip.NewReader(gzFile)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create gzip reader: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer gzReader.Close()
+
+        outputFileName := gzReader.Name
+        if outputFileName == "" </span><span class="cov0" title="0">{
+                outputFileName = strings.TrimSuffix(filepath.Base(gzFilePath), ".gz")
+        }</span>
+
+        <span class="cov0" title="0">outputFilePath := filepath.Join(destDir, outputFileName)
+        // #nosec G304
+        outputFile, err := os.Create(outputFilePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create output file: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer outputFile.Close()
+
+        // #nosec G110
+        _, err = io.Copy(outputFile, gzReader)
+        if err != nil </span><span class="cov0" title="0">{
+                // Check for EOF error, and treat it as normal if it occurs.
+                if err == io.EOF </span><span class="cov0" title="0">{
+                        return nil
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("failed to write decompressed data to file: %w", err)</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package oci
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "log"
+        "sync"
+        "time"
+
+        v1 "github.com/google/go-containerregistry/pkg/v1"
+        "oras.land/oras-go/v2"
+        "oras.land/oras-go/v2/content/oci"
+)
+
+// Controller orchestrates operations on OCI repositories.
+// It holds the configuration for output and blob directories.
+type Controller struct {
+        // OutputDir is the directory where output files are stored.
+        OutputDir string
+
+        // BlobDir is the directory where blob files are stored.
+        BlobDir string
+
+        // OCIStorePath is the path to the local OCI store.
+        OCIStorePath string
+
+        // Store is the OCI store instance.
+        Store *oci.Store
+}
+
+// NewController initializes a new Controller instance with the specified output and OCI store path.
+func NewController(outputDir string, ociStorePath string) (*Controller, error) <span class="cov0" title="0">{
+        store, err := oci.New(ociStorePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to initialize OCI store at path %s: %w", ociStorePath, err)
+        }</span>
+
+        <span class="cov0" title="0">return &amp;Controller{
+                OutputDir:    outputDir,
+                BlobDir:      ociStorePath + "/blobs/sha256/",
+                OCIStorePath: ociStorePath,
+                Store:        store,
+        }, nil</span>
+}
+
+// FetchOCIContainerAnnotations fetches the OCI container annotations for a given repository and tag.
+// It retrieves the descriptor content by copying the tag manifest to the OCI store and unmarshaling it into a Descriptor struct.
+func (c *Controller) FetchOCIContainerAnnotations(repo, tag string) (*v1.Descriptor, error) <span class="cov0" title="0">{
+        ctx := context.Background()
+
+        repoRemote, err := c.setupRemoteRepository(repo)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to set up remote repository for %s: %w", repo, err)
+        }</span>
+
+        <span class="cov0" title="0">if err := c.copyTagManifest(ctx, repoRemote, tag, c.Store); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to copy manifest for tag %s: %w", tag, err)
+        }</span>
+
+        <span class="cov0" title="0">_, descriptorBytes, err := oras.FetchBytes(ctx, c.Store, tag, oras.FetchBytesOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to fetch descriptor bytes for tag %s: %w", tag, err)
+        }</span>
+
+        <span class="cov0" title="0">var descriptor v1.Descriptor
+        if err := json.Unmarshal(descriptorBytes, &amp;descriptor); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to unmarshal descriptor content: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return &amp;descriptor, nil</span>
+}
+
+// ProcessRepositories processes multiple repositories concurrently.
+// It fetches and processes tags for each repository, limiting concurrency to avoid overwhelming system resources.
+// Returns a slice of errors encountered during the processing of repositories.
+func (c *Controller) ProcessRepositories(repositories []string, since time.Duration) []error <span class="cov0" title="0">{
+        var wg sync.WaitGroup
+        errorsChan := make(chan error, len(repositories))
+
+        sem := make(chan struct{}, 10)
+        // Loop over each repository and process it concurrently.
+        for _, repo := range repositories </span><span class="cov0" title="0">{
+                wg.Add(1)
+                go func(repo string) </span><span class="cov0" title="0">{
+                        defer wg.Done()
+
+                        sem &lt;- struct{}{}
+                        defer func() </span><span class="cov0" title="0">{ &lt;-sem }</span>()
+
+                        <span class="cov0" title="0">if err := c.processRepository(repo, since); err != nil </span><span class="cov0" title="0">{
+                                errorsChan &lt;- fmt.Errorf("repository %s: %w", repo, err)
+                        }</span>
+                }(repo)
+        }
+
+        <span class="cov0" title="0">wg.Wait()
+        close(errorsChan)
+
+        var errors []error
+        for err := range errorsChan </span><span class="cov0" title="0">{
+                errors = append(errors, err)
+        }</span>
+
+        <span class="cov0" title="0">return errors</span>
+}
+
+// processRepository fetches and processes tags for a specific repository.
+// It returns an error if any issues occur while fetching or processing tags.
+func (c *Controller) processRepository(repo string, since time.Duration) error <span class="cov0" title="0">{
+        // Fetch tags for the specified repository.
+        tags, err := c.FetchTags(repo)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to fetch tags for repository %s: %w", repo, err)
+        }</span>
+
+        // Process each tag within the repository.
+        <span class="cov0" title="0">for _, tagInfo := range tags </span><span class="cov0" title="0">{
+                parsedDate, err := time.Parse(time.RFC1123, tagInfo.LastModified)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to parse creation date %s: %w", tagInfo.LastModified, err)
+                }</span>
+                // If i return error here will stop all the 'semaphores'. TODO: Find a better way
+                // of handling errors here. Monitor if an empty container produced by integration tests
+                // have the 2 bytes.
+                <span class="cov0" title="0">if time.Since(parsedDate) &lt; since &amp;&amp; tagInfo.Size &gt; 2 </span><span class="cov0" title="0">{
+                        if err := c.ProcessTag(repo, tagInfo.Name, tagInfo.LastModified); err != nil </span><span class="cov0" title="0">{
+                                log.Printf("failed to process tag %s in repository. Tag repo might be deleted from quay %s: %s", tagInfo.Name, repo, err.Error())
+                        }</span>
+                }
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package oci
+
+import (
+        "encoding/json"
+        "fmt"
+        "net/http"
+        "net/url"
+)
+
+// Constants for OCI API configuration
+const (
+        quayAPITagsURL = "https://quay.io/api/v1/repository/"
+        perPageTags    = 100
+)
+
+// TagInfo represents a tag in a repository, including its name and the last modified date.
+// This struct is used to store information about individual tags returned from the Quay API.
+type TagInfo struct {
+        // The name of the tag
+        Name string `json:"name"`
+
+        // The date and time when the tag was last modified
+        LastModified string `json:"last_modified"`
+
+        // The size of the oci container.
+        Size int64 `json:"size"`
+}
+
+// TagResponse is used to decode the JSON response from the Quay API that contains a list of tags.
+// This struct represents the expected structure of the API response for tag retrieval.
+type TagResponse struct {
+        // A slice of TagInfo structs representing the tags in the response
+        Tags []TagInfo `json:"tags"`
+}
+
+// FetchTags fetches tags for a repository from Quay.
+// It paginates through the results, retrieving all available tags for the specified repository.
+func (c *Controller) FetchTags(repo string) ([]TagInfo, error) <span class="cov0" title="0">{
+        var tags []TagInfo
+        page := 1
+
+        for </span><span class="cov0" title="0">{
+                url := c.buildTagsURL(repo, page)
+
+                response, err := c.sendTagsRequest(url)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov0" title="0">if len(response.Tags) == 0 </span><span class="cov0" title="0">{
+                        break</span>
+                }
+
+                <span class="cov0" title="0">tags = append(tags, response.Tags...)
+                page++</span>
+        }
+
+        <span class="cov0" title="0">return tags, nil</span>
+}
+
+// buildTagsURL constructs the tags API URL for a specific repository and page.
+// It formats the URL with the base URL, repository name, number of tags per page, and the current page number.
+func (c *Controller) buildTagsURL(repo string, page int) string <span class="cov0" title="0">{
+        return fmt.Sprintf("%s%s/tag/?limit=%d&amp;page=%d", quayAPITagsURL, repo, perPageTags, page)
+}</span>
+
+// sendTagsRequest sends a GET request to the provided URL and decodes the response into a TagResponse struct.
+// It returns an error if the request fails or if the response cannot be decoded.
+func (c *Controller) sendTagsRequest(urlStr string) (*TagResponse, error) <span class="cov0" title="0">{
+        parsedURL, err := url.Parse(urlStr)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("invalid URL %s: %w", urlStr, err)
+        }</span>
+
+        <span class="cov0" title="0">if parsedURL.Scheme != "http" &amp;&amp; parsedURL.Scheme != "https" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("unsupported URL scheme %s in URL %s", parsedURL.Scheme, urlStr)
+        }</span>
+
+        <span class="cov0" title="0">resp, err := http.Get(parsedURL.String())
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to fetch tags from URL %s: %w", urlStr, err)
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+
+        if resp.StatusCode != http.StatusOK </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to fetch tags: %s", resp.Status)
+        }</span>
+
+        <span class="cov0" title="0">var response TagResponse
+        if err := json.NewDecoder(resp.Body).Decode(&amp;response); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to decode tags response: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return &amp;response, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package oci
+
+import (
+        "context"
+        "fmt"
+        "log"
+        "os"
+        "path/filepath"
+        "time"
+
+        "oras.land/oras-go/v2"
+        "oras.land/oras-go/v2/content/file"
+        "oras.land/oras-go/v2/content/oci"
+        "oras.land/oras-go/v2/registry/remote"
+        "oras.land/oras-go/v2/registry/remote/auth"
+        "oras.land/oras-go/v2/registry/remote/credentials"
+        "oras.land/oras-go/v2/registry/remote/retry"
+)
+
+// Constants for configurable settings
+const (
+        blobTimeout = 2 * time.Minute
+)
+
+// ProcessTag processes individual tags from a given repository
+func (c *Controller) ProcessTag(repo, tag, creationDate string) error <span class="cov0" title="0">{
+        ctx, cancel := context.WithTimeout(context.Background(), blobTimeout)
+        defer cancel()
+
+        repoRemote, err := c.setupRemoteRepository(repo)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if err := c.copyTagManifest(ctx, repoRemote, tag, c.Store); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">outputDir := c.createOutputDirectory(repo, creationDate, tag)
+        if err := os.MkdirAll(outputDir, 0o750); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create output directory %s: %w", outputDir, err)
+        }</span>
+
+        <span class="cov0" title="0">return c.ociCopy(repoRemote, tag, outputDir)</span>
+}
+
+func (c *Controller) ociCopy(repo *remote.Repository, tag string, outputDir string) error <span class="cov0" title="0">{
+        dst, err := file.New(outputDir)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to create file store: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">defer dst.Close()
+
+        _, err = oras.Copy(context.Background(), repo, tag, dst, tag, oras.DefaultCopyOptions)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to pull artifact using oras.Copy: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">return err</span>
+}
+
+// Sets up the remote repository for the given repo name
+func (c *Controller) setupRemoteRepository(repo string) (*remote.Repository, error) <span class="cov0" title="0">{
+        repoRemote, err := remote.NewRepository("quay.io/" + repo)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to set up remote repository %s: %w", repo, err)
+        }</span>
+
+        <span class="cov0" title="0">credStore, err := credentials.NewStoreFromDocker(credentials.StoreOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create credential store: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">repoRemote.Client = &amp;auth.Client{
+                Client:     retry.DefaultClient,
+                Cache:      auth.NewCache(),
+                Credential: credentials.Credential(credStore),
+        }
+
+        return repoRemote, nil</span>
+}
+
+// Copies the tag manifest from the remote repository to the local OCI store
+func (c *Controller) copyTagManifest(ctx context.Context, repoRemote *remote.Repository, tag string, store *oci.Store) error <span class="cov0" title="0">{
+        if _, err := oras.Copy(ctx, repoRemote, tag, store, tag, oras.DefaultCopyOptions); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to copy manifest for tag %s: %w", tag, err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Creates the output directory for the blobs
+func (c *Controller) createOutputDirectory(repo, creationDate, tag string) string <span class="cov0" title="0">{
+        parsedDate, _ := time.Parse(time.RFC1123, creationDate)
+        return filepath.Join(c.OutputDir, repo, parsedDate.Format("2006-01-02"), tag)
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
