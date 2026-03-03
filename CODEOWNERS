@@ -21,6 +21,7 @@
 /repos/release-service.yaml @querti @mmalina @elenagerman
 /repos/internal-services.yaml @querti @mmalina
 
+/repos/capo.yaml @konflux-ci/the-collective
 /repos/multi-platform-controller.yaml @konflux-ci/infrastructure
 /repos/ci-helper-app.yaml @dheerajodha
 /repos/tektor.yaml @konflux-ci/Vanguard
