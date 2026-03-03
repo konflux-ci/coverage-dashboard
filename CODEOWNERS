@@ -22,6 +22,8 @@
 /repos/internal-services.yaml @querti @mmalina
 
 /repos/capo.yaml @konflux-ci/the-collective
+/repos/multi-platform-controller.yaml @konflux-ci/infrastructure
+/repos/ci-helper-app.yaml @dheerajodha
 /repos/tektor.yaml @konflux-ci/Vanguard
 /repos/test-data-sast.yaml @kdudka @sfowl @jperezdealgaba
 /repos/renovate-log-analyzer.yaml @konflux-ci/mintmaker-maintainers
