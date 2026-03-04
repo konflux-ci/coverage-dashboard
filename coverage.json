@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22633963725",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22654184616",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 71.1,
+      "coverage": 71.2,
       "status": "ok",
       "packages": [
         {
@@ -141,7 +141,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 71.9
+          "coverage": 72.0
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -437,12 +437,12 @@
           "coverage": 79.2
         },
         {
-          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
-          "coverage": 96.2
-        },
-        {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan",
           "coverage": 90.0
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
+          "coverage": 96.2
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/author",
