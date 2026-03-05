@@ -57,7 +57,7 @@
 				
 				<option value="file0">github.com/konflux-ci/image-controller/internal/controller/application_controller.go (78.5%)</option>
 				
-				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (72.6%)</option>
+				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (71.4%)</option>
 				
 				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (68.0%)</option>
 				
@@ -746,7 +746,7 @@ func (r *ComponentReconciler) waitComponentUpdateInCache(ctx context.Context, co
                         }
                         <span class="cov0" title="0">log.Error(err, "failed to get the component for annotation update check", l.Action, l.ActionView)</span>
                 }
-                <span class="cov8" title="1">time.Sleep(100 * time.Millisecond)</span>
+                <span class="cov0" title="0">time.Sleep(100 * time.Millisecond)</span>
         }
         <span class="cov8" title="1">if !isComponentInCacheUpToDate </span><span class="cov0" title="0">{
                 log.Info("failed to wait for updated cache. Requested action could be repeated.", l.Audit, "true")

@@ -65,7 +65,7 @@
 				
 				<option value="file4">github.com/konflux-ci/integration-service/git/github/github.go (79.4%)</option>
 				
-				<option value="file5">github.com/konflux-ci/integration-service/pkg/integrationteststatus/integration_test_status.go (91.6%)</option>
+				<option value="file5">github.com/konflux-ci/integration-service/pkg/integrationteststatus/integration_test_status.go (91.2%)</option>
 				
 				<option value="file6">github.com/konflux-ci/integration-service/pkg/integrationteststatus/integrationteststatus_enumer.go (63.2%)</option>
 				
@@ -85,9 +85,9 @@
 				
 				<option value="file14">github.com/konflux-ci/integration-service/status/reporter_github.go (76.6%)</option>
 				
-				<option value="file15">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (59.6%)</option>
+				<option value="file15">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (57.6%)</option>
 				
-				<option value="file16">github.com/konflux-ci/integration-service/status/status.go (62.9%)</option>
+				<option value="file16">github.com/konflux-ci/integration-service/status/status.go (63.4%)</option>
 				
 				</select>
 			</div>
@@ -1669,6 +1669,8 @@ import (
         "fmt"
         "time"
 
+        "github.com/konflux-ci/integration-service/api/v1beta2"
+        "github.com/konflux-ci/integration-service/helpers"
         "github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -1751,6 +1753,8 @@ type IntegrationTestStatusDetail struct {
         CompletionTime *time.Time `json:"completionTime,omitempty"` // pointer to make omitempty work
         // TestPipelineName name of testing pipelineRun
         TestPipelineRunName string `json:"testPipelineRunName,omitempty"`
+        // IsOptionalScenario defines if the scenario is optional, which means that test failure should not block promotion of snapshot
+        IsOptionalScenario bool `json:"isOptionalScenario,omitempty"`
 }
 
 // SnapshotIntegrationTestStatuses type handles details about snapshot tests
@@ -1787,10 +1791,11 @@ func (sits *SnapshotIntegrationTestStatuses) ResetDirty() <span class="cov8" tit
 }</span>
 
 // ResetStatus reset status of test back to initial Pending status and removes invalidated values
-func (sits *SnapshotIntegrationTestStatuses) ResetStatus(scenarioName string) <span class="cov0" title="0">{
+func (sits *SnapshotIntegrationTestStatuses) ResetStatus(scenarioName string, isOptionalScenario bool) <span class="cov0" title="0">{
         sits.UpdateTestStatusIfChanged(scenarioName, IntegrationTestStatusPending, "Pending")
         detail := sits.statuses[scenarioName]
         detail.TestPipelineRunName = ""
+        detail.IsOptionalScenario = isOptionalScenario
         sits.dirty = true
 }</span>
 
@@ -1850,6 +1855,15 @@ func (sits *SnapshotIntegrationTestStatuses) UpdateTestStatusIfChanged(scenarioN
 
 }
 
+// SetTestDetailOptional set test details optional according to the given value of name and isOptionalScenario
+func (sits *SnapshotIntegrationTestStatuses) SetTestDetailOptional(name string, isOptionalScenario bool) <span class="cov8" title="1">{
+        var detail *IntegrationTestStatusDetail
+        detail, ok := sits.statuses[name]
+        if ok </span><span class="cov8" title="1">{
+                detail.IsOptionalScenario = isOptionalScenario
+        }</span>
+}
+
 // UpdateTestPipelineRunName updates TestPipelineRunName if changed
 // scenario must already exist in statuses
 func (sits *SnapshotIntegrationTestStatuses) UpdateTestPipelineRunName(scenarioName string, pipelineRunName string) error <span class="cov8" title="1">{
@@ -1868,16 +1882,19 @@ func (sits *SnapshotIntegrationTestStatuses) UpdateTestPipelineRunName(scenarioN
 
 // InitStatuses creates initial representation all scenarios
 // This function also removes scenarios which are not defined in scenarios param
-func (sits *SnapshotIntegrationTestStatuses) InitStatuses(scenarioNames *[]string) <span class="cov8" title="1">{
+func (sits *SnapshotIntegrationTestStatuses) InitStatuses(integrationTestScenarios *[]v1beta2.IntegrationTestScenario) <span class="cov8" title="1">{
         var expectedScenarios = make(map[string]struct{}) // map as a set
 
         // if given scenario doesn't exist, create it in pending state
-        for _, name := range *scenarioNames </span><span class="cov8" title="1">{
+        for _, scenario := range *integrationTestScenarios </span><span class="cov8" title="1">{
+                scenario := scenario
+                name := scenario.Name
                 expectedScenarios[name] = struct{}{}
                 _, ok := sits.statuses[name]
                 if !ok </span><span class="cov8" title="1">{
-                        // init test statuses only if they doesn't exist
+                        // init test statuses and optional value only if they doesn't exist
                         sits.UpdateTestStatusIfChanged(name, IntegrationTestStatusPending, "Pending")
+                        sits.SetTestDetailOptional(name, helpers.IsIntegrationTestScenarioOptional(&amp;scenario))
                 }</span>
         }
 
@@ -4594,32 +4611,40 @@ func (r *GitLabReporter) ReturnCodeIsUnrecoverable(statusCode int) bool <span cl
 func GenerateGitlabCommitState(state intgteststat.IntegrationTestStatus, optional bool) (gitlab.BuildStateValue, error) <span class="cov8" title="1">{
         glState := gitlab.Failed
 
-        switch state </span>{
-        case intgteststat.IntegrationTestStatusPending, intgteststat.BuildPLRInProgress:<span class="cov8" title="1">
-                glState = gitlab.Pending</span>
-        case intgteststat.IntegrationTestStatusInProgress:<span class="cov8" title="1">
-                glState = gitlab.Running</span>
-        case intgteststat.IntegrationTestStatusEnvironmentProvisionError_Deprecated,
-                intgteststat.IntegrationTestStatusDeploymentError_Deprecated,
-                intgteststat.IntegrationTestStatusTestInvalid:<span class="cov8" title="1">
-                if optional </span><span class="cov8" title="1">{
-                        glState = gitlab.Skipped
-                        break</span>
+        if optional </span><span class="cov8" title="1">{
+                switch state </span>{
+                case intgteststat.IntegrationTestStatusPending, intgteststat.BuildPLRInProgress, intgteststat.IntegrationTestStatusInProgress:<span class="cov0" title="0">
+                        glState = gitlab.Pending</span>
+                case intgteststat.IntegrationTestStatusEnvironmentProvisionError_Deprecated, intgteststat.IntegrationTestStatusDeploymentError_Deprecated,
+                        intgteststat.IntegrationTestStatusTestInvalid, intgteststat.IntegrationTestStatusTestFail:<span class="cov8" title="1">
+                        glState = gitlab.Skipped</span>
+                case intgteststat.IntegrationTestStatusDeleted, intgteststat.BuildPLRFailed,
+                        intgteststat.SnapshotCreationFailed, intgteststat.GroupSnapshotCreationFailed:<span class="cov0" title="0">
+                        glState = gitlab.Canceled</span>
+                case intgteststat.IntegrationTestStatusTestPassed:<span class="cov0" title="0">
+                        glState = gitlab.Success</span>
+                default:<span class="cov0" title="0">
+                        return glState, fmt.Errorf("unknown status %s", state)</span>
                 }
-                <span class="cov8" title="1">glState = gitlab.Failed</span>
-        case intgteststat.IntegrationTestStatusDeleted,
-                intgteststat.BuildPLRFailed, intgteststat.SnapshotCreationFailed, intgteststat.GroupSnapshotCreationFailed:<span class="cov8" title="1">
-                glState = gitlab.Canceled</span>
-        case intgteststat.IntegrationTestStatusTestPassed:<span class="cov8" title="1">
-                glState = gitlab.Success</span>
-        case intgteststat.IntegrationTestStatusTestFail:<span class="cov8" title="1">
-                if optional </span><span class="cov8" title="1">{
-                        glState = gitlab.Skipped
-                        break</span>
+        } else<span class="cov8" title="1"> {
+                switch state </span>{
+                case intgteststat.IntegrationTestStatusPending, intgteststat.BuildPLRInProgress:<span class="cov8" title="1">
+                        glState = gitlab.Pending</span>
+                case intgteststat.IntegrationTestStatusInProgress:<span class="cov8" title="1">
+                        glState = gitlab.Running</span>
+                case intgteststat.IntegrationTestStatusEnvironmentProvisionError_Deprecated,
+                        intgteststat.IntegrationTestStatusDeploymentError_Deprecated,
+                        intgteststat.IntegrationTestStatusTestInvalid,
+                        intgteststat.IntegrationTestStatusTestFail:<span class="cov8" title="1">
+                        glState = gitlab.Failed</span>
+                case intgteststat.IntegrationTestStatusDeleted,
+                        intgteststat.BuildPLRFailed, intgteststat.SnapshotCreationFailed, intgteststat.GroupSnapshotCreationFailed:<span class="cov8" title="1">
+                        glState = gitlab.Canceled</span>
+                case intgteststat.IntegrationTestStatusTestPassed:<span class="cov8" title="1">
+                        glState = gitlab.Success</span>
+                default:<span class="cov0" title="0">
+                        return glState, fmt.Errorf("unknown status %s", state)</span>
                 }
-                <span class="cov8" title="1">glState = gitlab.Failed</span>
-        default:<span class="cov0" title="0">
-                return glState, fmt.Errorf("unknown status %s", state)</span>
         }
 
         <span class="cov8" title="1">return glState, nil</span>
@@ -4876,7 +4901,7 @@ func GenerateTestReport(ctx context.Context, client client.Client, detail intgte
                 return nil, fmt.Errorf("failed to generate text message: %w", err)
         }</span>
 
-        <span class="cov8" title="1">summary, err := GenerateSummary(detail.Status, testedSnapshot.Name, detail.ScenarioName, componentName)
+        <span class="cov8" title="1">summary, err := GenerateSummary(detail.Status, testedSnapshot.Name, detail.ScenarioName, componentName, detail.IsOptionalScenario)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("failed to generate summary message: %w", err)
         }</span>
@@ -4977,7 +5002,7 @@ func generateShortText(integrationTestStatusDetail intgteststat.IntegrationTestS
 }
 
 // GenerateSummary returns summary for the given state, snapshotName and scenarioName
-func GenerateSummary(state intgteststat.IntegrationTestStatus, snapshotName, scenarioName, componentName string) (string, error) <span class="cov8" title="1">{
+func GenerateSummary(state intgteststat.IntegrationTestStatus, snapshotName, scenarioName, componentName string, isOptionalScenario bool) (string, error) <span class="cov8" title="1">{
         var summary string
         var statusDesc string
 
@@ -5010,11 +5035,19 @@ func GenerateSummary(state intgteststat.IntegrationTestStatus, snapshotName, sce
                 return summary, fmt.Errorf("unknown status")</span>
         }
 
-        <span class="cov8" title="1">if state == intgteststat.BuildPLRInProgress || state == intgteststat.SnapshotCreationFailed || state == intgteststat.BuildPLRFailed || state == intgteststat.GroupSnapshotCreationFailed </span><span class="cov8" title="1">{
-                summary = fmt.Sprintf(GenerateTestSummaryPrefixForComponent(componentName)+" snapshot scenario %s %s", scenarioName, statusDesc)
-        }</span> else<span class="cov8" title="1"> {
-                summary = fmt.Sprintf(GenerateTestSummaryPrefixForComponent(componentName)+" snapshot %s and scenario %s %s", snapshotName, scenarioName, statusDesc)
-        }</span>
+        <span class="cov8" title="1">if isOptionalScenario </span><span class="cov8" title="1">{
+                if state == intgteststat.BuildPLRInProgress || state == intgteststat.SnapshotCreationFailed || state == intgteststat.BuildPLRFailed || state == intgteststat.GroupSnapshotCreationFailed </span><span class="cov8" title="1">{
+                        summary = fmt.Sprintf(GenerateTestSummaryPrefixForComponent(componentName)+" snapshot optional scenario %s %s", scenarioName, statusDesc)
+                }</span> else<span class="cov8" title="1"> {
+                        summary = fmt.Sprintf(GenerateTestSummaryPrefixForComponent(componentName)+" snapshot %s and optional scenario %s %s", snapshotName, scenarioName, statusDesc)
+                }</span>
+        } else<span class="cov8" title="1"> {
+                if state == intgteststat.BuildPLRInProgress || state == intgteststat.SnapshotCreationFailed || state == intgteststat.BuildPLRFailed || state == intgteststat.GroupSnapshotCreationFailed </span><span class="cov8" title="1">{
+                        summary = fmt.Sprintf(GenerateTestSummaryPrefixForComponent(componentName)+" snapshot scenario %s %s", scenarioName, statusDesc)
+                }</span> else<span class="cov8" title="1"> {
+                        summary = fmt.Sprintf(GenerateTestSummaryPrefixForComponent(componentName)+" snapshot %s and scenario %s %s", snapshotName, scenarioName, statusDesc)
+                }</span>
+        }
 
         <span class="cov8" title="1">return summary, nil</span>
 }
@@ -5332,7 +5365,9 @@ func IterateIntegrationTestScenarioWithSameStatus(ctx context.Context, client cl
         var statusCode = 0
         for _, integrationTestScenario := range *integrationTestScenarios </span><span class="cov8" title="1">{
                 integrationTestScenario := integrationTestScenario //G601
+                // set test details' scenarioName and optional for each its
                 integrationTestStatusDetail.ScenarioName = integrationTestScenario.Name
+                integrationTestStatusDetail.IsOptionalScenario = helpers.IsIntegrationTestScenarioOptional(&amp;integrationTestScenario)
 
                 testReport, reportErr := GenerateTestReport(ctx, client, integrationTestStatusDetail, snapshot, componentNameOrPrGroup)
                 if reportErr != nil </span><span class="cov0" title="0">{

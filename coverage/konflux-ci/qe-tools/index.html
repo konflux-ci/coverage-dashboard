@@ -3,7 +3,7 @@
 <html>
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-		<title>oci: Go Coverage Report</title>
+		<title>analyzetestresults: Go Coverage Report</title>
 		<style>
 			body {
 				background: black;
@@ -55,15 +55,49 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/qe-tools/pkg/oci/artifact_scanner.go (0.0%)</option>
+				<option value="file0">github.com/konflux-ci/qe-tools/cmd/analyzetestresults/analyzetestresults.go (41.7%)</option>
 				
-				<option value="file1">github.com/konflux-ci/qe-tools/pkg/oci/blob_handler.go (0.0%)</option>
+				<option value="file1">github.com/konflux-ci/qe-tools/cmd/coffeebreak/coffeeBreak.go (5.8%)</option>
 				
-				<option value="file2">github.com/konflux-ci/qe-tools/pkg/oci/controller.go (0.0%)</option>
+				<option value="file2">github.com/konflux-ci/qe-tools/cmd/estimate/reviewTime.go (32.3%)</option>
 				
-				<option value="file3">github.com/konflux-ci/qe-tools/pkg/oci/repository_fetcher.go (0.0%)</option>
+				<option value="file3">github.com/konflux-ci/qe-tools/cmd/oci/download.go (20.0%)</option>
 				
-				<option value="file4">github.com/konflux-ci/qe-tools/pkg/oci/tag_processor.go (0.0%)</option>
+				<option value="file4">github.com/konflux-ci/qe-tools/cmd/prowjob/createReport.go (8.3%)</option>
+				
+				<option value="file5">github.com/konflux-ci/qe-tools/cmd/prowjob/healthCheck.go (7.8%)</option>
+				
+				<option value="file6">github.com/konflux-ci/qe-tools/cmd/prowjob/periodicSlackReport.go (0.0%)</option>
+				
+				<option value="file7">github.com/konflux-ci/qe-tools/cmd/prowjob/prowjob.go (100.0%)</option>
+				
+				<option value="file8">github.com/konflux-ci/qe-tools/cmd/root.go (72.2%)</option>
+				
+				<option value="file9">github.com/konflux-ci/qe-tools/cmd/sendslackmessage/sendSlackMessage.go (33.3%)</option>
+				
+				<option value="file10">github.com/konflux-ci/qe-tools/cmd/webhook/reportPortalWebhook.go (18.5%)</option>
+				
+				<option value="file11">github.com/konflux-ci/qe-tools/cmd/webhook/webhook.go (100.0%)</option>
+				
+				<option value="file12">github.com/konflux-ci/qe-tools/pkg/oci/artifact_scanner.go (0.0%)</option>
+				
+				<option value="file13">github.com/konflux-ci/qe-tools/pkg/oci/blob_handler.go (85.7%)</option>
+				
+				<option value="file14">github.com/konflux-ci/qe-tools/pkg/oci/controller.go (0.0%)</option>
+				
+				<option value="file15">github.com/konflux-ci/qe-tools/pkg/oci/repository_fetcher.go (0.0%)</option>
+				
+				<option value="file16">github.com/konflux-ci/qe-tools/pkg/oci/tag_processor.go (0.0%)</option>
+				
+				<option value="file17">github.com/konflux-ci/qe-tools/pkg/prow/prow.go (26.1%)</option>
+				
+				<option value="file18">github.com/konflux-ci/qe-tools/pkg/testresults/formatter.go (96.7%)</option>
+				
+				<option value="file19">github.com/konflux-ci/qe-tools/pkg/testresults/results.go (96.7%)</option>
+				
+				<option value="file20">github.com/konflux-ci/qe-tools/pkg/utils/utils.go (100.0%)</option>
+				
+				<option value="file21">github.com/konflux-ci/qe-tools/pkg/webhook/webhook.go (24.3%)</option>
 				
 				</select>
 			</div>
@@ -77,7 +111,1572 @@
 		</div>
 		<div id="content">
 		
-		<pre class="file" id="file0" style="display: none">package oci
+		<pre class="file" id="file0" style="display: none">package analyzetestresults
+
+import (
+        "fmt"
+        "os"
+
+        "github.com/konflux-ci/qe-tools/pkg/oci"
+        "github.com/konflux-ci/qe-tools/pkg/testresults"
+        "k8s.io/klog/v2"
+
+        "github.com/konflux-ci/qe-tools/pkg/types"
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+)
+
+var (
+        ociArtifactRef              string
+        clusterProvisionLogFilename string
+        jUnitFilename               string
+        e2eTestRunLogFilename       string
+        outputFilename              string
+)
+
+// AnalyzeTestResultsCmd represents the analyze-test-results command
+var AnalyzeTestResultsCmd = &amp;cobra.Command{
+        Use:   "analyze-test-results",
+        Short: "Command for analyzing test results",
+        PreRunE: func(cmd *cobra.Command, _ []string) error <span class="cov8" title="1">{
+                if viper.GetString(types.OciArtifactRefParamName) == "" </span><span class="cov8" title="1">{
+                        _ = cmd.Usage()
+                        return fmt.Errorf("parameter %q not provided, neither %s env var was set", types.OciArtifactRefParamName, types.OciArtifactRefEnv)
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        },
+        SilenceUsage: true,
+        RunE: func(cmd *cobra.Command, args []string) error <span class="cov0" title="0">{
+                ociArtifactRef = viper.GetString(types.OciArtifactRefParamName)
+
+                cfg := oci.ScannerConfig{
+                        OciArtifactReference: ociArtifactRef,
+                        FileNameFilter:       []string{jUnitFilename, clusterProvisionLogFilename, e2eTestRunLogFilename},
+                }
+
+                scanner, err := oci.NewArtifactScanner(cfg)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to initialize artifact scanner: %+v", err)
+                }</span>
+
+                <span class="cov0" title="0">if err := scanner.Run(); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to scan artifact from %s: %+v", ociArtifactRef, err)
+                }</span>
+
+                <span class="cov0" title="0">failedTCReport := testresults.FailedTestCasesReport{}
+                failedTCReport.CollectTestFilesData(scanner.FilesPathMap, jUnitFilename, e2eTestRunLogFilename, clusterProvisionLogFilename)
+
+                if err := os.WriteFile(outputFilename, []byte(testresults.GetFormattedReport(failedTCReport)), 0o600); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to create a file with the test result analysis: %+v", err)
+                }</span>
+                <span class="cov0" title="0">klog.Infof("analysis saved to %s", outputFilename)
+
+                return nil</span>
+        },
+}
+
+func init() <span class="cov8" title="1">{
+        AnalyzeTestResultsCmd.Flags().StringVar(&amp;ociArtifactRef, types.OciArtifactRefParamName, "", "OCI artifact reference (e.g. \"quay.io/org/repo:oci-artifact-tag\")")
+        AnalyzeTestResultsCmd.Flags().StringVar(&amp;jUnitFilename, types.JUnitFilenameParamName, "e2e-report.xml", "A name of the file containing JUnit report")
+        AnalyzeTestResultsCmd.Flags().StringVar(&amp;clusterProvisionLogFilename, types.ClusterProvisionLogFileParamName, "cluster-provision.log", "A name of the file containing log from provisioning a testing cluster")
+        AnalyzeTestResultsCmd.Flags().StringVar(&amp;e2eTestRunLogFilename, types.E2ETestRunLogFileParamName, "e2e-tests.log", "A name of the file containing log from running tests")
+        AnalyzeTestResultsCmd.Flags().StringVar(&amp;outputFilename, types.OutputFilenameParamName, "analysis.md", "A name of the file to store the analysis output in")
+
+        _ = viper.BindPFlag(types.OciArtifactRefParamName, AnalyzeTestResultsCmd.Flags().Lookup(types.OciArtifactRefParamName))
+        _ = viper.BindEnv(types.OciArtifactRefParamName, types.OciArtifactRefEnv)
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package coffeebreak
+
+import (
+        "context"
+        "fmt"
+        "io"
+        "log"
+        "math/rand"
+        "net/http"
+        "net/url"
+        "os"
+        "path/filepath"
+        "strings"
+        "time"
+
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+)
+
+// CoffeeBreakCmd returns the coffee-break command
+var CoffeeBreakCmd = &amp;cobra.Command{
+        Use:   "coffee-break",
+        Short: "This command will send slack message to channel for RHTAP QE coffee breaks monthly.",
+        PreRunE: func(cmd *cobra.Command, args []string) error <span class="cov8" title="1">{
+                requiredEnvVars := []string{"slack_token", "hacbs_channel_id"}
+
+                for _, e := range requiredEnvVars </span><span class="cov8" title="1">{
+                        if viper.GetString(e) == "" </span><span class="cov8" title="1">{
+                                return fmt.Errorf("%+v env var not set", strings.ToUpper(e))
+                        }</span>
+                }
+                <span class="cov0" title="0">return nil</span>
+        },
+        Run: run,
+}
+
+func sendMessageToLatestThread(token, channelID, message string) error <span class="cov0" title="0">{
+        slackURL := "https://slack.com/api/chat.postMessage"
+
+        payload := url.Values{}
+        payload.Set("channel", channelID)
+        payload.Set("text", message)
+
+        req, err := http.NewRequestWithContext(context.TODO(), http.MethodPost, slackURL, strings.NewReader(payload.Encode()))
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("error creating the request: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+        req.Header.Add("Authorization", "Bearer "+token)
+
+        client := &amp;http.Client{}
+        resp, err := client.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("error sending the request: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+
+        if resp.StatusCode != http.StatusOK </span><span class="cov0" title="0">{
+                bodyBytes, _ := io.ReadAll(resp.Body)
+                return fmt.Errorf("request failed with status code %d: %s", resp.StatusCode, string(bodyBytes))
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func run(cmd *cobra.Command, args []string) <span class="cov0" title="0">{
+        dirPath, err := os.Getwd()
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatal(err)
+        }</span>
+
+        //         message := `The FIRST PERSON in the list for each group is responsible for scheduling.
+        // If there are conflicts and it is difficult to schedule, this is a communication opportunity.
+        // Msg the other people, explain the situation and ask if anything can be moved.
+        // If one person isn't available, feel free to have the coffee break with the other person.`
+
+        <span class="cov0" title="0">currentMonth := time.Now().Month().String()
+
+        slackToken := os.Getenv("SLACK_TOKEN")
+        slackChannelID := os.Getenv("HACBS_CHANNEL_ID")
+        // #nosec G304
+        participantsContent, err := os.ReadFile(filepath.Join(dirPath, "config/coffee-break/participants.txt"))
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Error reading participants file: %v\n", err)
+        }</span>
+
+        <span class="cov0" title="0">participantEntries := strings.Split(string(participantsContent), "\n")
+        var participants []string
+        for _, participant := range participantEntries </span><span class="cov0" title="0">{
+                trimmed := strings.TrimSpace(participant)
+                if trimmed != "" </span><span class="cov0" title="0">{
+                        participants = append(participants, trimmed)
+                }</span>
+        }
+
+        <span class="cov0" title="0">if len(participants) &lt; 3 </span><span class="cov0" title="0">{
+                log.Fatalf("Not enough participants to form a group\n")
+        }</span>
+        // #nosec G304
+        <span class="cov0" title="0">lastWeekContent, err := os.ReadFile(filepath.Join(dirPath, "config/coffee-break/last_week.txt"))
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Error reading last week file: %v\n", err)
+        }</span>
+
+        <span class="cov0" title="0">lastWeek := strings.Split(string(lastWeekContent), "\n")
+
+        if len(lastWeek) &gt; 6 </span><span class="cov0" title="0">{
+                lastWeek = lastWeek[len(lastWeek)-6:]
+        }</span>
+
+        <span class="cov0" title="0">lastWeekParticipants := strings.Split(lastWeek[len(lastWeek)-1], ", ")
+        var eligibleParticipants []string
+        for _, participant := range participants </span><span class="cov0" title="0">{
+                isInLastWeek := false
+                for _, lastWeekParticipant := range lastWeekParticipants </span><span class="cov0" title="0">{
+                        if participant == lastWeekParticipant </span><span class="cov0" title="0">{
+                                isInLastWeek = true
+                                break</span>
+                        }
+                }
+                <span class="cov0" title="0">if !isInLastWeek </span><span class="cov0" title="0">{
+                        eligibleParticipants = append(eligibleParticipants, participant)
+                }</span>
+        }
+
+        <span class="cov0" title="0">rand.Shuffle(len(eligibleParticipants), func(i, j int) </span><span class="cov0" title="0">{
+                eligibleParticipants[i], eligibleParticipants[j] = eligibleParticipants[j], eligibleParticipants[i]
+        }</span>)
+
+        <span class="cov0" title="0">newGroup := eligibleParticipants[:3]
+
+        lastWeek = append(lastWeek, strings.Join(newGroup, ", "))
+        if len(lastWeek) &gt; 6 </span><span class="cov0" title="0">{
+                lastWeek = lastWeek[len(lastWeek)-6:]
+        }</span>
+
+        <span class="cov0" title="0">err = os.WriteFile(filepath.Join(dirPath, "config/coffee-break/last_week.txt"), []byte(strings.Join(lastWeek, "\n")), 0o600)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Error writing to last week file: %v\n", err)
+        }</span>
+
+        // groupMessage := fmt.Sprintf("%s\nCoffee break group for %s is: %s", message, currentMonth, strings.Join(newGroup, ", "))
+        <span class="cov0" title="0">groupMessage := fmt.Sprintf("\nCoffee break group for %s is: %s", currentMonth, strings.Join(newGroup, ", "))
+        err = sendMessageToLatestThread(slackToken, slackChannelID, groupMessage)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Error sending message to Slack: %v\n", err)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package estimate
+
+import (
+        "context"
+        "errors"
+        "fmt"
+        "regexp"
+
+        "github.com/google/go-github/v56/github"
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+        "k8s.io/klog/v2"
+)
+
+const (
+        defaultBaseWeight     = 1.0
+        defaultDeletionWeight = 0.5
+
+        defaultExtensionWeight = 2.0
+
+        defaultCommitWeight  = 0.05
+        defaultCommitCeiling = 2
+
+        defaultFileChangeWeight  = 0.1
+        defaultFileChangeCeiling = 2
+
+        defaultConfigPath = "./config/estimate"
+)
+
+// TimeLabel represents a label describing estimated time to review a PR
+type TimeLabel struct {
+        Name string `yaml:"name"`
+        Time int    `yaml:"time"`
+}
+
+// CoefficientConfig represents coefficients used in estimation of time required for a PR review
+type CoefficientConfig struct {
+        Weight  float64 `yaml:"weight"`
+        Ceiling float64 `yaml:"ceiling"`
+}
+
+type configFile struct {
+        Base       float64            `yaml:"base"`
+        Deletion   float64            `yaml:"deletion"`
+        Commit     CoefficientConfig  `yaml:"commit"`
+        Files      CoefficientConfig  `yaml:"files"`
+        Extensions map[string]float64 `yaml:"extensions"`
+        Labels     []TimeLabel        `yaml:"labels"`
+}
+
+var (
+        config = configFile{
+                Base:     defaultBaseWeight,
+                Deletion: defaultDeletionWeight,
+                Commit: CoefficientConfig{
+                        Weight:  defaultCommitWeight,
+                        Ceiling: defaultCommitCeiling,
+                },
+                Files: CoefficientConfig{
+                        Weight:  defaultFileChangeWeight,
+                        Ceiling: defaultFileChangeCeiling,
+                },
+        }
+        owner      string
+        repository string
+        prNumber   int
+        ghToken    string
+
+        human    bool
+        addLabel bool
+
+        errEmptyLabels = errors.New("zero labels specified in config, make sure there is a non-empty 'labels' list")
+)
+
+// EstimateTimeToReviewCmd is a cobra command that estimates time needed to review a PR
+var EstimateTimeToReviewCmd = &amp;cobra.Command{
+        Use:   "estimate-review",
+        Short: "Estimate time needed to review a PR in seconds",
+        PreRunE: func(cmd *cobra.Command, args []string) error <span class="cov0" title="0">{
+                if addLabel &amp;&amp; ghToken == "" </span><span class="cov0" title="0">{
+                        return fmt.Errorf("github token needs to be specified to add a label")
+                }</span>
+                <span class="cov0" title="0">viper.AddConfigPath(defaultConfigPath)
+                if err := viper.ReadInConfig(); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("error reading in config: %+v", err)
+                }</span>
+                <span class="cov0" title="0">if err := viper.Unmarshal(&amp;config); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to parse config: %+v", err)
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        },
+        RunE: func(cmd *cobra.Command, args []string) error <span class="cov0" title="0">{
+                client := github.NewClient(nil)
+                if ghToken != "" </span><span class="cov0" title="0">{
+                        client.WithAuthToken(ghToken)
+                }</span>
+
+                <span class="cov0" title="0">review, err := TimeToReview(client, owner, repository, prNumber)
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov0" title="0">if human </span><span class="cov0" title="0">{
+                        fmt.Printf("Estimated time to review %s/%s#%d is %d seconds (~%d minutes)\n", owner, repository, prNumber, review, review/60)
+                }</span> else<span class="cov0" title="0"> {
+                        fmt.Println(review)
+                }</span>
+                <span class="cov0" title="0">if addLabel </span><span class="cov0" title="0">{
+                        err := addLabelToPR(client, review)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+                }
+                <span class="cov0" title="0">return nil</span>
+        },
+}
+
+// TimeToReview estimates time needed to review a PR
+func TimeToReview(client *github.Client, owner, repository string, number int) (int, error) <span class="cov0" title="0">{
+        files, err := getChangedFiles(client, owner, repository, number)
+        if err != nil </span><span class="cov0" title="0">{
+                return -1, err
+        }</span>
+
+        <span class="cov0" title="0">commitCount, err := countCommits(client, owner, repository, number)
+        if err != nil </span><span class="cov0" title="0">{
+                return -1, err
+        }</span>
+
+        <span class="cov0" title="0">commitCoefficient := 1 + config.Commit.Weight*(float64(commitCount)-1)
+        fileCoefficient := 1 + config.Files.Weight*(float64(len(files))-1)
+
+        if commitCoefficient &gt; config.Commit.Ceiling </span><span class="cov0" title="0">{
+                commitCoefficient = config.Commit.Ceiling
+        }</span>
+
+        <span class="cov0" title="0">if fileCoefficient &gt; config.Files.Ceiling </span><span class="cov0" title="0">{
+                fileCoefficient = config.Files.Ceiling
+        }</span>
+
+        <span class="cov0" title="0">result := int(commitCoefficient * fileCoefficient * float64(estimateFileTimes(files)))
+        return result, nil</span>
+}
+
+func countCommits(client *github.Client, owner, repository string, number int) (int, error) <span class="cov0" title="0">{
+        commits, _, err := client.PullRequests.ListCommits(context.Background(), owner, repository, number, nil)
+        return len(commits), err
+}</span>
+
+func getChangedFiles(client *github.Client, owner, repository string, number int) ([]*github.CommitFile, error) <span class="cov0" title="0">{
+        files, _, err := client.PullRequests.ListFiles(context.Background(), owner, repository, number, nil)
+        return files, err
+}</span>
+
+func getFileExtension(filename string) string <span class="cov8" title="1">{
+        regex := regexp.MustCompile(`\.[^.]*$`)
+        return regex.FindString(filename)
+}</span>
+
+func estimateFileTimes(files []*github.CommitFile) int <span class="cov8" title="1">{
+        var result float64 = 0
+        for _, file := range files </span><span class="cov8" title="1">{
+                extension := getFileExtension(file.GetFilename())
+                if len(extension) &gt; 0 </span><span class="cov8" title="1">{
+                        extension = extension[1:]
+                }</span>
+                <span class="cov8" title="1">estimate, included := config.Extensions[extension]
+                if !included </span><span class="cov8" title="1">{
+                        var defaultIncluded bool
+                        estimate, defaultIncluded = config.Extensions["default"]
+                        if !defaultIncluded </span><span class="cov8" title="1">{
+                                estimate = defaultExtensionWeight
+                        }</span>
+                        <span class="cov8" title="1">klog.Warningf("Weight for '%s' extension not specified. Using default weight '%.1f'.\n", extension, estimate)</span>
+                }
+
+                <span class="cov8" title="1">result += float64(file.GetAdditions()) * estimate * config.Base
+                result += float64(file.GetDeletions()) * estimate * config.Deletion</span>
+        }
+        <span class="cov8" title="1">return int(result)</span>
+}
+
+func addLabelToPR(client *github.Client, reviewTime int) error <span class="cov0" title="0">{
+        existingLabels, err := listLabels(client)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">calculatedLabel, err := getLabelBasedOnTime(reviewTime)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">klog.Infof("Calculated label '%s'\n", calculatedLabel.Name)
+
+        for _, existingLabel := range existingLabels </span><span class="cov0" title="0">{
+                if *existingLabel.Name == calculatedLabel.Name </span><span class="cov0" title="0">{
+                        klog.Infof("The issue already has the same label '%s'. Skipping addition.\n", *existingLabel.Name)
+                        return nil
+                }</span>
+                // Remove outdated label if the estimation changed
+                <span class="cov0" title="0">for _, timeLabel := range config.Labels </span><span class="cov0" title="0">{
+                        if timeLabel.Name == *existingLabel.Name </span><span class="cov0" title="0">{
+                                _, err := client.Issues.RemoveLabelForIssue(context.Background(), owner, repository, prNumber, timeLabel.Name)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return err
+                                }</span>
+                                <span class="cov0" title="0">klog.Infof("Removed outdated label '%s'", timeLabel.Name)</span>
+                        }
+                }
+        }
+        <span class="cov0" title="0">_, _, err = client.Issues.AddLabelsToIssue(context.Background(), owner, repository, prNumber, []string{calculatedLabel.Name})
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">klog.Infof("Added label '%s'\n", calculatedLabel.Name)
+        return nil</span>
+}
+
+func listLabels(client *github.Client) ([]*github.Label, error) <span class="cov0" title="0">{
+        labels, _, err := client.Issues.ListLabelsByIssue(context.Background(), owner, repository, prNumber, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">return labels, nil</span>
+}
+
+func getLabelBasedOnTime(reviewTime int) (*TimeLabel, error) <span class="cov8" title="1">{
+        if len(config.Labels) == 0 </span><span class="cov8" title="1">{
+                return nil, errEmptyLabels
+        }</span>
+        <span class="cov8" title="1">maxLabel := TimeLabel{Time: -1}
+        for _, label := range config.Labels </span><span class="cov8" title="1">{
+                if label.Time &lt;= reviewTime &amp;&amp; label.Time &gt; maxLabel.Time </span><span class="cov8" title="1">{
+                        maxLabel = label
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;maxLabel, nil</span>
+}
+
+func init() <span class="cov8" title="1">{
+        EstimateTimeToReviewCmd.Flags().StringVar(&amp;owner, "owner", "konflux-ci", "owner of the repository")
+        EstimateTimeToReviewCmd.Flags().StringVar(&amp;repository, "repository", "e2e-tests", "name of the repository")
+        EstimateTimeToReviewCmd.Flags().IntVar(&amp;prNumber, "number", 1, "number of the pull request")
+        err := EstimateTimeToReviewCmd.MarkFlagRequired("number")
+        if err != nil </span><span class="cov0" title="0">{ // silence golangci-lint
+                return
+        }</span>
+        <span class="cov8" title="1">EstimateTimeToReviewCmd.Flags().StringVar(&amp;ghToken, "token", "", "GitHub token")
+
+        EstimateTimeToReviewCmd.Flags().BoolVar(&amp;addLabel, "add-label", false, "add label to the GitHub PR")
+        EstimateTimeToReviewCmd.Flags().BoolVar(&amp;human, "human", false, "human readable form")</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package download
+
+import (
+        "fmt"
+        "log"
+        "os"
+        "path/filepath"
+        "strings"
+        "time"
+
+        "github.com/konflux-ci/qe-tools/pkg/oci"
+        "github.com/konflux-ci/qe-tools/pkg/utils"
+        "github.com/spf13/cobra"
+)
+
+// downloadOptions holds the configuration options for the download command.
+// It contains flags that determine how artifacts are downloaded from OCI storage.
+type downloadOptions struct {
+        // repo specifies a single OCI repository and tag from which to download artifacts.
+        // This is used when the user wants to download from a specific repository.
+        repo string
+
+        // repos is a slice of strings representing multiple OCI repositories.
+        // This allows the user to specify a list of repositories to download from.
+        // This option should be used in conjunction with the `--since` flag to filter artifacts.
+        repos []string
+
+        // since specifies a time range for downloading the latest artifacts.
+        // It accepts durations in various formats (e.g., "4h", "2d").
+        // This flag is required when downloading from multiple repositories specified in the `repos` field.
+        since string
+
+        // ociCache specifies the directory where OCI artifacts will be cached.
+        // If not provided, a default directory will be created at $HOME/.config/qe-tools/cache.
+        ociCache string
+
+        // artifactsOutput specifies the output path for downloaded artifacts.
+        // This field is mandatory and specifies where the downloaded artifacts should be stored.
+        artifactsOutput string
+
+        // noCache determines whether to remove the OCI cache after downloading artifacts.
+        // If true, the cache will be deleted after the command execution completes, regardless of success or failure.
+        noCache bool
+
+        // uncompressGzFiles will extract all the .gz files from the oci artifacts
+        uncompressGzFiles bool
+}
+
+var opts = &amp;downloadOptions{}
+
+// downloadCmd represents the download command
+var downloadCmd = &amp;cobra.Command{
+        Use:   "download",
+        Short: "Download artifacts from OCI storage",
+        Long: `Download artifacts from OCI storage based on the specified repository or repositories.
+
+Examples:
+  - Download from a single repository:
+      qe-tools download --repo quay.io/test/test:1.0 --artifacts-output /path/to/output
+
+  - Download from multiple repositories with a time range:
+      qe-tools download --repos quay.io/repo1 quay.io/repo2 --since 4h --artifacts-output /path/to/output
+`,
+        RunE: func(cmd *cobra.Command, args []string) error <span class="cov0" title="0">{
+                log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+
+                // Validation: Fail if both 'repo' and 'repos' are provided
+                if opts.repo != "" &amp;&amp; len(opts.repos) &gt; 0 </span><span class="cov0" title="0">{
+                        return fmt.Errorf("you cannot use both --repo and --repos at the same time")
+                }</span>
+
+                // Validation: Fail if 'since' is provided without 'repos', or 'repos' is provided without 'since'
+                <span class="cov0" title="0">if opts.since != "" &amp;&amp; len(opts.repos) == 0 </span><span class="cov0" title="0">{
+                        return fmt.Errorf("the --since flag requires the --repos flag")
+                }</span>
+                <span class="cov0" title="0">if len(opts.repos) &gt; 0 &amp;&amp; opts.since == "" </span><span class="cov0" title="0">{
+                        return fmt.Errorf("the --repos flag requires the --since flag")
+                }</span>
+
+                // If neither 'repo' nor 'repos' is provided, show command-specific help
+                <span class="cov0" title="0">if opts.repo == "" &amp;&amp; len(opts.repos) == 0 </span><span class="cov0" title="0">{
+                        if err := cmd.Help(); err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to display help: %w", err)
+                        }</span>
+                        <span class="cov0" title="0">return fmt.Errorf("either --repo or --repos must be specified")</span>
+                }
+
+                // Check if the mandatory artifactsOutput flag is provided
+                <span class="cov0" title="0">if opts.artifactsOutput == "" </span><span class="cov0" title="0">{
+                        return fmt.Errorf("the --artifacts-output flag is mandatory")
+                }</span>
+
+                // Set the default OCI cache directory if not specified
+                <span class="cov0" title="0">if opts.ociCache == "" </span><span class="cov0" title="0">{
+                        homeDir, err := os.UserHomeDir()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("could not determine home directory: %v", err)
+                        }</span>
+                        <span class="cov0" title="0">opts.ociCache = filepath.Join(homeDir, ".config", "qe-tools", "cache")</span>
+                }
+
+                // Create the cache directory if it doesn't exist
+                <span class="cov0" title="0">if err := os.MkdirAll(opts.ociCache, 0o750); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("could not create cache directory: %v", err)
+                }</span>
+
+                // Use defer to ensure cache removal at the end
+                <span class="cov0" title="0">defer func() </span><span class="cov0" title="0">{
+                        if opts.noCache </span><span class="cov0" title="0">{
+                                if err := os.RemoveAll(opts.ociCache); err != nil </span><span class="cov0" title="0">{
+                                        log.Printf("Warning: could not remove cache directory: %v\n", err)
+                                }</span>
+                        }
+                }()
+
+                <span class="cov0" title="0">ociController, err := oci.NewController(opts.artifactsOutput, opts.ociCache)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to create OCI controller with artifactsOutput: '%s' and ociCache: '%s': %v", opts.artifactsOutput, opts.ociCache, err)
+                }</span>
+
+                // If repo is specified, call helper function to download from a single repository
+                <span class="cov0" title="0">if opts.repo != "" </span><span class="cov0" title="0">{
+                        repo, tag, err := utils.ParseRepoAndTag(opts.repo)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+
+                        // Call ProcessTag to get details of the tag (implement as needed)
+                        <span class="cov0" title="0">if err := ociController.ProcessTag(repo, tag, time.Now().Format(time.RFC1123)); err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to fetch tag: %v", err)
+                        }</span>
+                }
+
+                // Handle time-based downloads
+                <span class="cov0" title="0">if opts.since != "" </span><span class="cov0" title="0">{
+                        duration, err := parseDuration(opts.since)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("invalid time format for --since: %v", err)
+                        }</span>
+                        <span class="cov0" title="0">log.Printf("Downloading latest artifacts from the last %s\n", duration)</span>
+                }
+
+                // If repos is specified, simulate a download from multiple repositories
+                <span class="cov0" title="0">if len(opts.repos) &gt; 0 </span><span class="cov0" title="0">{
+                        var processRepos []string
+                        var allErrors []error
+                        for _, repo := range opts.repos </span><span class="cov0" title="0">{
+                                if !strings.HasPrefix(repo, "quay.io/") </span><span class="cov0" title="0">{
+                                        return fmt.Errorf("the repository must start with 'quay.io/'")
+                                }</span>
+
+                                // Remove 'quay.io/' prefix
+                                <span class="cov0" title="0">repo = strings.TrimPrefix(repo, "quay.io/")
+                                processRepos = append(processRepos, repo)</span>
+                        }
+
+                        <span class="cov0" title="0">if opts.since != "" </span><span class="cov0" title="0">{
+                                duration, err := parseDuration(opts.since)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return fmt.Errorf("invalid time format for --since: %v", err)
+                                }</span>
+                                <span class="cov0" title="0">errors := ociController.ProcessRepositories(processRepos, duration)
+                                allErrors = append(allErrors, errors...)</span>
+                        }
+
+                        <span class="cov0" title="0">if len(allErrors) &gt; 0 </span><span class="cov0" title="0">{
+                                log.Println("Errors encountered during processing:")
+                                for _, err := range allErrors </span><span class="cov0" title="0">{
+                                        log.Printf(" - %v\n", err)
+                                }</span>
+                        }
+                }
+
+                <span class="cov0" title="0">if opts.uncompressGzFiles </span><span class="cov0" title="0">{
+                        gzFilesFromOciArtifacts, err := ociController.GetGzFilesFromDir(opts.artifactsOutput)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to extract gz files from artifacts folder: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">for _, file := range gzFilesFromOciArtifacts </span><span class="cov0" title="0">{
+                                err := ociController.ExtractGzFile(file.FilePath, file.DirPath)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        log.Printf("warn: file %s was not extracted successfully: %s", file.FilePath, err.Error())
+                                }</span>
+
+                                <span class="cov0" title="0">if err := os.Remove(file.FilePath); err != nil </span><span class="cov0" title="0">{
+                                        log.Printf("failed to remove gz file - %v\n", err)
+                                }</span>
+                        }
+                }
+
+                <span class="cov0" title="0">return nil</span>
+        },
+}
+
+// parseDuration handles the custom duration format
+func parseDuration(since string) (time.Duration, error) <span class="cov8" title="1">{
+        if len(since) &gt; 1 &amp;&amp; since[len(since)-1] == 'd' </span><span class="cov8" title="1">{
+                days := since[:len(since)-1]
+                hours, err := time.ParseDuration(days + "h")
+                if err != nil </span><span class="cov8" title="1">{
+                        return 0, err
+                }</span>
+                <span class="cov8" title="1">return hours * 24, nil</span>
+        }
+
+        // Parse the duration normally for other time units
+        <span class="cov8" title="1">duration, err := time.ParseDuration(since)
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, err
+        }</span>
+        <span class="cov8" title="1">return duration, nil</span>
+}
+
+// Init initializes the download command and its flags
+func Init() *cobra.Command <span class="cov8" title="1">{
+        downloadCmd.Flags().StringVar(&amp;opts.repo, "repo", "", "OCI repository and tag to download (e.g., quay.io/test/test:1.0)")
+        downloadCmd.Flags().StringSliceVar(&amp;opts.repos, "repos", nil, "Set of OCI repositories to download from")
+        downloadCmd.Flags().StringVar(&amp;opts.since, "since", "", "Time range to download the latest artifacts (e.g., 4h, 10m, 2d)")
+        downloadCmd.Flags().StringVar(&amp;opts.ociCache, "oci-cache", "", "Directory where OCI artifacts will be cached (default: $HOME/.config/qe-tools/cache)")
+        downloadCmd.Flags().StringVar(&amp;opts.artifactsOutput, "artifacts-output", "", "Mandatory path to store downloaded artifacts")
+        downloadCmd.Flags().BoolVar(&amp;opts.noCache, "no-cache", true, "If true, removes the OCI cache after downloading artifacts")
+        downloadCmd.Flags().BoolVar(&amp;opts.uncompressGzFiles, "uncompress-gz-files", true, "If true, uncompresses all gzipped files from the OCI artifacts after download.")
+
+        return downloadCmd
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package prowjob
+
+import (
+        "bufio"
+        "encoding/xml"
+        "fmt"
+        "io"
+        "os"
+        "path/filepath"
+        "strings"
+        "time"
+
+        "github.com/konflux-ci/qe-tools/pkg/customjunit"
+        "github.com/konflux-ci/qe-tools/pkg/types"
+
+        "github.com/GoogleCloudPlatform/testgrid/metadata"
+        "github.com/konflux-ci/qe-tools/pkg/prow"
+
+        "k8s.io/klog/v2"
+        "sigs.k8s.io/yaml"
+
+        reporters "github.com/onsi/ginkgo/v2/reporters"
+        ginkgoTypes "github.com/onsi/ginkgo/v2/types"
+
+        "github.com/redhat-appstudio-qe/junit2html/pkg/convert"
+
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+)
+
+var (
+        formatReportPortal bool
+        stepsToSkip        []string
+)
+
+const (
+        buildLogFilename = "build-log.txt"
+        finishedFilename = "finished.json"
+
+        gcsBrowserURLPrefix = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/test-platform-results/"
+
+        reportPortalFormatParamName = "report-portal-format"
+        stepsToSkipParamName        = "skip-ci-steps"
+        openshiftCITestSuiteName    = "openshift-ci job"
+)
+
+// createReportCmd represents the createReport command
+var createReportCmd = &amp;cobra.Command{
+        Use:   "create-report",
+        Short: "Analyze specified prow job and create a report in junit/html format",
+        PreRunE: func(cmd *cobra.Command, _ []string) error <span class="cov0" title="0">{
+                if viper.GetString(types.ProwJobIDParamName) == "" </span><span class="cov0" title="0">{
+                        _ = cmd.Usage()
+                        return fmt.Errorf("parameter %q not provided, neither %s env var was set", types.ProwJobIDParamName, types.ProwJobIDEnv)
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        },
+        SilenceUsage: true,
+        RunE: func(cmd *cobra.Command, args []string) error <span class="cov0" title="0">{
+                prowJobID = viper.GetString(types.ProwJobIDParamName)
+                stepsToSkip = viper.GetStringSlice(stepsToSkipParamName)
+
+                cfg := prow.ScannerConfig{
+                        ProwJobID:      prowJobID,
+                        FileNameFilter: []string{finishedFilename, buildLogFilename, types.JunitFilename},
+                        StepsToSkip:    stepsToSkip,
+                }
+
+                scanner, err := prow.NewArtifactScanner(cfg)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to initialize artifact scanner: %+v", err)
+                }</span>
+
+                <span class="cov0" title="0">if err := scanner.Run(); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to scan artifacts for prow job %s: %+v", prowJobID, err)
+                }</span>
+
+                <span class="cov0" title="0">overallJUnitSuites := &amp;reporters.JUnitTestSuites{}
+                openshiftCiJunit := reporters.JUnitTestSuite{Name: openshiftCITestSuiteName, Properties: reporters.JUnitProperties{Properties: []reporters.JUnitProperty{}}}
+
+                htmlReportLink := gcsBrowserURLPrefix + scanner.ArtifactDirectoryPrefix + "redhat-appstudio-report/artifacts/junit-summary.html"
+                openshiftCiJunit.Properties.Properties = append(openshiftCiJunit.Properties.Properties, reporters.JUnitProperty{Name: "html-report-link", Value: htmlReportLink})
+
+                for stepName, artifactsFilenameMap := range scanner.ArtifactStepMap </span><span class="cov0" title="0">{
+                        for artifactFilename, artifact := range artifactsFilenameMap </span><span class="cov0" title="0">{
+                                if artifactFilename == finishedFilename </span><span class="cov0" title="0">{
+                                        if strings.Contains(string(stepName), "gather") </span><span class="cov0" title="0">{
+                                                openshiftCiJunit.Properties.Properties = append(openshiftCiJunit.Properties.Properties, reporters.JUnitProperty{Name: string(stepName), Value: gcsBrowserURLPrefix + strings.TrimSuffix(artifact.FullName, finishedFilename) + "artifacts"})
+                                        }</span>
+
+                                        <span class="cov0" title="0">finished := metadata.Finished{}
+                                        err = yaml.Unmarshal([]byte(artifact.Content), &amp;finished)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("cannot unmarshal %s into finished struct: %+v", artifact.Content, err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">var buildLog string
+                                        if val, ok := artifactsFilenameMap[buildLogFilename]; ok </span><span class="cov0" title="0">{
+                                                buildLog = val.Content
+                                        }</span>
+
+                                        <span class="cov0" title="0">if *finished.Passed </span><span class="cov0" title="0">{
+                                                openshiftCiJunit.TestCases = append(openshiftCiJunit.TestCases, reporters.JUnitTestCase{Name: string(stepName), Status: ginkgoTypes.SpecStatePassed.String(), SystemErr: buildLog})
+                                        }</span> else<span class="cov0" title="0"> {
+                                                failure := &amp;reporters.JUnitFailure{Message: fmt.Sprintf("%s has failed", stepName)}
+                                                tc := reporters.JUnitTestCase{Name: string(stepName), Status: ginkgoTypes.SpecStateFailed.String(), Failure: failure, SystemErr: buildLog}
+                                                openshiftCiJunit.Failures++
+                                                openshiftCiJunit.TestCases = append(openshiftCiJunit.TestCases, tc)
+                                        }</span>
+                                        <span class="cov0" title="0">openshiftCiJunit.Tests++</span>
+                                } else<span class="cov0" title="0"> if strings.Contains(string(artifactFilename), ".xml") </span><span class="cov0" title="0">{
+                                        if err = xml.Unmarshal([]byte(artifact.Content), overallJUnitSuites); err != nil </span><span class="cov0" title="0">{
+                                                klog.Errorf("cannot decode JUnit suite %q into xml: %+v", artifactFilename, err)
+                                        }</span>
+                                }
+                        }
+                }
+
+                <span class="cov0" title="0">artifactDir := viper.GetString(types.ArtifactDirParamName)
+                if artifactDir == "" </span><span class="cov0" title="0">{
+                        artifactDir = "./tmp/" + prowJobID
+                        klog.Warningf("path to artifact dir was not provided - using default %q\n", artifactDir)
+                }</span>
+
+                <span class="cov0" title="0">if err := os.MkdirAll(artifactDir, 0o750); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to create directory for results '%s': %+v", artifactDir, err)
+                }</span>
+
+                // Add timestamp to openshift-ci job
+                <span class="cov0" title="0">if len(overallJUnitSuites.TestSuites) &gt; 0 </span><span class="cov0" title="0">{
+                        openshiftCiJunit.Timestamp = overallJUnitSuites.TestSuites[0].Timestamp
+                }</span> else<span class="cov0" title="0"> {
+                        openshiftCiJunit.Timestamp = time.Now().Format("2006-01-02T15:04:05")
+                }</span>
+
+                <span class="cov0" title="0">overallJUnitSuites.TestSuites = append(overallJUnitSuites.TestSuites, openshiftCiJunit)
+                overallJUnitSuites.Failures += openshiftCiJunit.Failures
+                overallJUnitSuites.Errors += openshiftCiJunit.Errors
+                overallJUnitSuites.Tests += openshiftCiJunit.Tests
+
+                // Omit system-err from passed test cases
+                for i := range overallJUnitSuites.TestSuites </span><span class="cov0" title="0">{
+                        for j := range overallJUnitSuites.TestSuites[i].TestCases </span><span class="cov0" title="0">{
+                                tc := &amp;overallJUnitSuites.TestSuites[i].TestCases[j]
+                                if tc.Status == "passed" </span><span class="cov0" title="0">{
+                                        tc.SystemErr = ""
+                                }</span>
+                        }
+                }
+
+                <span class="cov0" title="0">generatedJunitFilepath := filepath.Clean(artifactDir + "/junit.xml")
+                outFile, err := os.Create(generatedJunitFilepath)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("cannot create file '%s': %+v", generatedJunitFilepath, err)
+                }</span>
+
+                <span class="cov0" title="0">if err := xml.NewEncoder(bufio.NewWriter(outFile)).Encode(overallJUnitSuites); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("cannot encode JUnit suites struct '%+v' into file located at '%s': %+v", overallJUnitSuites, generatedJunitFilepath, err)
+                }</span>
+
+                <span class="cov0" title="0">html, err := convert.Convert(overallJUnitSuites)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to convert junit suite to html: %+v", err)
+                }</span>
+                <span class="cov0" title="0">if err := os.WriteFile(artifactDir+"/junit-summary.html", []byte(html), 0o600); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to create HTML file with test summary: %+v", err)
+                }</span>
+
+                <span class="cov0" title="0">klog.Infof("JUnit report saved to: %s/junit.xml", artifactDir)
+                klog.Infof("HTML report saved to: %s/junit-summary.html", artifactDir)
+
+                if formatReportPortal </span><span class="cov0" title="0">{
+                        reportPortalSuites := &amp;customjunit.TestSuites{}
+                        if err := readXMLFile(fmt.Sprintf("%s/junit.xml", artifactDir), reportPortalSuites); err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("could not read junit.xml file")
+                        }</span>
+
+                        <span class="cov0" title="0">changeDisabledToSkipped(overallJUnitSuites, reportPortalSuites)
+
+                        generatedReportPortalFilepath := filepath.Clean(artifactDir + "/junit-rp.xml")
+                        outRPFile, err := os.Create(generatedReportPortalFilepath)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("cannot create file '%s': %+v", generatedReportPortalFilepath, err)
+                        }</span>
+
+                        <span class="cov0" title="0">if err := xml.NewEncoder(bufio.NewWriter(outRPFile)).Encode(reportPortalSuites); err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("cannot encode JUnit suites struct '%+v' into file located at '%s': %+v", reportPortalSuites, generatedJunitFilepath, err)
+                        }</span>
+                        <span class="cov0" title="0">klog.Infof("JUnit report for Report Portal saved to: %s/junit-rp.xml", artifactDir)</span>
+                }
+
+                <span class="cov0" title="0">return nil</span>
+        },
+}
+
+func readXMLFile(xmlPath string, result any) error <span class="cov0" title="0">{
+        xmlFile, err := os.Open(filepath.Clean(xmlPath))
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("could not open file '%s', error: %v", xmlPath, err)
+        }</span>
+        <span class="cov0" title="0">defer xmlFile.Close()
+
+        xmlBytes, err := io.ReadAll(xmlFile)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if err = xml.Unmarshal(xmlBytes, &amp;result); err != nil </span><span class="cov0" title="0">{
+                klog.Errorf("cannot decode JUnit suite %q into xml: %+v", xmlPath, err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func changeDisabledToSkipped(original *reporters.JUnitTestSuites, custom *customjunit.TestSuites) <span class="cov0" title="0">{
+        totalSkipped := 0
+        for _, suite := range original.TestSuites </span><span class="cov0" title="0">{
+                if suite.Disabled != 0 </span><span class="cov0" title="0">{
+                        for i := range custom.TestSuites </span><span class="cov0" title="0">{
+                                if custom.TestSuites[i].Name == suite.Name </span><span class="cov0" title="0">{
+                                        custom.TestSuites[i].Skipped += suite.Disabled
+                                }</span>
+                                <span class="cov0" title="0">totalSkipped += custom.TestSuites[i].Skipped</span>
+                        }
+                }
+        }
+        <span class="cov0" title="0">custom.Skipped = totalSkipped</span>
+}
+
+func init() <span class="cov8" title="1">{
+        createReportCmd.Flags().StringVar(&amp;prowJobID, types.ProwJobIDParamName, "", "Prow job ID to analyze")
+        createReportCmd.Flags().BoolVar(&amp;formatReportPortal, reportPortalFormatParamName, false, "Format for Report Portal")
+        createReportCmd.Flags().StringArrayVar(&amp;stepsToSkip, stepsToSkipParamName, []string{"redhat-appstudio-report"}, "List of CI steps to skip when gathering artifacts")
+
+        _ = viper.BindPFlag(types.ArtifactDirParamName, createReportCmd.Flags().Lookup(types.ArtifactDirParamName))
+        _ = viper.BindPFlag(types.ProwJobIDParamName, createReportCmd.Flags().Lookup(types.ProwJobIDParamName))
+        _ = viper.BindPFlag(reportPortalFormatParamName, createReportCmd.Flags().Lookup(reportPortalFormatParamName))
+        _ = viper.BindPFlag(stepsToSkipParamName, createReportCmd.Flags().Lookup(stepsToSkipParamName))
+        // Bind environment variables to viper (in case the associated command's parameter is not provided)
+        _ = viper.BindEnv(types.ProwJobIDParamName, types.ProwJobIDEnv)
+        _ = viper.BindEnv(types.ArtifactDirParamName, types.ArtifactDirEnv)
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package prowjob
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "io"
+        "net/http"
+        "net/url"
+        "os"
+        "strconv"
+        "strings"
+
+        "github.com/konflux-ci/qe-tools/pkg/types"
+
+        "golang.org/x/exp/slices"
+
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+        "k8s.io/klog/v2"
+        prowUtils "k8s.io/test-infra/prow/pod-utils/downwardapi"
+
+        "github.com/google/go-github/v56/github"
+        "github.com/konflux-ci/qe-tools/pkg/status"
+)
+
+const (
+        healthCheckDefaultConfigPath  = "./config/health-check/config.yaml"
+        healthCheckCmdLongDescription = `This command checks status of external services provided via config.
+The default config is located in ` + healthCheckDefaultConfigPath + `, however user can provide their own config
+via --config=&lt;path-to-config&gt; option)
+`
+)
+
+var (
+        healthCheckConfig                HealthCheckConfig
+        healthCheckNotifyRequiredEnvVars = []string{types.GithubTokenEnv, prowUtils.RepoOwnerEnv, prowUtils.RepoNameEnv, prowUtils.PullNumberEnv}
+)
+
+// HealthCheckConfig represents configuration of external services which status will be checked
+type HealthCheckConfig struct {
+        ExternalServices []Service `json:"externalServices"`
+}
+
+// HealthCheckStatus contains specification and current status of external services
+// and contains a map of currently unhealthy critical components
+type HealthCheckStatus struct {
+        ExternalServices            []Service           `json:"externalServices"`
+        UnhealthyCriticalComponents map[string][]string `json:"unhealthyCriticalComponents"`
+}
+
+// Service contains specification of an external service specified via config
+// and holds an information about current status of related components
+type Service struct {
+        Name               string         `json:"name"`
+        CriticalComponents []string       `json:"criticalComponents"`
+        StatusPageURL      string         `json:"statusPageURL"`
+        CurrentStatus      status.Summary `json:"currentStatus"`
+}
+
+// healthCheckCmd represents the createReport command
+var healthCheckCmd = &amp;cobra.Command{
+        Use:   "health-check",
+        Short: `Perform a health check on dependant services`,
+        Long:  healthCheckCmdLongDescription,
+        PreRunE: func(cmd *cobra.Command, args []string) error <span class="cov0" title="0">{
+                if viper.ConfigFileUsed() == "" </span><span class="cov0" title="0">{
+                        viper.SetConfigFile(healthCheckDefaultConfigPath)
+                }</span>
+                <span class="cov0" title="0">if err := viper.ReadInConfig(); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("err readinconfig: %+v", err)
+                }</span>
+                <span class="cov0" title="0">if err := viper.Unmarshal(&amp;healthCheckConfig); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to parse config: %+v", err)
+                }</span>
+                <span class="cov0" title="0">if viper.GetBool(notifyOnPRParamName) </span><span class="cov0" title="0">{
+                        for _, e := range healthCheckNotifyRequiredEnvVars </span><span class="cov0" title="0">{
+                                if viper.GetString(e) == "" </span><span class="cov0" title="0">{
+                                        return fmt.Errorf("%q flag provided, but %q env var not set", notifyOnPRParamName, strings.ToUpper(e))
+                                }</span>
+                        }
+                }
+                <span class="cov0" title="0">return nil</span>
+        },
+        SilenceUsage: true,
+        RunE: func(cmd *cobra.Command, args []string) error <span class="cov0" title="0">{
+                hcStatus := &amp;HealthCheckStatus{}
+                hcStatus.ExternalServices = healthCheckConfig.ExternalServices
+                hcStatus.UnhealthyCriticalComponents = make(map[string][]string)
+
+                for i, service := range hcStatus.ExternalServices </span><span class="cov0" title="0">{
+                        r, err := http.Get(service.StatusPageURL)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to get service %s status page: %+v", service.Name, err)
+                        }</span>
+                        <span class="cov0" title="0">body, err := io.ReadAll(r.Body)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to read response body for a service %s: %+v", service.Name, err)
+                        }</span>
+                        <span class="cov0" title="0">v := status.Summary{}
+                        if err := json.Unmarshal(body, &amp;v); err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to unmarshal response body from a service %s: %+v", service.Name, err)
+                        }</span>
+                        <span class="cov0" title="0">hcStatus.ExternalServices[i].CurrentStatus = v
+
+                        for _, c := range v.Components </span><span class="cov0" title="0">{
+                                if c.Status == "major_outage" &amp;&amp; isCriticalComponent(service, c) </span><span class="cov0" title="0">{
+                                        hcStatus.UnhealthyCriticalComponents[service.Name] = append(hcStatus.UnhealthyCriticalComponents[service.Name], c.Name)
+                                }</span>
+                        }
+                }
+
+                <span class="cov0" title="0">artifactDir := viper.GetString(types.ArtifactDirParamName)
+                if artifactDir == "" </span><span class="cov0" title="0">{
+                        artifactDir = "./tmp"
+                        klog.Warningf("path to artifact dir was not provided - using default %q\n", artifactDir)
+                }</span>
+                <span class="cov0" title="0">if err := os.MkdirAll(artifactDir, 0o750); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to create directory for results '%s': %+v", artifactDir, err)
+                }</span>
+                <span class="cov0" title="0">o, err := json.MarshalIndent(hcStatus, "", "    ")
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to marshal services status: %+v", err)
+                }</span>
+                <span class="cov0" title="0">reportFilePath := artifactDir + "/services-status.json"
+                if err := os.WriteFile(reportFilePath, []byte(o), 0o600); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to create file with the status of dependant services: %+v", err)
+                }</span>
+                <span class="cov0" title="0">klog.Infof("health check report saved to %s", reportFilePath)
+
+                if len(hcStatus.UnhealthyCriticalComponents) &gt; 0 </span><span class="cov0" title="0">{
+
+                        if viper.GetBool(notifyOnPRParamName) </span><span class="cov0" title="0">{
+                                prMessage := buildPRMessage(hcStatus, failIfUnhealthy)
+                                githubClient := github.NewClient(http.DefaultClient).WithAuthToken(viper.GetString(types.GithubTokenEnv))
+                                prNumberInt, _ := strconv.Atoi(viper.GetString(prowUtils.PullNumberEnv))
+                                comment, _, err := githubClient.Issues.CreateComment(
+                                        context.Background(),
+                                        viper.GetString(prowUtils.RepoOwnerEnv),
+                                        viper.GetString(prowUtils.RepoNameEnv),
+                                        prNumberInt,
+                                        &amp;github.IssueComment{
+                                                Body: github.String(prMessage),
+                                        })
+                                if err != nil </span><span class="cov0" title="0">{
+                                        klog.Errorf("couldn't report an issue on a PR: %+v", err)
+                                }</span>
+                                <span class="cov0" title="0">klog.Infof("added a report about an outage to %s", comment.GetHTMLURL())</span>
+                        }
+
+                        <span class="cov0" title="0">if viper.GetBool(failIfUnhealthyParamName) </span><span class="cov0" title="0">{
+                                return fmt.Errorf("detected unhealthy critical components: %+v - see %s for more info", hcStatus.UnhealthyCriticalComponents, reportFilePath)
+                        }</span>
+                }
+
+                <span class="cov0" title="0">return nil</span>
+        },
+}
+
+func isCriticalComponent(service Service, c status.Component) bool <span class="cov0" title="0">{
+        return slices.Contains(service.CriticalComponents, c.Name)
+}</span>
+
+func buildPRMessage(hcStatus *HealthCheckStatus, failIfUnhealthy bool) string <span class="cov0" title="0">{
+        prMessage := "❗ Detected an outage of the following critical component(s)❗\n"
+        for s, components := range hcStatus.UnhealthyCriticalComponents </span><span class="cov0" title="0">{
+                prMessage += fmt.Sprintf("- %s: %s\n", s, strings.Join(components, ", "))
+        }</span>
+        <span class="cov0" title="0">var consequence string
+        if failIfUnhealthy </span><span class="cov0" title="0">{
+                consequence = "E2E tests won't run on your PR"
+        }</span> else<span class="cov0" title="0"> {
+                consequence = "E2E tests will probably fail"
+        }</span>
+        <span class="cov0" title="0">prMessage += fmt.Sprintf("\nDue to this issue **%s**. Please keep an eye on the following status pages:\n", consequence)
+        for _, s := range healthCheckConfig.ExternalServices </span><span class="cov0" title="0">{
+                if _, ok := hcStatus.UnhealthyCriticalComponents[s.Name]; ok </span><span class="cov0" title="0">{
+                        u, err := url.Parse(s.StatusPageURL)
+                        if err != nil </span><span class="cov0" title="0">{
+                                klog.Errorf("could not parse status page URL %s: %+v", s.StatusPageURL, err)
+                                continue</span>
+                        }
+                        <span class="cov0" title="0">prMessage += fmt.Sprintf("- %s://%s\n", u.Scheme, u.Host)</span>
+                }
+        }
+        <span class="cov0" title="0">prMessage += "\nand add a comment `/retest-required` once the reported issues are solved"
+        return prMessage</span>
+}
+
+func init() <span class="cov8" title="1">{
+        healthCheckCmd.Flags().BoolVar(&amp;failIfUnhealthy, failIfUnhealthyParamName, false, "Exit with non-zero code if critical issues were found")
+        healthCheckCmd.Flags().BoolVar(&amp;notifyOnPR, notifyOnPRParamName, false, fmt.Sprintf("Create a comment in a related PR if critical issues were found (required env vars: %+v)", strings.Join(healthCheckNotifyRequiredEnvVars, ", ")))
+
+        _ = viper.BindPFlag(types.ArtifactDirParamName, healthCheckCmd.Flags().Lookup(types.ArtifactDirParamName))
+        _ = viper.BindPFlag(failIfUnhealthyParamName, healthCheckCmd.Flags().Lookup(failIfUnhealthyParamName))
+        _ = viper.BindPFlag(notifyOnPRParamName, healthCheckCmd.Flags().Lookup(notifyOnPRParamName))
+        // Bind environment variables to viper (in case the associated command's parameter is not provided)
+        _ = viper.BindEnv(types.ArtifactDirParamName, types.ArtifactDirEnv)
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package prowjob
+
+import (
+        "fmt"
+        "io"
+        "net/http"
+        "os"
+        "regexp"
+        "strings"
+
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+)
+
+// periodicReportCmd returns the periodic-report command
+var periodicReportCmd = &amp;cobra.Command{
+        Use:   "periodic-report",
+        Short: "Analyzes the build log from latest ci jobs and returns a short job summary",
+        PreRunE: func(cmd *cobra.Command, args []string) error <span class="cov0" title="0">{
+                requiredEnvVars := []string{"prow_url"}
+
+                for _, e := range requiredEnvVars </span><span class="cov0" title="0">{
+                        if viper.GetString(e) == "" </span><span class="cov0" title="0">{
+                                return fmt.Errorf("%+v env var not set", strings.ToUpper(e))
+                        }</span>
+                }
+                <span class="cov0" title="0">return nil</span>
+        },
+        RunE: run,
+}
+
+func removeANSIEscapeSequences(text string) string <span class="cov0" title="0">{
+        regex := regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+        return regex.ReplaceAllString(text, "")
+}</span>
+
+func fetchTextContent(url string) (string, error) <span class="cov0" title="0">{
+        // #nosec G107
+        resp, err := http.Get(url)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("error fetching the webpage: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+
+        bodyBytes, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("error reading the webpage content: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">bodyString := string(bodyBytes)
+
+        cleanedString := removeANSIEscapeSequences(bodyString)
+
+        return cleanedString, nil</span>
+}
+
+func constructMessage(bodyString string) (string, bool) <span class="cov0" title="0">{
+        failureMatches := regexp.MustCompile(`(?s)(Summarizing.*?Test Suite Failed)`).FindStringSubmatch(bodyString)
+
+        if isJobFailed(bodyString) || failureMatches != nil </span><span class="cov0" title="0">{
+                message := "Test Suite Summary:\n"
+                message += extractTestResultsAndSummary(bodyString)
+                message += extractDuration(bodyString)
+                message += formatFailures(failureMatches[1])
+                return message, false
+        }</span>
+        <span class="cov0" title="0">return "Job Succeeded", true</span>
+}
+
+func isJobFailed(body string) bool <span class="cov0" title="0">{
+        stateRegexp := regexp.MustCompile(`Reporting job state '(\w+)'`)
+        stateMatches := stateRegexp.FindStringSubmatch(body)
+
+        return len(stateMatches) == 2 &amp;&amp; stateMatches[1] == "failed"
+}</span>
+
+func extractTestResultsAndSummary(body string) string <span class="cov0" title="0">{
+        pattern := `Ran (\d+) of (\d+) Specs in ([\d.]+) seconds\nFAIL! -- (\d+) Passed \| (\d+) Failed \| (\d+) Pending \| (\d+) Skipped`
+        matches := regexp.MustCompile(pattern).FindStringSubmatch(body)
+
+        if matches == nil </span><span class="cov0" title="0">{
+                return "Infrastructure setup issues or failures unrelated to tests were found\n"
+        }</span>
+
+        <span class="cov0" title="0">return fmt.Sprintf("Test Results: %s Passed | %s Failed | %s Pending | %s Skipped\nRan %s of %s Specs in %s seconds\n",
+                matches[4], matches[5], matches[6], matches[7], matches[1], matches[2], matches[3])</span>
+}
+
+func extractDuration(body string) string <span class="cov0" title="0">{
+        matches := regexp.MustCompile(`Ran for ([\dhms]+)`).FindStringSubmatch(body)
+        if matches == nil </span><span class="cov0" title="0">{
+                return ""
+        }</span>
+        <span class="cov0" title="0">return fmt.Sprintf("Total Duration: %s\n", matches[1])</span>
+}
+
+func formatFailures(failures string) string <span class="cov0" title="0">{
+        var formattedFailures strings.Builder
+        formattedFailures.WriteString("Failures:\n")
+
+        for _, line := range strings.Split(failures, "\n") </span><span class="cov0" title="0">{
+                if strings.Contains(line, "[FAIL]") </span><span class="cov0" title="0">{
+                        formattedFailures.WriteString("- " + strings.TrimSpace(line) + "\n")
+                }</span>
+        }
+
+        <span class="cov0" title="0">if formattedFailures.String() == "Failures:\n" </span><span class="cov0" title="0">{
+                return "No specific failures captured in the report.\n"
+        }</span>
+
+        <span class="cov0" title="0">return formattedFailures.String()</span>
+}
+
+func run(cmd *cobra.Command, args []string) error <span class="cov0" title="0">{
+        // Required GCS build.log PATH for latest build
+        prowURL := os.Getenv("PROW_URL") + "/build-log.txt"
+        bodyString, err := fetchTextContent(prowURL)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">message, _ := constructMessage(bodyString)
+        fmt.Println(message)
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package prowjob
+
+import (
+        "github.com/konflux-ci/qe-tools/pkg/types"
+        "github.com/spf13/cobra"
+)
+
+const (
+        failIfUnhealthyParamName string = "fail-if-unhealthy"
+        notifyOnPRParamName      string = "notify-on-pr"
+)
+
+var (
+        artifactDir     string
+        failIfUnhealthy bool
+        notifyOnPR      bool
+        prowJobID       string
+)
+
+// ProwjobCmd represents the prowjob command
+var ProwjobCmd = &amp;cobra.Command{
+        Use:   "prowjob",
+        Short: "Commands for processing Prow jobs",
+}
+
+func init() <span class="cov8" title="1">{
+        ProwjobCmd.AddCommand(periodicReportCmd)
+        ProwjobCmd.AddCommand(createReportCmd)
+        ProwjobCmd.AddCommand(healthCheckCmd)
+
+        createReportCmd.Flags().StringVar(&amp;artifactDir, types.ArtifactDirParamName, "", "Path to the folder where to store produced files")
+        healthCheckCmd.Flags().StringVar(&amp;artifactDir, types.ArtifactDirParamName, "", "Path to the folder where to store produced files")
+}</span>
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package cmd
+
+import (
+        "fmt"
+        "os"
+
+        "github.com/konflux-ci/qe-tools/cmd/analyzetestresults"
+        "github.com/konflux-ci/qe-tools/cmd/estimate"
+        download "github.com/konflux-ci/qe-tools/cmd/oci"
+        "github.com/konflux-ci/qe-tools/cmd/webhook"
+
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+
+        "github.com/konflux-ci/qe-tools/cmd/coffeebreak"
+        "github.com/konflux-ci/qe-tools/cmd/prowjob"
+        "github.com/konflux-ci/qe-tools/cmd/sendslackmessage"
+)
+
+var cfgFile string
+
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = &amp;cobra.Command{
+        Use:   "qe-tools",
+        Short: "The CLI containing useful tools used by RHTAP QE",
+}
+
+// Execute adds all child commands to the root command and sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
+func Execute() <span class="cov0" title="0">{
+        err := rootCmd.Execute()
+        if err != nil </span><span class="cov0" title="0">{
+                os.Exit(1)
+        }</span>
+}
+
+func init() <span class="cov8" title="1">{
+        cobra.OnInitialize(initConfig)
+
+        // Here you will define your flags and configuration settings.
+        // Cobra supports persistent flags, which, if defined here,
+        // will be global for your application.
+
+        rootCmd.PersistentFlags().StringVar(&amp;cfgFile, "config", "", "config file (default is $HOME/.qe-tools.yaml)")
+
+        // Cobra also supports local flags, which will only run
+        // when this action is called directly.
+        rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+        rootCmd.AddCommand(prowjob.ProwjobCmd)
+        rootCmd.AddCommand(coffeebreak.CoffeeBreakCmd)
+        rootCmd.AddCommand(sendslackmessage.SendSlackMessageCmd)
+        rootCmd.AddCommand(webhook.WebhookCmd)
+        rootCmd.AddCommand(estimate.EstimateTimeToReviewCmd)
+        rootCmd.AddCommand(download.Init())
+        rootCmd.AddCommand(analyzetestresults.AnalyzeTestResultsCmd)
+}</span>
+
+// initConfig reads in config file and ENV variables if set.
+func initConfig() <span class="cov8" title="1">{
+        if cfgFile != "" </span><span class="cov0" title="0">{
+                // Use config file from the flag.
+                viper.SetConfigFile(cfgFile)
+        }</span>
+
+        <span class="cov8" title="1">viper.AutomaticEnv() // read in environment variables that match
+
+        // If a config file is found, read it in.
+        if err := viper.ReadInConfig(); err == nil </span><span class="cov0" title="0">{
+                fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package sendslackmessage
+
+import (
+        "fmt"
+        "os"
+        "strings"
+
+        "github.com/slack-go/slack"
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+        "k8s.io/klog/v2"
+)
+
+var messageText string
+
+// SendSlackMessageCmd defines to send messages to a Slack channel.
+var SendSlackMessageCmd = &amp;cobra.Command{
+        Use:   "send-slack-message",
+        Short: "This command will send message to any slack channel.",
+        PreRunE: func(cmd *cobra.Command, args []string) error <span class="cov8" title="1">{
+                requiredEnvVars := []string{"slack_token", "channel_id"}
+                for _, e := range requiredEnvVars </span><span class="cov8" title="1">{
+                        if viper.GetString(e) == "" </span><span class="cov8" title="1">{
+                                return fmt.Errorf("%+v env var not set", strings.ToUpper(e))
+                        }</span>
+                }
+                <span class="cov0" title="0">return nil</span>
+        },
+        Run: run,
+}
+
+func sendSlackMessage(token, channelID, message string) error <span class="cov0" title="0">{
+        api := slack.New(token)
+
+        _, _, err := api.PostMessage(
+                channelID,
+                slack.MsgOptionText(message, false),
+                slack.MsgOptionAsUser(true),
+        )
+        return err
+}</span>
+
+func run(cmd *cobra.Command, args []string) <span class="cov0" title="0">{
+        slackToken := os.Getenv("SLACK_TOKEN")
+        slackChannelID := os.Getenv("CHANNEL_ID")
+
+        err := sendSlackMessage(slackToken, slackChannelID, messageText)
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Printf("Error sending message to Slack: %v\n", err)
+        }</span>
+        <span class="cov0" title="0">klog.Info("message was delivered successfully")</span>
+}
+
+func init() <span class="cov8" title="1">{
+        SendSlackMessageCmd.Flags().StringVarP(&amp;messageText, "message", "m", "", "Message body of the Slack message")
+
+        if err := SendSlackMessageCmd.MarkFlagRequired("message"); err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "Error marking 'message' flag as required: %v\n", err)
+                os.Exit(1)
+        }</span>
+
+        <span class="cov8" title="1">if err := viper.BindPFlag("message", SendSlackMessageCmd.Flags().Lookup("message")); err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "Error binding message flag to viper: %v\n", err)
+                os.Exit(1)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package webhook
+
+import (
+        "fmt"
+        "os"
+        "strconv"
+
+        "github.com/konflux-ci/qe-tools/pkg/prow"
+        "github.com/konflux-ci/qe-tools/pkg/types"
+        "github.com/konflux-ci/qe-tools/pkg/webhook"
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+        "k8s.io/klog/v2"
+)
+
+var (
+        openshiftJobSpec *prow.OpenshiftJobSpec
+        parameters       = []*types.CmdParameter[string]{jobSpec, saltSecret, webhookTargetURL}
+        jobSpec          = &amp;types.CmdParameter[string]{
+                Name:  "job-spec",
+                Env:   "JOB_SPEC",
+                Usage: "Job spec",
+        }
+        saltSecret = &amp;types.CmdParameter[string]{
+                Name:         "salt-secret",
+                Env:          "SALT_SECRET",
+                DefaultValue: "123456789",
+                Usage:        "Salt for webhook config",
+        }
+        webhookTargetURL = &amp;types.CmdParameter[string]{
+                Name:         "target-url",
+                Env:          "TARGET_URL",
+                DefaultValue: "https://hook.pipelinesascode.com/EyFYTakxEgEy",
+                Usage:        "Target URL for webhook",
+        }
+)
+
+var reportPortalWebhookCmd = &amp;cobra.Command{
+        Use: "report-portal",
+        PreRunE: func(cmd *cobra.Command, args []string) error <span class="cov0" title="0">{
+                var err error
+                openshiftJobSpec, err = prow.ParseJobSpec(jobSpec.Value)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("error parsing openshift job spec: %+v", err)
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        },
+        RunE: func(cmd *cobra.Command, args []string) error <span class="cov0" title="0">{
+                pullNumber := ""
+                if openshiftJobSpec.Type == "periodic" </span><span class="cov0" title="0">{
+                        openshiftJobSpec.Refs.RepoLink = "https://github.com/redhat-appstudio/infra-deployments"
+                        pullNumber = "periodic"
+                }</span> else<span class="cov0" title="0"> if (openshiftJobSpec.Refs.Repo == "e2e-tests" || openshiftJobSpec.Refs.Repo == "infra-deployments") &amp;&amp; len(openshiftJobSpec.Refs.Pulls) &gt; 0 </span><span class="cov0" title="0">{
+                        pullNumber = strconv.Itoa(openshiftJobSpec.Refs.Pulls[0].Number)
+                }</span> else<span class="cov0" title="0"> {
+                        klog.Infof("sending webhook for jobType %s, jobName %s is not supported", openshiftJobSpec.Type, openshiftJobSpec.Job)
+                        return nil
+                }</span>
+
+                <span class="cov0" title="0">path, err := os.Executable()
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("error when sending webhook: %+v", err)
+                }</span>
+
+                <span class="cov0" title="0">wh := webhook.Webhook{
+                        Path: path,
+                        Repository: webhook.Repository{
+                                FullName:   fmt.Sprintf("%s/%s", openshiftJobSpec.Refs.Organization, openshiftJobSpec.Refs.Repo),
+                                PullNumber: pullNumber,
+                        },
+                        RepositoryURL: openshiftJobSpec.Refs.RepoLink,
+                }
+
+                resp, err := wh.CreateAndSend(saltSecret.Value, webhookTargetURL.Value)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("error sending webhook: %+v", err)
+                }</span>
+                <span class="cov0" title="0">klog.Infof("webhook response: %+v", resp)
+
+                return nil</span>
+        },
+}
+
+func init() <span class="cov8" title="1">{
+        for _, parameter := range parameters </span><span class="cov8" title="1">{
+                reportPortalWebhookCmd.Flags().StringVar(&amp;parameter.Value, parameter.Name, parameter.DefaultValue, parameter.Usage)
+                _ = viper.BindEnv(parameter.Name, parameter.Env)
+                viper.SetDefault(parameter.Name, parameter.DefaultValue)
+                parameter.Value = viper.GetString(parameter.Name)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package webhook
+
+import "github.com/spf13/cobra"
+
+// WebhookCmd is a cobra command for triggering webhooks
+var WebhookCmd = &amp;cobra.Command{
+        Use:   "webhook",
+        Short: "Command for triggering webhooks",
+}
+
+func init() <span class="cov8" title="1">{
+        WebhookCmd.AddCommand(reportPortalWebhookCmd)
+}</span>
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">package oci
 
 import (
         "fmt"
@@ -185,7 +1784,7 @@ func (as *ArtifactScanner) isRequiredFile(filePath string) bool <span class="cov
 }
 </pre>
 		
-		<pre class="file" id="file1" style="display: none">package oci
+		<pre class="file" id="file13" style="display: none">package oci
 
 import (
         "compress/gzip"
@@ -206,35 +1805,35 @@ type GzFileInfo struct {
 }
 
 // GetGzFilesFromDir retrieves all .gz files in the specified directory
-func (c *Controller) GetGzFilesFromDir(dir string) ([]GzFileInfo, error) <span class="cov0" title="0">{
+func (c *Controller) GetGzFilesFromDir(dir string) ([]GzFileInfo, error) <span class="cov8" title="1">{
         var gzFiles []GzFileInfo
 
-        err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error </span><span class="cov0" title="0">{
-                if err != nil </span><span class="cov0" title="0">{
+        err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error </span><span class="cov8" title="1">{
+                if err != nil </span><span class="cov8" title="1">{
                         return err
                 }</span>
 
-                <span class="cov0" title="0">if !info.IsDir() &amp;&amp; strings.HasSuffix(info.Name(), ".gz") </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if !info.IsDir() &amp;&amp; strings.HasSuffix(info.Name(), ".gz") </span><span class="cov8" title="1">{
                         gzFiles = append(gzFiles, GzFileInfo{
                                 FilePath: path,
                                 DirPath:  filepath.Dir(path),
                         })
                 }</span>
-                <span class="cov0" title="0">return nil</span>
+                <span class="cov8" title="1">return nil</span>
         })
 
-        <span class="cov0" title="0">return gzFiles, err</span>
+        <span class="cov8" title="1">return gzFiles, err</span>
 }
 
 // ExtractGzFile extracts a .gz file to the specified output directory.
 // It decompresses the .gz file into its original file.
-func (c *Controller) ExtractGzFile(gzFilePath, destDir string) error <span class="cov0" title="0">{
+func (c *Controller) ExtractGzFile(gzFilePath, destDir string) error <span class="cov8" title="1">{
         // #nosec G304
         gzFile, err := os.Open(gzFilePath)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("failed to open .gz file: %w", err)
         }</span>
-        <span class="cov0" title="0">defer gzFile.Close()
+        <span class="cov8" title="1">defer gzFile.Close()
 
         gzFileStats, err := os.Stat(gzFilePath)
         if err != nil </span><span class="cov0" title="0">{
@@ -242,28 +1841,28 @@ func (c *Controller) ExtractGzFile(gzFilePath, destDir string) error <span class
         }</span>
 
         // If the file size is 0, it's considered empty. Return nil to skip extraction
-        <span class="cov0" title="0">if gzFileStats.Size() == 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if gzFileStats.Size() == 0 </span><span class="cov8" title="1">{
                 return nil
         }</span>
 
-        <span class="cov0" title="0">gzReader, err := gzip.NewReader(gzFile)
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">gzReader, err := gzip.NewReader(gzFile)
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("failed to create gzip reader: %w", err)
         }</span>
-        <span class="cov0" title="0">defer gzReader.Close()
+        <span class="cov8" title="1">defer gzReader.Close()
 
         outputFileName := gzReader.Name
-        if outputFileName == "" </span><span class="cov0" title="0">{
+        if outputFileName == "" </span><span class="cov8" title="1">{
                 outputFileName = strings.TrimSuffix(filepath.Base(gzFilePath), ".gz")
         }</span>
 
-        <span class="cov0" title="0">outputFilePath := filepath.Join(destDir, outputFileName)
+        <span class="cov8" title="1">outputFilePath := filepath.Join(destDir, outputFileName)
         // #nosec G304
         outputFile, err := os.Create(outputFilePath)
         if err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("failed to create output file: %w", err)
         }</span>
-        <span class="cov0" title="0">defer outputFile.Close()
+        <span class="cov8" title="1">defer outputFile.Close()
 
         // #nosec G110
         _, err = io.Copy(outputFile, gzReader)
@@ -275,11 +1874,11 @@ func (c *Controller) ExtractGzFile(gzFilePath, destDir string) error <span class
                 <span class="cov0" title="0">return fmt.Errorf("failed to write decompressed data to file: %w", err)</span>
         }
 
-        <span class="cov0" title="0">return nil</span>
+        <span class="cov8" title="1">return nil</span>
 }
 </pre>
 		
-		<pre class="file" id="file2" style="display: none">package oci
+		<pre class="file" id="file14" style="display: none">package oci
 
 import (
         "context"
@@ -415,7 +2014,7 @@ func (c *Controller) processRepository(repo string, since time.Duration) error <
 }
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">package oci
+		<pre class="file" id="file15" style="display: none">package oci
 
 import (
         "encoding/json"
@@ -512,7 +2111,7 @@ func (c *Controller) sendTagsRequest(urlStr string) (*TagResponse, error) <span 
 }
 </pre>
 		
-		<pre class="file" id="file4" style="display: none">package oci
+		<pre class="file" id="file16" style="display: none">package oci
 
 import (
         "context"
@@ -608,6 +2207,718 @@ func (c *Controller) createOutputDirectory(repo, creationDate, tag string) strin
         parsedDate, _ := time.Parse(time.RFC1123, creationDate)
         return filepath.Join(c.OutputDir, repo, parsedDate.Format("2006-01-02"), tag)
 }</span>
+</pre>
+		
+		<pre class="file" id="file17" style="display: none">package prow
+
+import (
+        "context"
+        "encoding/json"
+        "errors"
+        "fmt"
+        "io"
+        "net/http"
+        "regexp"
+        "strings"
+        "time"
+
+        "cloud.google.com/go/storage"
+        "golang.org/x/exp/slices"
+        "google.golang.org/api/iterator"
+        "google.golang.org/api/option"
+        "k8s.io/klog/v2"
+        v1 "k8s.io/test-infra/prow/apis/prowjobs/v1"
+        "sigs.k8s.io/yaml"
+)
+
+// NewArtifactScanner creates a new instance of ArtifactScanner,
+// requires a valid ScannerConfig
+func NewArtifactScanner(cfg ScannerConfig) (*ArtifactScanner, error) <span class="cov0" title="0">{
+        ctx := context.Background()
+        client, err := storage.NewClient(ctx, option.WithoutAuthentication())
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create new GCS client: %+v", err)
+        }</span>
+
+        <span class="cov0" title="0">return &amp;ArtifactScanner{
+                Client: client,
+                config: cfg,
+        }, nil</span>
+}
+
+// Run processes the artifacts associated with the Prow job and stores required files
+// with their associated openshift-ci step names and their content in ArtifactStepMap.
+func (as *ArtifactScanner) Run() error <span class="cov0" title="0">{
+        // Determine job target and Prow job URL.
+        jobTarget, pjURL, err := as.determineJobDetails()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to determine job details: %+v", err)
+        }</span>
+
+        <span class="cov0" title="0">artifactDirectoryPrefix, err := getArtifactsDirectoryPrefix(as, pjURL, jobTarget)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get artifact directory prefix: %+v", err)
+        }</span>
+
+        // Iterate over storage objects.
+        <span class="cov0" title="0">ctx, cancel := context.WithTimeout(context.Background(), time.Minute*2)
+        defer cancel()
+        as.bucketHandle = as.Client.Bucket(bucketName)
+        it := as.bucketHandle.Objects(ctx, &amp;storage.Query{Prefix: artifactDirectoryPrefix})
+
+        // Process storage objects.
+        if err := as.processStorageObjects(ctx, it, artifactDirectoryPrefix, pjURL); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to process storage objects: %+v", err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Helper function to determine job details.
+func (as *ArtifactScanner) determineJobDetails() (jobTarget, pjURL string, err error) <span class="cov0" title="0">{
+        switch </span>{
+        case as.config.ProwJobID != "":<span class="cov0" title="0">
+                pjYAML, err := getProwJobYAML(as.config.ProwJobID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return "", "", fmt.Errorf("failed to get Prow job YAML: %+v", err)
+                }</span>
+                <span class="cov0" title="0">jobTarget, err = determineJobTargetFromYAML(pjYAML)
+                if err != nil </span><span class="cov0" title="0">{
+                        return "", "", fmt.Errorf("failed to determine job target from YAML: %+v", err)
+                }</span>
+                <span class="cov0" title="0">pjURL = pjYAML.Status.URL</span>
+
+        case as.config.ProwJobURL != "":<span class="cov0" title="0">
+                pjURL = as.config.ProwJobURL
+                jobTarget, err = determineJobTargetFromProwJobURL(pjURL)
+                if err != nil </span><span class="cov0" title="0">{
+                        return "", "", fmt.Errorf("failed to determine job target from Prow job URL: %+v", err)
+                }</span>
+
+        default:<span class="cov0" title="0">
+                return "", "", fmt.Errorf("ScannerConfig doesn't contain either ProwJobID or ProwJobURL")</span>
+        }
+
+        <span class="cov0" title="0">return jobTarget, pjURL, nil</span>
+}
+
+// Helper function to process storage objects.
+func (as *ArtifactScanner) processStorageObjects(ctx context.Context, it *storage.ObjectIterator, artifactDirectoryPrefix, pjURL string) error <span class="cov0" title="0">{
+        var objectAttrs *storage.ObjectAttrs
+        var err error
+
+        objectAttrs, err = it.Next()
+        if errors.Is(err, iterator.Done) </span><span class="cov0" title="0">{
+                // No files present within the target directory - get the root build-log.txt instead.
+                if err := as.handleEmptyDirectory(ctx, pjURL, artifactDirectoryPrefix); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        }
+
+        // Iterate over storage objects.
+        <span class="cov0" title="0">for </span><span class="cov0" title="0">{
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to iterate over storage objects: %+v", err)
+                }</span>
+                <span class="cov0" title="0">fullArtifactName := objectAttrs.Name
+                if as.isRequiredFile(fullArtifactName) </span><span class="cov0" title="0">{
+                        if err := as.processRequiredFile(fullArtifactName, artifactDirectoryPrefix); err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+                }
+
+                <span class="cov0" title="0">objectAttrs, err = it.Next()
+                if errors.Is(err, iterator.Done) </span><span class="cov0" title="0">{
+                        break</span>
+                }
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Helper function to handle an empty directory.
+func (as *ArtifactScanner) handleEmptyDirectory(ctx context.Context, pjURL, artifactDirectoryPrefix string) error <span class="cov0" title="0">{
+        klog.Infof("For the job (%s), there are no files present within the directory with prefix: `%s`", pjURL, artifactDirectoryPrefix)
+
+        // Set up default file name filter.
+        fileName := "build-log.txt"
+        as.config.FileNameFilter = []string{fileName}
+
+        // Check for build log file.
+        sp := strings.Split(pjURL, "/"+bucketName+"/")
+        if len(sp) != 2 </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to determine artifact directory's prefix - Prow job URL: '%s', bucket name: '%s'", pjURL, bucketName)
+        }</span>
+        <span class="cov0" title="0">buildLogPrefix := sp[1] + "/" + fileName
+
+        // Iterate over build log files.
+        it := as.bucketHandle.Objects(ctx, &amp;storage.Query{Prefix: buildLogPrefix})
+        for </span><span class="cov0" title="0">{
+                attrs, err := it.Next()
+                if errors.Is(err, iterator.Done) </span><span class="cov0" title="0">{
+                        break</span>
+                }
+                <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to iterate over storage objects: %+v", err)
+                }</span>
+                <span class="cov0" title="0">fullArtifactName := attrs.Name
+
+                if err := as.initArtifactStepMap(ctx, fileName, fullArtifactName, "/"); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Helper function to process a required file.
+func (as *ArtifactScanner) processRequiredFile(fullArtifactName, artifactDirectoryPrefix string) error <span class="cov0" title="0">{
+        parentStepName, err := getParentStepName(fullArtifactName, artifactDirectoryPrefix)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if slices.Contains(as.config.StepsToSkip, parentStepName) </span><span class="cov0" title="0">{
+                klog.Infof("Skipping step name %s", parentStepName)
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">fileName, err := getFileName(fullArtifactName, artifactDirectoryPrefix)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if err := as.initArtifactStepMap(context.Background(), fileName, fullArtifactName, parentStepName); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Helper function to initialise/update the ArtifactStepMap with content
+// of a file with given 'fileName', within the given 'parentStepName'
+func (as *ArtifactScanner) initArtifactStepMap(ctx context.Context, fileName, fullArtifactName, parentStepName string) error <span class="cov0" title="0">{
+        rc, err := as.bucketHandle.Object(fullArtifactName).NewReader(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create objecthandle for %s: %+v", fullArtifactName, err)
+        }</span>
+        <span class="cov0" title="0">data, err := io.ReadAll(rc)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("cannot read from storage reader: %+v", err)
+        }</span>
+
+        <span class="cov0" title="0">artifact := Artifact{Content: string(data), FullName: fullArtifactName}
+        newArtifactMap := ArtifactFilenameMap{ArtifactFilename(fileName): artifact}
+
+        // No artifact step map not initialized yet
+        if as.ArtifactStepMap == nil </span><span class="cov0" title="0">{
+                as.ArtifactStepMap = map[ArtifactStepName]ArtifactFilenameMap{ArtifactStepName(parentStepName): newArtifactMap}
+                return nil
+        }</span>
+
+        // Already have a record of an artifact being mapped to a step name
+        <span class="cov0" title="0">if afMap, ok := as.ArtifactStepMap[ArtifactStepName(parentStepName)]; ok </span><span class="cov0" title="0">{
+                afMap[ArtifactFilename(fileName)] = artifact
+                as.ArtifactStepMap[ArtifactStepName(parentStepName)] = afMap
+        }</span> else<span class="cov0" title="0"> { // Artifact map initialized, but the artifact filename does not belong to any collected step
+                as.ArtifactStepMap[ArtifactStepName(parentStepName)] = newArtifactMap
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Helper function to check if a file with given 'fullArtifactName',
+// matches the file-name filter(s) defined within ScannerConfig struct
+func (as *ArtifactScanner) isRequiredFile(fullArtifactName string) bool <span class="cov0" title="0">{
+        return slices.ContainsFunc(as.config.FileNameFilter, func(s string) bool </span><span class="cov0" title="0">{
+                re := regexp.MustCompile(s)
+                return re.MatchString(fullArtifactName)
+        }</span>)
+}
+
+func getProwJobYAML(jobID string) (*v1.ProwJob, error) <span class="cov0" title="0">{
+        r, err := http.Get(prowJobYAMLPrefix + jobID)
+        errTemplate := "failed to get prow job YAML:"
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("%s %s", errTemplate, err)
+        }</span>
+        <span class="cov0" title="0">if r.StatusCode &gt; 299 </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("%s got response status code %v", errTemplate, r.StatusCode)
+        }</span>
+        <span class="cov0" title="0">body, err := io.ReadAll(r.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("%s %s", errTemplate, err)
+        }</span>
+        <span class="cov0" title="0">var pj v1.ProwJob
+        err = yaml.Unmarshal(body, &amp;pj)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("%s %s", errTemplate, err)
+        }</span>
+        <span class="cov0" title="0">return &amp;pj, nil</span>
+}
+
+func determineJobTargetFromYAML(pjYAML *v1.ProwJob) (jobTarget string, err error) <span class="cov8" title="1">{
+        errPrefix := "failed to determine job target:"
+        args := pjYAML.Spec.PodSpec.Containers[0].Args
+        for _, arg := range args </span><span class="cov8" title="1">{
+                if strings.Contains(arg, "--target") </span><span class="cov8" title="1">{
+                        sp := strings.Split(arg, "=")
+                        if len(sp) != 2 </span><span class="cov8" title="1">{
+                                return "", fmt.Errorf("%s expected %v to have len 2", errPrefix, sp)
+                        }</span>
+                        <span class="cov8" title="1">jobTarget = sp[1]
+                        return</span>
+                }
+        }
+        <span class="cov8" title="1">return "", fmt.Errorf("%s expected %+v to contain arg --target", errPrefix, args)</span>
+}
+
+// ParseJobSpec parses and then returns the openshift job spec data
+func ParseJobSpec(jobSpecData string) (*OpenshiftJobSpec, error) <span class="cov8" title="1">{
+        openshiftJobSpec := &amp;OpenshiftJobSpec{}
+
+        if err := json.Unmarshal([]byte(jobSpecData), openshiftJobSpec); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("error occurred when parsing openshift job spec data: %v", err)
+        }</span>
+        <span class="cov8" title="1">return openshiftJobSpec, nil</span>
+}
+
+func determineJobTargetFromProwJobURL(prowJobURL string) (jobTarget string, err error) <span class="cov8" title="1">{
+        switch </span>{
+        case strings.Contains(prowJobURL, "pull-ci-redhat-appstudio-infra-deployments"):<span class="cov8" title="1">
+                // prow URL is from infra-deployments repo
+                jobTarget = "appstudio-e2e-tests"</span>
+        case strings.Contains(prowJobURL, "pull-ci-konflux-ci-e2e-tests"):<span class="cov8" title="1">
+                // prow URL is from e2e-tests repo
+                jobTarget = "redhat-appstudio-e2e"</span>
+        case strings.Contains(prowJobURL, "pull-ci-konflux-ci-integration-service"):<span class="cov8" title="1">
+                // prow URL is from integration-service repo
+                jobTarget = "integration-service-e2e"</span>
+        default:<span class="cov8" title="1">
+                return "", fmt.Errorf("unable to determine the target from the ProwJobURL: %s", prowJobURL)</span>
+        }
+
+        <span class="cov8" title="1">return jobTarget, nil</span>
+}
+
+func getArtifactsDirectoryPrefix(artifactScanner *ArtifactScanner, prowJobURL, jobTarget string) (string, error) <span class="cov8" title="1">{
+        // =&gt; e.g. [ "https://prow.ci.openshift.org/view/gs", "pr-logs/pull/redhat-appstudio_infra-deployments/123/pull-ci-redhat-appstudio-infra-deployments-main-appstudio-e2e-tests/123" ]
+        sp := strings.Split(prowJobURL, "/"+bucketName+"/")
+        if len(sp) != 2 </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to determine artifact directory's prefix - prow job url: '%s', bucket name: '%s'", prowJobURL, bucketName)
+        }</span>
+
+        // =&gt; e.g. "pr-logs/pull/redhat-appstudio_infra-deployments/123/pull-ci-redhat-appstudio-infra-deployments-main-appstudio-e2e-tests/123/artifacts/appstudio-e2e-tests/"
+        <span class="cov8" title="1">artifactDirectoryPrefix := sp[1] + "/artifacts/" + jobTarget + "/"
+        artifactScanner.ArtifactDirectoryPrefix = artifactDirectoryPrefix
+
+        return artifactDirectoryPrefix, nil</span>
+}
+
+func getParentStepName(fullArtifactName, artifactDirectoryPrefix string) (string, error) <span class="cov8" title="1">{
+        // =&gt; e.g. [ "", "redhat-appstudio-e2e/artifacts/e2e-report.xml" ]
+        sp := strings.Split(fullArtifactName, artifactDirectoryPrefix)
+        if len(sp) != 2 </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("cannot determine filepath - object name: %s, object prefix: %s", fullArtifactName, artifactDirectoryPrefix)
+        }</span>
+        <span class="cov8" title="1">parentStepFilePath := sp[1]
+
+        // =&gt; e.g. [ "redhat-appstudio-e2e", "artifacts", "e2e-report.xml" ]
+        sp = strings.Split(parentStepFilePath, "/")
+        parentStepName := sp[0]
+
+        return parentStepName, nil</span>
+}
+
+func getFileName(fullArtifactName, artifactDirectoryPrefix string) (string, error) <span class="cov8" title="1">{
+        sp := strings.Split(fullArtifactName, artifactDirectoryPrefix)
+        if len(sp) != 2 </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("cannot determine filepath - object name: %s, object prefix: %s", fullArtifactName, artifactDirectoryPrefix)
+        }</span>
+        <span class="cov8" title="1">parentStepFilePath := sp[1]
+
+        sp = strings.Split(parentStepFilePath, "/")
+        fileName := sp[len(sp)-1]
+
+        return fileName, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file18" style="display: none">package testresults
+
+import (
+        "fmt"
+)
+
+const (
+        dropdownSummaryString = "Click to view logs"
+        maxContentChars       = 10000
+)
+
+// extractFailedTestCasesBody initialises the FailedTestCasesReport struct's
+// 'failedTestCaseNames' field with the names of failed test cases
+// within given JUnitTestSuites -- if the given JUnitTestSuites is !nil.
+func extractFailedTestCasesBody(f FailedTestCasesReport) (failedTestCasesBody []string) <span class="cov8" title="1">{
+        switch f.FailureType </span>{
+        case OtherFailure:<span class="cov8" title="1">
+                return</span>
+        case ClusterCreationFailure:<span class="cov8" title="1">
+                return []string{returnContentWrappedInDropdown(dropdownSummaryString, f.ClusterProvisionLog)}</span>
+        case TestRunFailure:<span class="cov8" title="1">
+                return []string{returnContentWrappedInDropdown(dropdownSummaryString, f.E2ETestLog)}</span>
+        }
+        <span class="cov8" title="1">ftc := f.GetFailedTestCases()
+        for _, tc := range ftc </span><span class="cov8" title="1">{
+                var tcMessage string
+                switch </span>{
+                case tc.Status == "timedout":<span class="cov8" title="1">
+                        tcMessage = returnContentWrappedInDropdown(dropdownSummaryString, tc.SystemErr)</span>
+                case tc.Failure != nil:<span class="cov8" title="1">
+                        tcMessage = returnContentWrappedInDropdown(dropdownSummaryString, tc.Failure.Message)</span>
+                default:<span class="cov8" title="1">
+                        tcMessage = returnContentWrappedInDropdown(dropdownSummaryString, tc.Error.Message)</span>
+                }
+
+                <span class="cov8" title="1">testCaseEntry := ":arrow_right: " + "[**`" + tc.Status + "`**] " + tc.Name + tcMessage
+                failedTestCasesBody = append(failedTestCasesBody, testCaseEntry)</span>
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// getHeaderStringForFailureType returns 'headerString' for the report summary
+// based on phase at which PipelineRun failed
+func getHeaderStringForFailureType(ft FailureType) string <span class="cov8" title="1">{
+        switch ft </span>{
+        case OtherFailure:<span class="cov8" title="1">
+                return ":rotating_light: **Couldn't detect a specific failure, see the related PipelineRun for more details or consult with Konflux DevProd team.**\n"</span>
+        case TestRunFailure:<span class="cov8" title="1">
+                return ":rotating_light: **No JUnit file found, see the log from running tests**: \n"</span>
+        case ClusterCreationFailure:<span class="cov8" title="1">
+                return ":rotating_light: **Failed to provision a cluster, see the log for more details**: \n"</span>
+        case TestCaseFailure:<span class="cov8" title="1">
+                return ":rotating_light: **Error occurred while running the E2E tests, list of failed Spec(s)**: \n"</span>
+        }
+        <span class="cov0" title="0">return ""</span>
+}
+
+// GetFormattedReport returns the full report (test run analysis) as a string
+func GetFormattedReport(report FailedTestCasesReport) (formattedReport string) <span class="cov8" title="1">{
+        formattedReport = getHeaderStringForFailureType(report.FailureType)
+
+        for _, failedTCName := range extractFailedTestCasesBody(report) </span><span class="cov8" title="1">{
+                formattedReport += fmt.Sprintf("\n %s\n", failedTCName)
+        }</span>
+
+        <span class="cov8" title="1">return</span>
+}
+
+func returnContentWrappedInDropdown(summary, content string) string <span class="cov8" title="1">{
+        return "&lt;details&gt;&lt;summary&gt;" + summary + "&lt;/summary&gt;&lt;br&gt;\n&lt;pre&gt;" + returnTruncatedContent(content) + "&lt;/pre&gt;&lt;/details&gt;\n\n---"
+}</span>
+
+func returnTruncatedContent(content string) string <span class="cov8" title="1">{
+        if len(content) &gt; maxContentChars </span><span class="cov8" title="1">{
+                runes := []rune(content)
+                truncatedRunes := runes[:maxContentChars]
+
+                return string(truncatedRunes) + "... the content is too long - please download the artifact to see the full content\n"
+        }</span>
+        <span class="cov8" title="1">return content</span>
+}
+</pre>
+		
+		<pre class="file" id="file19" style="display: none">package testresults
+
+import (
+        "encoding/xml"
+
+        "github.com/bsm/ginkgo/v2/reporters"
+        "github.com/konflux-ci/qe-tools/pkg/oci"
+        "k8s.io/klog/v2"
+)
+
+// FailureType collects the types of failures met in the PipelineRun
+type FailureType string
+
+const (
+        // OtherFailure represents the type failure that hasn't been identified by the analyzer
+        OtherFailure FailureType = "otherFailure"
+        // ClusterCreationFailure represents the issue with provisioning a test cluster
+        ClusterCreationFailure FailureType = "clusterCreationFailure"
+        // TestRunFailure represents the issue with running the test command
+        TestRunFailure FailureType = "testRunFailure"
+        // TestCaseFailure represents the issue in the test suite (i.e. test case has failed)
+        TestCaseFailure FailureType = "testCaseFailure"
+)
+
+// FailedTestCasesReport collects the data about failures
+type FailedTestCasesReport struct {
+        JUnitTestSuites *reporters.JUnitTestSuites
+
+        ClusterProvisionLog string
+        E2ETestLog          string
+
+        FailureType FailureType
+}
+
+// CollectTestFilesData inspects the FilesPathMap data and based on the supplied
+// names for JUnit, E2E run log and cluster provision log file names determines
+// the cause of the PipelineRun failure
+func (f *FailedTestCasesReport) CollectTestFilesData(fpm oci.FilesPathMap, junitFilename, e2eTestRunLogFilename, clusterProvisionLogFilename string) <span class="cov8" title="1">{
+        f.JUnitTestSuites = &amp;reporters.JUnitTestSuites{}
+
+        for _, file := range fpm </span><span class="cov8" title="1">{
+                if string(file.Filename) == junitFilename </span><span class="cov8" title="1">{
+                        if err := xml.Unmarshal([]byte(file.Content), f.JUnitTestSuites); err != nil </span><span class="cov0" title="0">{
+                                klog.Warningf("cannot decode JUnit suite into xml: %+v", err)
+                        }</span>
+                        <span class="cov8" title="1">f.FailureType = TestCaseFailure
+                        klog.Info("the given PipelineRun failed on a test case failure")
+                        return</span>
+                }
+        }
+
+        <span class="cov8" title="1">for _, file := range fpm </span><span class="cov8" title="1">{
+                if file.Filename == e2eTestRunLogFilename </span><span class="cov8" title="1">{
+                        f.E2ETestLog = file.Content
+                }</span>
+                <span class="cov8" title="1">if file.Filename == clusterProvisionLogFilename </span><span class="cov8" title="1">{
+                        f.ClusterProvisionLog = file.Content
+                }</span>
+        }
+
+        <span class="cov8" title="1">if f.E2ETestLog != "" </span><span class="cov8" title="1">{
+                klog.Info("no JUnit file found - PipelineRun failed during running tests")
+                f.FailureType = TestRunFailure
+                return
+        }</span>
+
+        <span class="cov8" title="1">if f.ClusterProvisionLog != "" </span><span class="cov8" title="1">{
+                klog.Info("failed to provision a cluster")
+                f.FailureType = ClusterCreationFailure
+                return
+        }</span>
+
+        <span class="cov8" title="1">klog.Info("could not find any related artifacts")
+        f.FailureType = OtherFailure</span>
+}
+
+// GetFailedTestCases returns the list of JUnit test cases that failed
+func (f *FailedTestCasesReport) GetFailedTestCases() (ftc []reporters.JUnitTestCase) <span class="cov8" title="1">{
+        for _, testSuite := range f.JUnitTestSuites.TestSuites </span><span class="cov8" title="1">{
+                if testSuite.Failures &gt; 0 || testSuite.Errors &gt; 0 </span><span class="cov8" title="1">{
+                        for _, tc := range testSuite.TestCases </span><span class="cov8" title="1">{
+                                if tc.Failure != nil || tc.Error != nil </span><span class="cov8" title="1">{
+                                        klog.Infof("Found a Test Case (suiteName/testCaseName): %s/%s, that didn't pass", testSuite.Name, tc.Name)
+                                        ftc = append(ftc, tc)
+                                }</span>
+                        }
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+</pre>
+		
+		<pre class="file" id="file20" style="display: none">package utils
+
+import (
+        "fmt"
+        "strings"
+)
+
+// ParseRepoAndTag extracts the quay.io repository and tag from the given repo flag.
+func ParseRepoAndTag(repoFlag string) (string, string, error) <span class="cov8" title="1">{
+        // Ensure the repoFlag starts with 'quay.io/'
+        if !strings.HasPrefix(repoFlag, "quay.io/") </span><span class="cov8" title="1">{
+                return "", "", fmt.Errorf("the repository must start with 'quay.io/'")
+        }</span>
+
+        // Remove 'quay.io/' prefix and split the repo and tag using the ':' character
+        <span class="cov8" title="1">repoFlag = strings.TrimPrefix(repoFlag, "quay.io/")
+        parts := strings.SplitN(repoFlag, ":", 2)
+
+        if len(parts) != 2 </span><span class="cov8" title="1">{
+                return "", "", fmt.Errorf("tag is missing in the repo flag")
+        }</span>
+
+        <span class="cov8" title="1">return parts[0], parts[1], nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file21" style="display: none">/*
+Some of the code is copied and refactored from GoHooks library: https://pkg.go.dev/github.com/averageflow/gohooks/v2/gohooks
+Original version is available on https://github.com/averageflow/gohooks/blob/v2.2.0/gohooks/GoHook.go
+
+MIT License:
+Copyright (c) 2013-2014 Onsi Fakhouri
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+package webhook
+
+import (
+        "bytes"
+        "crypto/hmac"
+        "crypto/sha256"
+        "crypto/tls"
+        "encoding/hex"
+        "encoding/json"
+        "fmt"
+        "net/http"
+        "time"
+
+        "k8s.io/klog/v2"
+)
+
+// GoWebHook represents the definition of a GoWebHook.
+type GoWebHook struct {
+        // Data to be sent in the GoWebHook
+        Payload GoWebHookPayload
+        // The encrypted SHA resulting with the used salt
+        ResultingSha string
+        // Prepared JSON marshaled data
+        PreparedData []byte
+        // Choice of signature header to use on sending a GoWebHook
+        SignatureHeader string
+        // Should validate SSL certificate
+        IsSecure bool
+        // Preferred HTTP method to send the GoWebHook
+        // Please choose only POST, DELETE, PATCH or PUT
+        // Any other value will make the send use POST as fallback
+        PreferredMethod string
+        // Additional HTTP headers to be added to the hook
+        AdditionalHeaders map[string]string
+}
+
+// GoWebHookPayload represents the data that will be sent in the GoWebHook.
+type GoWebHookPayload struct {
+        Resource string      `json:"resource"`
+        Data     interface{} `json:"data"`
+}
+
+const (
+        // DefaultSignatureHeader is used as default signature header
+        DefaultSignatureHeader = "X-GoWebHooks-Verification"
+)
+
+// Create creates a webhook to be sent to another system,
+// with a SHA 256 signature based on its contents.
+func (hook *GoWebHook) Create(data interface{}, resource, secret string) <span class="cov8" title="1">{
+        hook.Payload.Resource = resource
+        hook.Payload.Data = data
+
+        preparedHookData, err := json.Marshal(hook.Payload)
+        if err != nil </span><span class="cov0" title="0">{
+                klog.Error(err.Error())
+        }</span>
+
+        <span class="cov8" title="1">hook.PreparedData = preparedHookData
+
+        h := hmac.New(sha256.New, []byte(secret))
+
+        _, err = h.Write(preparedHookData)
+        if err != nil </span><span class="cov0" title="0">{
+                klog.Error(err.Error())
+        }</span>
+
+        // Get result and encode as hexadecimal string
+        <span class="cov8" title="1">hook.ResultingSha = hex.EncodeToString(h.Sum(nil))</span>
+}
+
+// Send sends a GoWebHook to the specified URL, as a UTF-8 JSON payload.
+func (hook *GoWebHook) Send(receiverURL string) (*http.Response, error) <span class="cov0" title="0">{
+        if hook.SignatureHeader == "" </span><span class="cov0" title="0">{
+                // Use the DefaultSignatureHeader as default if no custom header is specified
+                hook.SignatureHeader = DefaultSignatureHeader
+        }</span>
+
+        <span class="cov0" title="0">if !hook.IsSecure </span><span class="cov0" title="0">{
+                // By default do not verify SSL certificate validity
+                http.DefaultTransport.(*http.Transport).TLSClientConfig = &amp;tls.Config{
+                        InsecureSkipVerify: true, // #nosec G402
+                }
+        }</span>
+
+        <span class="cov0" title="0">switch hook.PreferredMethod </span>{
+        case http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete:<span class="cov0" title="0"></span>
+                // Valid Methods, do nothing
+        default:<span class="cov0" title="0">
+                // By default send GoWebHook using a POST method
+                hook.PreferredMethod = http.MethodPost</span>
+        }
+
+        <span class="cov0" title="0">client := &amp;http.Client{Timeout: 30 * time.Second}
+
+        req, err := http.NewRequest(
+                hook.PreferredMethod,
+                receiverURL,
+                bytes.NewBuffer(hook.PreparedData),
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">req.Header.Add("Content-Type", "application/json")
+        req.Header.Add("Charset", "utf-8")
+        req.Header.Add(DefaultSignatureHeader, hook.ResultingSha)
+
+        // Add user's additional headers
+        for i := range hook.AdditionalHeaders </span><span class="cov0" title="0">{
+                req.Header.Add(i, hook.AdditionalHeaders[i])
+        }</span>
+
+        <span class="cov0" title="0">req.Close = true
+
+        resp, err := client.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return resp, nil</span>
+}
+
+// Webhook struct used for sending webhooks to https://smee.io/
+type Webhook struct {
+        Path          string `json:"path"`
+        RepositoryURL string `json:"repository_url"`
+        Repository    `json:"repository"`
+}
+
+// Repository struct - part of Webhook struct
+type Repository struct {
+        FullName   string `json:"full_name"`
+        PullNumber string `json:"pull_number"`
+}
+
+// CreateAndSend creates and then sends a webhook to the given target
+func (w *Webhook) CreateAndSend(saltSecret, webhookTarget string) (*http.Response, error) <span class="cov0" title="0">{
+        hook := &amp;GoWebHook{}
+        hook.Create(w, w.Path, saltSecret)
+        resp, err := hook.Send(webhookTarget)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("error sending webhook: %+v", err)
+        }</span>
+        <span class="cov0" title="0">return resp, nil</span>
+}
 </pre>
 		
 		</div>
