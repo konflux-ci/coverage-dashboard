@@ -61,7 +61,7 @@
 				
 				<option value="file2">github.com/konflux-ci/mintmaker/internal/controller/common.go (0.0%)</option>
 				
-				<option value="file3">github.com/konflux-ci/mintmaker/internal/controller/dependencyupdatecheck_controller.go (64.6%)</option>
+				<option value="file3">github.com/konflux-ci/mintmaker/internal/controller/dependencyupdatecheck_controller.go (64.0%)</option>
 				
 				<option value="file4">github.com/konflux-ci/mintmaker/internal/controller/event_controller.go (75.2%)</option>
 				
@@ -1073,6 +1073,18 @@ func (r *DependencyUpdateCheckReconciler) createPipelineRun(ctx context.Context,
         // Add Kite integration if enabled AND token is available
         <span class="cov8" title="1">if kiteSecretName != "" </span><span class="cov0" title="0">{
                 builder.WithKiteIntegration(config.Get().Kite.APIURL)
+                opts := tekton.NewMountOptions().
+                        WithTaskName("build").
+                        WithStepNames([]string{"log-analyzer"}).
+                        WithReadOnly(true)
+                builder.WithConfigMap(
+                        "openshift-service-ca.crt",
+                        "/etc/pki/kite-ca",
+                        []corev1.KeyToPath{
+                                {Key: "service-ca.crt", Path: "ca.crt"},
+                        },
+                        opts,
+                )
 
                 tokenSecretItems := []corev1.KeyToPath{
                         {
@@ -1697,6 +1709,7 @@ import (
         "fmt"
         "os"
         "reflect"
+        "strings"
         "time"
         "unicode"
 
@@ -1964,6 +1977,12 @@ func (b *PipelineRunBuilder) WithLabels(labels map[string]string) *PipelineRunBu
         <span class="cov0" title="0">return b</span>
 }
 
+// sanitizeVolumeName returns a name safe for use as a Kubernetes volume name (DNS-1123 label).
+// Volume names must not contain dots.
+func sanitizeVolumeName(name string) string <span class="cov0" title="0">{
+        return strings.ReplaceAll(name, ".", "-")
+}</span>
+
 // Mounts a ConfigMap to the specified task and steps.
 // - name: ConfigMap name
 // - mountPath: where the ConfigMap should be mounted to
@@ -1984,7 +2003,7 @@ func (b *PipelineRunBuilder) WithConfigMap(name, mountPath string, items []corev
         <span class="cov0" title="0">for i, task := range b.pipelineRun.Spec.PipelineSpec.Tasks </span><span class="cov0" title="0">{
                 // Add volume when task matches
                 if task.Name == opts.TaskName &amp;&amp; task.TaskSpec != nil </span><span class="cov0" title="0">{
-                        volumeName := fmt.Sprintf("configmap-%s", name)
+                        volumeName := fmt.Sprintf("configmap-%s", sanitizeVolumeName(name))
                         volume := corev1.Volume{
                                 Name: volumeName,
                                 VolumeSource: corev1.VolumeSource{
@@ -2045,7 +2064,7 @@ func (b *PipelineRunBuilder) WithSecret(name, mountPath string, items []corev1.K
                 if task.Name == opts.TaskName &amp;&amp; task.TaskSpec != nil </span><span class="cov0" title="0">{
                         // Generate unique volume name using random string to avoid conflicts
                         // when the same secret is mounted multiple times
-                        volumeName := fmt.Sprintf("secret-%s-%s", name, utils.RandomString(8))
+                        volumeName := fmt.Sprintf("secret-%s-%s", sanitizeVolumeName(name), utils.RandomString(8))
                         volume := corev1.Volume{
                                 Name: volumeName,
                                 VolumeSource: corev1.VolumeSource{
@@ -2224,6 +2243,10 @@ func (b *PipelineRunBuilder) WithKiteIntegration(kiteAPIURL string) *PipelineRun
                                                                 FieldPath: "metadata.labels['tekton.dev/pipelineRun']",
                                                         },
                                                 },
+                                        },
+                                        {
+                                                Name:  "SSL_CERT_FILE",
+                                                Value: "/etc/pki/kite-ca/ca.crt",
                                         },
                                         {
                                                 Name:  "KITE_API_URL",

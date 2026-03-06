@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22701375003",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22748183833",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 52.6,
+      "coverage": 52.8,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 78.6
+          "coverage": 78.8
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/common",
@@ -99,12 +99,12 @@
           "coverage": 72.0
         },
         {
-          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
-          "coverage": 9.5
-        },
-        {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/pr",
           "coverage": 16.8
+        },
+        {
+          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
+          "coverage": 9.5
         },
         {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/config",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 71.1,
+      "coverage": 71.2,
       "status": "ok",
       "packages": [
         {
@@ -141,7 +141,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 71.9
+          "coverage": 72.0
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -265,7 +265,7 @@
     },
     {
       "repo": "konflux-ci/mintmaker",
-      "coverage": 45.1,
+      "coverage": 44.9,
       "status": "ok",
       "packages": [
         {
@@ -274,7 +274,7 @@
         },
         {
           "package": "github.com/konflux-ci/mintmaker/internal/controller",
-          "coverage": 64.4
+          "coverage": 64.1
         },
         {
           "package": "github.com/konflux-ci/mintmaker/internal/tekton",
@@ -450,12 +450,12 @@
           "coverage": 72.2
         },
         {
-          "package": "github.com/konflux-ci/qe-tools/cmd/coffeebreak",
-          "coverage": 5.8
-        },
-        {
           "package": "github.com/konflux-ci/qe-tools/cmd/analyzetestresults",
           "coverage": 41.7
+        },
+        {
+          "package": "github.com/konflux-ci/qe-tools/cmd/coffeebreak",
+          "coverage": 5.8
         }
       ]
     },
