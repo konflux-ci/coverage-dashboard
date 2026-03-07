@@ -55,7 +55,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (76.4%)</option>
+				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (74.1%)</option>
 				
 				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.9%)</option>
 				
@@ -604,7 +604,7 @@ func (r *ComponentBuildReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
         <span class="cov8" title="1">delete(component.Annotations, BuildRequestAnnotationName)
 
-        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
+        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, fmt.Sprintf("failed to update component after build request: %s", requestedAction), l.Action, l.ActionUpdate, l.Audit, "true")
                 return ctrl.Result{}, err
         }</span>
@@ -638,8 +638,8 @@ func (r *ComponentBuildReconciler) WaitForCacheUpdate(ctx context.Context, names
                                 break</span>
                         }
                         // Outdated version of the component, wait more.
-                } else<span class="cov8" title="1"> {
-                        if errors.IsNotFound(err) </span><span class="cov8" title="1">{
+                } else<span class="cov0" title="0"> {
+                        if errors.IsNotFound(err) </span><span class="cov0" title="0">{
                                 // The component was deleted
                                 isComponentInCacheUpToDate = true
                                 break</span>
