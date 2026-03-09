@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22813300071",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/22837569045",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -22,15 +22,15 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 78.8
-        },
-        {
-          "package": "github.com/konflux-ci/build-service/pkg/git",
-          "coverage": 20.5
+          "coverage": 78.9
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/common",
           "coverage": 90.0
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git",
+          "coverage": 20.5
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git/gitproviderfactory",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 71.1,
+      "coverage": 71.2,
       "status": "ok",
       "packages": [
         {
@@ -141,7 +141,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 71.9
+          "coverage": 72.0
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -364,12 +364,12 @@
           "coverage": 17.9
         },
         {
-          "package": "github.com/konflux-ci/operator-toolkit/utils",
-          "coverage": 100.0
-        },
-        {
           "package": "github.com/konflux-ci/operator-toolkit/predicates",
           "coverage": 4.8
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/utils",
+          "coverage": 100.0
         },
         {
           "package": "github.com/konflux-ci/operator-toolkit/conditions",
@@ -565,12 +565,12 @@
           "coverage": 84.4
         },
         {
-          "package": "github.com/redhat-appstudio/segment-bridge.git/querygen",
-          "coverage": 98.2
-        },
-        {
           "package": "github.com/redhat-appstudio/segment-bridge.git/scripts",
           "coverage": 50.0
+        },
+        {
+          "package": "github.com/redhat-appstudio/segment-bridge.git/querygen",
+          "coverage": 98.2
         }
       ]
     },
