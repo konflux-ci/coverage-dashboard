@@ -303,6 +303,7 @@ var (
         // vars for mocking purposes, during testing
         GetRenovateConfigFn func(registrySecret *corev1.Secret, currentBranch string) (string, error)
         GetTokenFn          func() (string, error)
+        GetBranchesFn       func() ([]string, error)
 )
 
 type AppInstallation struct {
@@ -339,7 +340,7 @@ func getAppIDAndKey(ctx context.Context, client client.Client) (int64, []byte, e
         return ghAppID, ghAppPrivateKey, nil</span>
 }
 
-func NewComponent(ctx context.Context, comp *appstudiov1alpha1.Component, client client.Client, giturl string, versions []string) (*Component, error) <span class="cov0" title="0">{
+func NewComponent(ctx context.Context, comp *appstudiov1alpha1.Component, client client.Client, giturl string, versions []string, oldCRDVersion bool) (*Component, error) <span class="cov0" title="0">{
         appID, appPrivateKey, err := getAppIDAndKey(ctx, client)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("failed to get GitHub APP ID and private key: %w", err)
@@ -360,14 +361,15 @@ func NewComponent(ctx context.Context, comp *appstudiov1alpha1.Component, client
 
         <span class="cov0" title="0">return &amp;Component{
                 BaseComponent: base.BaseComponent{
-                        Name:        comp.Name,
-                        Namespace:   comp.Namespace,
-                        Application: comp.Spec.Application,
-                        Platform:    platform,
-                        Host:        host,
-                        GitURL:      giturl,
-                        Repository:  repository,
-                        Versions:    versions,
+                        Name:          comp.Name,
+                        Namespace:     comp.Namespace,
+                        Application:   comp.Spec.Application,
+                        Platform:      platform,
+                        Host:          host,
+                        GitURL:        giturl,
+                        Repository:    repository,
+                        Versions:      versions,
+                        OldCRDVersion: oldCRDVersion,
                 },
                 AppID:         appID,
                 AppPrivateKey: appPrivateKey,
@@ -376,15 +378,41 @@ func NewComponent(ctx context.Context, comp *appstudiov1alpha1.Component, client
         }, nil</span>
 }
 
-func (c *Component) GetBranches() []string <span class="cov0" title="0">{
-        if len(c.Versions) == 0 </span><span class="cov0" title="0">{
-                branch, err := c.getDefaultBranch()
+func (c *Component) GetBranches() ([]string, error) <span class="cov0" title="0">{
+        if GetBranchesFn != nil </span><span class="cov0" title="0">{
+                return GetBranchesFn()
+        }</span>
+
+        <span class="cov0" title="0">if len(c.Versions) == 0 &amp;&amp; c.OldCRDVersion </span><span class="cov0" title="0">{
+                defaultBranch, err := c.getDefaultBranch()
                 if err != nil </span><span class="cov0" title="0">{
-                        return []string{}
+                        return []string{}, fmt.Errorf("component does not have a branch specified and failed to get default branch: %w", err)
                 }</span>
-                <span class="cov0" title="0">return []string{branch}</span>
+                <span class="cov0" title="0">return []string{defaultBranch}, nil</span>
         }
-        <span class="cov0" title="0">return c.Versions</span>
+
+        <span class="cov0" title="0">var branches []string
+        client, err := c.getClient()
+        if err != nil </span><span class="cov0" title="0">{
+                return []string{}, fmt.Errorf("GetBranches: failed to get GitHub client: %w", err)
+        }</span>
+        <span class="cov0" title="0">owner, repo, err := c.getOwnerAndRepo()
+        if err != nil </span><span class="cov0" title="0">{
+                return []string{}, fmt.Errorf("GetBranches: failed to get owner and repository: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">for _, version := range c.Versions </span><span class="cov0" title="0">{
+                _, _, err := client.Repositories.GetBranch(context.Background(), owner, repo, version, 5)
+                if err == nil </span><span class="cov0" title="0">{
+                        branches = append(branches, version)
+                }</span>
+        }
+
+        <span class="cov0" title="0">if len(branches) == 0 </span><span class="cov0" title="0">{
+                return []string{}, fmt.Errorf("no versions found or all versions are tags (not branches)")
+        }</span>
+
+        <span class="cov0" title="0">return branches, nil</span>
 }
 
 func (c *Component) getInstallationID() (int64, error) <span class="cov0" title="0">{
@@ -549,28 +577,24 @@ func (c *Component) fetchAppInstallations() ([]AppInstallation, error) <span cla
 }
 
 func (c *Component) getDefaultBranch() (string, error) <span class="cov0" title="0">{
-        token, err := c.GetToken()
+
+        client, err := c.getClient()
         if err != nil </span><span class="cov0" title="0">{
-                return "", fmt.Errorf("failed to get GitHub token: %w", err)
+                return "", fmt.Errorf("failed to get GitHub client: %w", err)
         }</span>
-        <span class="cov0" title="0">ts := oauth2.StaticTokenSource(
-                &amp;oauth2.Token{AccessToken: token},
-        )
-        tc := oauth2.NewClient(context.Background(), ts)
-        client := github.NewClient(tc)
-        parts := strings.Split(c.Repository, "/")
-        if len(parts) != 2 </span><span class="cov0" title="0">{
-                return "", fmt.Errorf("invalid repository format: %s", c.Repository)
+        <span class="cov0" title="0">owner, repo, err := c.getOwnerAndRepo()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to get owner and repository: %w", err)
         }</span>
-        <span class="cov0" title="0">owner := parts[0]
-        repo := parts[1]
-        repositoryInfo, _, err := client.Repositories.Get(context.Background(), owner, repo)
+
+        <span class="cov0" title="0">repositoryInfo, _, err := client.Repositories.Get(context.Background(), owner, repo)
         if err != nil </span><span class="cov0" title="0">{
                 return "", fmt.Errorf("failed to get repository information: %w", err)
         }</span>
         <span class="cov0" title="0">if repositoryInfo.DefaultBranch == nil </span><span class="cov0" title="0">{
                 return "", fmt.Errorf("repository default branch is nil")
         }</span>
+
         <span class="cov0" title="0">return *repositoryInfo.DefaultBranch, nil</span>
 }
 
@@ -661,6 +685,29 @@ func (c *Component) GetRenovateConfig(registrySecret *corev1.Secret, currentBran
                 return "", err
         }</span>
         <span class="cov0" title="0">return string(updatedConfig), nil</span>
+}
+
+func (c *Component) getClient() (*github.Client, error) <span class="cov0" title="0">{
+        token, err := c.GetToken()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get GitHub token: %w", err)
+        }</span>
+        <span class="cov0" title="0">ts := oauth2.StaticTokenSource(
+                &amp;oauth2.Token{AccessToken: token},
+        )
+        tc := oauth2.NewClient(context.Background(), ts)
+        client := github.NewClient(tc)
+
+        return client, nil</span>
+}
+
+func (c *Component) getOwnerAndRepo() (string, string, error) <span class="cov0" title="0">{
+        parts := strings.Split(c.Repository, "/")
+        if len(parts) != 2 </span><span class="cov0" title="0">{
+                return "", "", fmt.Errorf("invalid repository format: %s", c.Repository)
+        }</span>
+
+        <span class="cov0" title="0">return parts[0], parts[1], nil</span>
 }
 </pre>
 		
@@ -1261,25 +1308,24 @@ func (r *DependencyUpdateCheckReconciler) Reconcile(ctx context.Context, req ctr
                         continue</span>
                 }
 
-                <span class="cov8" title="1">branches := comp.GetBranches()
-                if len(branches) == 0 </span><span class="cov0" title="0">{
-                        compLog.Info("no versions (branches) found for component", "component", appstudioComponent.Name)
+                <span class="cov8" title="1">branches, err := comp.GetBranches()
+                if err != nil </span><span class="cov0" title="0">{
+                        compLog.Info("couldn't find versions which are branches for component", "component", appstudioComponent.Name, "err", err)
                         continue</span>
                 }
 
-                <span class="cov8" title="1">for _, branch := range branches </span><span class="cov8" title="1">{
+                <span class="cov8" title="1">host := comp.GetHost()
+                repository := comp.GetRepository()
+                for _, branchName := range branches </span><span class="cov8" title="1">{
                         // We need to create only one PipelineRun for a combination
                         // of repository+branch. We cannot use repository only,
                         // because the branch is used in Renovate's baseBranch config option.
-                        host := comp.GetHost()
-                        repository := comp.GetRepository()
-                        key := fmt.Sprintf("%s/%s@%s", host, repository, branch)
-
                         branchLog := compLog.WithValues("repository", repository,
-                                "branch", branch,
+                                "branch", branchName,
                                 "gitHost", host)
                         ctx = ctrllog.IntoContext(ctx, branchLog)
 
+                        key := fmt.Sprintf("%s/%s@%s", host, repository, branchName)
                         if slices.Contains(processedComponents, key) </span><span class="cov0" title="0">{
                                 // PipelineRun has already been created for this repo-branch
                                 branchLog.Info("PipelineRun has been created for this component-key", "component-key", key)
@@ -1289,7 +1335,7 @@ func (r *DependencyUpdateCheckReconciler) Reconcile(ctx context.Context, req ctr
                         }</span>
 
                         <span class="cov8" title="1">plrName := fmt.Sprintf("renovate-%s-%s", timestamp, utils.RandomString(8))
-                        pipelinerun, err := r.createPipelineRun(ctx, plrName, comp, branch, kiteSecretName)
+                        pipelinerun, err := r.createPipelineRun(ctx, plrName, comp, branchName, kiteSecretName)
                         if err != nil </span><span class="cov0" title="0">{
                                 branchLog.Error(err, "failed to create PipelineRun")
                                 mintmakermetrics.CountScheduledRunFailure()
