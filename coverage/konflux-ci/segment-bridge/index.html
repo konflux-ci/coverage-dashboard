@@ -67,7 +67,7 @@
 				
 				<option value="file5">github.com/redhat-appstudio/segment-bridge.git/queryprint/queryprint.go (100.0%)</option>
 				
-				<option value="file6">github.com/redhat-appstudio/segment-bridge.git/scripts/runner.go (50.0%)</option>
+				<option value="file6">github.com/redhat-appstudio/segment-bridge.git/scripts/runner.go (39.3%)</option>
 				
 				<option value="file7">github.com/redhat-appstudio/segment-bridge.git/stats/series.go (84.4%)</option>
 				
@@ -923,6 +923,18 @@ func AssertExecuteScript(t *testing.T, scriptPath string) []byte <span class="co
         cmd := exec.Command(scriptPath)
         output, err := cmd.Output()
         assert.NoError(t, err, "failed to run script")
+        return output
+}</span>
+
+// AssertExecuteScriptWithArgs runs the script with the given arguments and returns stdout.
+// It asserts that the command succeeded. Use this for scripts that take arguments (e.g. a wrapper that runs a child command).
+// Behaves like AssertExecuteScript (stdout only); stderr is not captured.
+func AssertExecuteScriptWithArgs(t *testing.T, scriptPath string, args ...string) []byte <span class="cov0" title="0">{
+        t.Helper()
+        cmd := exec.Command(scriptPath, args...)
+        cmd.Env = os.Environ()
+        output, err := cmd.Output()
+        assert.NoError(t, err, "failed to run script with args")
         return output
 }</span>
 </pre>
