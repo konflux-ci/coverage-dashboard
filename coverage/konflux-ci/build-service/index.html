@@ -55,9 +55,9 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (76.4%)</option>
+				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (77.3%)</option>
 				
-				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.9%)</option>
+				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.8%)</option>
 				
 				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (82.1%)</option>
 				
@@ -67,7 +67,7 @@
 				
 				<option value="file5">github.com/konflux-ci/build-service/internal/controller/component_build_controller_service_account.go (71.4%)</option>
 				
-				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_dependency_update_controller.go (76.1%)</option>
+				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_dependency_update_controller.go (76.0%)</option>
 				
 				<option value="file7">github.com/konflux-ci/build-service/internal/controller/pac_pipelinerun_pruner_controller.go (72.2%)</option>
 				
@@ -85,7 +85,7 @@
 				
 				<option value="file14">github.com/konflux-ci/build-service/pkg/git/apiendpoint.go (100.0%)</option>
 				
-				<option value="file15">github.com/konflux-ci/build-service/pkg/git/forgejo/forgejo_client.go (27.5%)</option>
+				<option value="file15">github.com/konflux-ci/build-service/pkg/git/forgejo/forgejo_client.go (27.8%)</option>
 				
 				<option value="file16">github.com/konflux-ci/build-service/pkg/git/forgejo/forgejo_helper.go (12.8%)</option>
 				
@@ -198,7 +198,7 @@ type BuildStatus struct {
         Message string `json:"message,omitempty"`
 }
 
-// Describes persistent error for build request.
+// ErrorInfo describes persistent error for build request.
 type ErrorInfo struct {
         ErrId      int    `json:"error-id,omitempty"`
         ErrMessage string `json:"error-message,omitempty"`
@@ -604,7 +604,7 @@ func (r *ComponentBuildReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
         <span class="cov8" title="1">delete(component.Annotations, BuildRequestAnnotationName)
 
-        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
+        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
                 log.Error(err, fmt.Sprintf("failed to update component after build request: %s", requestedAction), l.Action, l.ActionUpdate, l.Audit, "true")
                 return ctrl.Result{}, err
         }</span>
@@ -715,7 +715,7 @@ import (
         ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
         "github.com/konflux-ci/build-service/pkg/boerrors"
-        . "github.com/konflux-ci/build-service/pkg/common"
+        "github.com/konflux-ci/build-service/pkg/common"
         gp "github.com/konflux-ci/build-service/pkg/git/gitprovider"
         "github.com/konflux-ci/build-service/pkg/git/gitproviderfactory"
         l "github.com/konflux-ci/build-service/pkg/logs"
@@ -763,7 +763,7 @@ Please follow the block sequence indentation style introduced by the proprosed P
         GitProviderAnnotationURL = "git-provider-url"
 )
 
-// That way it can be mocked in tests
+// GetHttpClientFunction can be mocked in tests.
 var GetHttpClientFunction = getHttpClient
 
 // ProvisionPaCForComponent does Pipelines as Code provision for the given component.
@@ -784,13 +784,13 @@ func (r *ComponentBuildReconciler) ProvisionPaCForComponent(ctx context.Context,
 
         if strings.HasPrefix(repoUrl, "http:") </span><span class="cov0" title="0">{
                 return "", boerrors.NewBuildOpError(boerrors.EHttpUsedForRepository,
-                        fmt.Errorf("Git repository URL can't use insecure HTTP: %s", repoUrl))
+                        fmt.Errorf("git repository URL can't use insecure HTTP: %s", repoUrl))
         }</span>
 
         <span class="cov8" title="1">if url, ok := component.Annotations[GitProviderAnnotationURL]; ok </span><span class="cov0" title="0">{
                 if strings.HasPrefix(url, "http:") </span><span class="cov0" title="0">{
                         return "", boerrors.NewBuildOpError(boerrors.EHttpUsedForRepository,
-                                fmt.Errorf("Git repository URL in annotation %s can't use insecure HTTP: %s", GitProviderAnnotationURL, repoUrl))
+                                fmt.Errorf("git repository URL in annotation %s can't use insecure HTTP: %s", GitProviderAnnotationURL, repoUrl))
                 }</span>
         }
 
@@ -807,7 +807,7 @@ func (r *ComponentBuildReconciler) ProvisionPaCForComponent(ctx context.Context,
         }</span>
 
         <span class="cov8" title="1">var webhookSecretString, webhookTargetUrl string
-        if !IsPaCApplicationConfigured(gitProvider, pacSecret.Data) </span><span class="cov8" title="1">{
+        if !common.IsPaCApplicationConfigured(gitProvider, pacSecret.Data) </span><span class="cov8" title="1">{
                 // Generate webhook secret for the component git repository if not yet generated
                 // and stores it in the corresponding k8s secret.
                 webhookSecretString, err = r.ensureWebhookSecret(ctx, component)
@@ -857,27 +857,27 @@ func getHttpClient() *http.Client <span class="cov0" title="0">{ // #nosec G402 
 
 // validatePaCConfiguration detects checks that all required fields is set for whatever method is used.
 func validatePaCConfiguration(gitProvider string, pacSecret corev1.Secret) error <span class="cov8" title="1">{
-        if IsPaCApplicationConfigured(gitProvider, pacSecret.Data) </span><span class="cov8" title="1">{
+        if common.IsPaCApplicationConfigured(gitProvider, pacSecret.Data) </span><span class="cov8" title="1">{
                 if gitProvider == "github" </span><span class="cov8" title="1">{
                         // GitHub application
-                        err := checkMandatoryFieldsNotEmpty(pacSecret.Data, []string{PipelinesAsCodeGithubAppIdKey, PipelinesAsCodeGithubPrivateKey})
+                        err := checkMandatoryFieldsNotEmpty(pacSecret.Data, []string{common.PipelinesAsCodeGithubAppIdKey, common.PipelinesAsCodeGithubPrivateKey})
                         if err != nil </span><span class="cov8" title="1">{
                                 return err
                         }</span>
 
                         // validate content of the fields
-                        <span class="cov8" title="1">if _, e := strconv.ParseInt(string(pacSecret.Data[PipelinesAsCodeGithubAppIdKey]), 10, 64); e != nil </span><span class="cov8" title="1">{
+                        <span class="cov8" title="1">if _, e := strconv.ParseInt(string(pacSecret.Data[common.PipelinesAsCodeGithubAppIdKey]), 10, 64); e != nil </span><span class="cov8" title="1">{
                                 return fmt.Errorf(" Pipelines as Code: failed to parse GitHub application ID. Cause: %w", e)
                         }</span>
 
-                        <span class="cov8" title="1">privateKey := strings.TrimSpace(string(pacSecret.Data[PipelinesAsCodeGithubPrivateKey]))
+                        <span class="cov8" title="1">privateKey := strings.TrimSpace(string(pacSecret.Data[common.PipelinesAsCodeGithubPrivateKey]))
                         if !strings.HasPrefix(privateKey, "-----BEGIN RSA PRIVATE KEY-----") || // notsecret
                                 !strings.HasSuffix(privateKey, "-----END RSA PRIVATE KEY-----") </span><span class="cov8" title="1">{
                                 return fmt.Errorf(" Pipelines as Code secret: GitHub application private key is invalid")
                         }</span>
                         <span class="cov8" title="1">return nil</span>
                 }
-                <span class="cov0" title="0">return fmt.Errorf("There is no applications for %s", gitProvider)</span>
+                <span class="cov0" title="0">return fmt.Errorf("there is no applications for %s", gitProvider)</span>
         }
 
         <span class="cov8" title="1">switch pacSecret.Type </span>{
@@ -1026,7 +1026,7 @@ func (r *ComponentBuildReconciler) UndoPaCProvisionForComponent(ctx context.Cont
 
         <span class="cov8" title="1">repoUrl := getGitRepoUrl(*component)
         webhookTargetUrl := ""
-        if !IsPaCApplicationConfigured(gitProvider, pacSecret.Data) </span><span class="cov8" title="1">{
+        if !common.IsPaCApplicationConfigured(gitProvider, pacSecret.Data) </span><span class="cov8" title="1">{
                 webhookTargetUrl, err = r.getPaCWebhookTargetUrl(ctx, repoUrl, true)
                 if err != nil </span><span class="cov8" title="1">{
                         // Just log the error and continue with pruning merge request creation
@@ -1047,15 +1047,16 @@ func (r *ComponentBuildReconciler) UndoPaCProvisionForComponent(ctx context.Cont
                 return "", err
         }</span>
 
-        <span class="cov8" title="1">if action == "delete" </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">switch action </span>{
+        case "delete":<span class="cov8" title="1">
                 if mrUrl != "" </span><span class="cov8" title="1">{
                         log.Info(fmt.Sprintf("Pipelines as Code configuration removal merge request: %s", mrUrl))
                 }</span> else<span class="cov8" title="1"> {
                         log.Info("Pipelines as Code configuration removal merge request is not needed")
                 }</span>
-        } else<span class="cov8" title="1"> if action == "close" </span><span class="cov8" title="1">{
-                log.Info(fmt.Sprintf("Pipelines as Code configuration merge request has been closed: %s", mrUrl))
-        }</span>
+        case "close":<span class="cov8" title="1">
+                log.Info(fmt.Sprintf("Pipelines as Code configuration merge request has been closed: %s", mrUrl))</span>
+        }
         <span class="cov8" title="1">return mrUrl, nil</span>
 }
 
@@ -1167,7 +1168,7 @@ func (r *ComponentBuildReconciler) ConfigureRepositoryForPaC(ctx context.Context
                 },
         }
 
-        isAppUsed := IsPaCApplicationConfigured(gitProvider, pacConfig)
+        isAppUsed := common.IsPaCApplicationConfigured(gitProvider, pacConfig)
         if isAppUsed </span><span class="cov8" title="1">{
                 // Customize PR data to reflect git application name
                 if appName, appSlug, err := gitClient.GetConfiguredGitAppName(); err == nil </span><span class="cov8" title="1">{
@@ -1226,7 +1227,7 @@ func (r *ComponentBuildReconciler) UnconfigureRepositoryForPaC(ctx context.Conte
                 return "", "", "", err
         }</span>
 
-        <span class="cov8" title="1">isAppUsed := IsPaCApplicationConfigured(gitProvider, pacConfig)
+        <span class="cov8" title="1">isAppUsed := common.IsPaCApplicationConfigured(gitProvider, pacConfig)
         if !isAppUsed &amp;&amp; webhookTargetUrl != "" </span><span class="cov8" title="1">{
                 componentList := &amp;appstudiov1alpha1.ComponentList{}
                 if err := r.Client.List(ctx, componentList, &amp;client.ListOptions{Namespace: component.Namespace}); err != nil </span><span class="cov0" title="0">{
@@ -1446,7 +1447,7 @@ import (
         ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
         "github.com/konflux-ci/build-service/pkg/boerrors"
-        . "github.com/konflux-ci/build-service/pkg/common"
+        "github.com/konflux-ci/build-service/pkg/common"
         l "github.com/konflux-ci/build-service/pkg/logs"
 )
 
@@ -1526,7 +1527,7 @@ func (r *ComponentBuildReconciler) ensurePaCRepository(ctx context.Context, comp
                         return nil
                 }</span>
                 // repository with the same name exists but with different git URL, add random string to repository name
-                <span class="cov8" title="1">repository.ObjectMeta.Name = fmt.Sprintf("%s-%s", repository.ObjectMeta.Name, RandomString(5))</span>
+                <span class="cov8" title="1">repository.ObjectMeta.Name = fmt.Sprintf("%s-%s", repository.ObjectMeta.Name, common.RandomString(5))</span>
         }
 
         // create repository if not found or when found but with different URL
@@ -1609,7 +1610,7 @@ func generatePACRepository(component appstudiov1alpha1.Component, config *corev1
                 return nil, err
         }</span>
 
-        <span class="cov8" title="1">isAppUsed := IsPaCApplicationConfigured(gitProvider, config.Data)
+        <span class="cov8" title="1">isAppUsed := common.IsPaCApplicationConfigured(gitProvider, config.Data)
 
         var gitProviderConfig *pacv1alpha1.GitProvider = nil
         if !isAppUsed </span><span class="cov8" title="1">{
@@ -1901,7 +1902,7 @@ import (
         "sigs.k8s.io/yaml"
 
         "github.com/konflux-ci/build-service/pkg/boerrors"
-        . "github.com/konflux-ci/build-service/pkg/common"
+        "github.com/konflux-ci/build-service/pkg/common"
         gp "github.com/konflux-ci/build-service/pkg/git/gitprovider"
         l "github.com/konflux-ci/build-service/pkg/logs"
 )
@@ -2020,7 +2021,7 @@ func (r *ComponentBuildReconciler) GetBuildPipelineFromComponentAnnotation(ctx c
         additionalParams := []string{}
 
         pipelinesConfigMap := &amp;corev1.ConfigMap{}
-        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineConfigMapResourceName, Namespace: BuildServiceNamespaceName}, pipelinesConfigMap); err != nil </span><span class="cov8" title="1">{
+        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineConfigMapResourceName, Namespace: common.BuildServiceNamespaceName}, pipelinesConfigMap); err != nil </span><span class="cov8" title="1">{
                 if errors.IsNotFound(err) </span><span class="cov8" title="1">{
                         return nil, nil, boerrors.NewBuildOpError(boerrors.EBuildPipelineConfigNotDefined, err)
                 }</span>
@@ -2084,7 +2085,7 @@ func (r *ComponentBuildReconciler) SetDefaultBuildPipelineComponentAnnotation(ct
         log := ctrllog.FromContext(ctx)
         pipelinesConfigMap := &amp;corev1.ConfigMap{}
 
-        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineConfigMapResourceName, Namespace: BuildServiceNamespaceName}, pipelinesConfigMap); err != nil </span><span class="cov0" title="0">{
+        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineConfigMapResourceName, Namespace: common.BuildServiceNamespaceName}, pipelinesConfigMap); err != nil </span><span class="cov0" title="0">{
                 if errors.IsNotFound(err) </span><span class="cov0" title="0">{
                         return boerrors.NewBuildOpError(boerrors.EBuildPipelineConfigNotDefined, err)
                 }</span>
@@ -2412,7 +2413,7 @@ import (
         ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
         "github.com/konflux-ci/build-service/pkg/boerrors"
-        . "github.com/konflux-ci/build-service/pkg/common"
+        "github.com/konflux-ci/build-service/pkg/common"
         "github.com/konflux-ci/build-service/pkg/git"
         l "github.com/konflux-ci/build-service/pkg/logs"
 )
@@ -2506,7 +2507,7 @@ func (r *ComponentBuildReconciler) lookupPaCSecret(ctx context.Context, componen
 
 func (r *ComponentBuildReconciler) lookupGHAppSecret(ctx context.Context) (*corev1.Secret, error) <span class="cov8" title="1">{
         pacSecret := &amp;corev1.Secret{}
-        globalPaCSecretKey := types.NamespacedName{Namespace: BuildServiceNamespaceName, Name: PipelinesAsCodeGitHubAppSecretName}
+        globalPaCSecretKey := types.NamespacedName{Namespace: common.BuildServiceNamespaceName, Name: common.PipelinesAsCodeGitHubAppSecretName}
         if err := r.Client.Get(ctx, globalPaCSecretKey, pacSecret); err != nil </span><span class="cov8" title="1">{
                 if !errors.IsNotFound(err) </span><span class="cov0" title="0">{
                         r.EventRecorder.Event(pacSecret, "Warning", "ErrorReadingPaCSecret", err.Error())
@@ -3164,7 +3165,7 @@ type RepositoryConfigAuth struct {
         Auth     string `json:"auth,omitempty"`
 }
 
-// SetupController creates a new Integration reconciler and adds it to the Manager.
+// SetupWithManager creates a new Integration reconciler and adds it to the Manager.
 func (r *ComponentDependencyUpdateReconciler) SetupWithManager(manager ctrl.Manager) error <span class="cov8" title="1">{
         return ctrl.NewControllerManagedBy(manager).
                 For(&amp;tektonapi.PipelineRun{}, builder.WithPredicates(predicate.Funcs{
@@ -3201,6 +3202,7 @@ func (r *ComponentDependencyUpdateReconciler) SetupWithManager(manager ctrl.Mana
                 Complete(r)
 }
 
+// Reconcile handles component dependency updates.
 // The following line for configmaps is informational, the actual permissions are defined in component_build_controller.
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=create;get;list;watch;update;patch;delete
 // +kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;update;patch
@@ -3345,11 +3347,12 @@ func (r *ComponentDependencyUpdateReconciler) handleCompletedBuild(ctx context.C
         <span class="cov8" title="1">image := ""
         digest := ""
         for _, r := range pipelineRun.Status.Results </span><span class="cov8" title="1">{
-                if r.Name == ImageDigestParamName </span><span class="cov8" title="1">{
-                        digest = r.Value.StringVal
-                }</span> else<span class="cov8" title="1"> if r.Name == ImageUrlParamName </span><span class="cov8" title="1">{
-                        image = r.Value.StringVal
-                }</span>
+                switch r.Name </span>{
+                case ImageDigestParamName:<span class="cov8" title="1">
+                        digest = r.Value.StringVal</span>
+                case ImageUrlParamName:<span class="cov8" title="1">
+                        image = r.Value.StringVal</span>
+                }
         }
         // Failure to find is a permanent error, so remove the finalizer
         <span class="cov8" title="1">if image == "" </span><span class="cov0" title="0">{
@@ -3975,12 +3978,11 @@ import (
         "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
         logger "sigs.k8s.io/controller-runtime/pkg/log"
 
-        . "github.com/konflux-ci/build-service/pkg/common"
+        "github.com/konflux-ci/build-service/pkg/common"
         "github.com/konflux-ci/build-service/pkg/git"
         "github.com/konflux-ci/build-service/pkg/git/github"
         "github.com/konflux-ci/build-service/pkg/git/gitproviderfactory"
         "github.com/konflux-ci/build-service/pkg/k8s"
-        "github.com/konflux-ci/build-service/pkg/logs"
         l "github.com/konflux-ci/build-service/pkg/logs"
 )
 
@@ -4200,26 +4202,26 @@ func (u ComponentDependenciesUpdater) GetUpdateTargetsGithubApp(ctx context.Cont
         log := logger.FromContext(ctx)
         // Check if GitHub Application is used, if not then skip
         pacSecret := corev1.Secret{}
-        globalPaCSecretKey := types.NamespacedName{Namespace: BuildServiceNamespaceName, Name: PipelinesAsCodeGitHubAppSecretName}
+        globalPaCSecretKey := types.NamespacedName{Namespace: common.BuildServiceNamespaceName, Name: common.PipelinesAsCodeGitHubAppSecretName}
         if err := u.Client.Get(ctx, globalPaCSecretKey, &amp;pacSecret); err != nil </span><span class="cov0" title="0">{
                 u.EventRecorder.Event(&amp;pacSecret, "Warning", "ErrorReadingPaCSecret", err.Error())
                 if errors.IsNotFound(err) </span><span class="cov0" title="0">{
-                        log.Error(err, "not found Pipelines as Code secret in %s namespace: %w", globalPaCSecretKey.Namespace, err, logs.Action, logs.ActionView)
+                        log.Error(err, "not found Pipelines as Code secret in %s namespace: %w", globalPaCSecretKey.Namespace, err, l.Action, l.ActionView)
                 }</span> else<span class="cov0" title="0"> {
-                        log.Error(err, "failed to get Pipelines as Code secret in %s namespace: %w", globalPaCSecretKey.Namespace, err, logs.Action, logs.ActionView)
+                        log.Error(err, "failed to get Pipelines as Code secret in %s namespace: %w", globalPaCSecretKey.Namespace, err, l.Action, l.ActionView)
                 }</span>
                 <span class="cov0" title="0">return nil</span>
         }
-        <span class="cov8" title="1">isApp := IsPaCApplicationConfigured("github", pacSecret.Data)
+        <span class="cov8" title="1">isApp := common.IsPaCApplicationConfigured("github", pacSecret.Data)
         if !isApp </span><span class="cov0" title="0">{
                 log.Info("GitHub App is not set")
                 return nil
         }</span>
 
         // Load GitHub App and get GitHub Installations
-        <span class="cov8" title="1">githubAppIdStr := string(pacSecret.Data[PipelinesAsCodeGithubAppIdKey])
-        privateKey := pacSecret.Data[PipelinesAsCodeGithubPrivateKey]
-        pacConfig := map[string][]byte{PipelinesAsCodeGithubPrivateKey: []byte(privateKey), PipelinesAsCodeGithubAppIdKey: []byte(githubAppIdStr)}
+        <span class="cov8" title="1">githubAppIdStr := string(pacSecret.Data[common.PipelinesAsCodeGithubAppIdKey])
+        privateKey := pacSecret.Data[common.PipelinesAsCodeGithubPrivateKey]
+        pacConfig := map[string][]byte{common.PipelinesAsCodeGithubPrivateKey: []byte(privateKey), common.PipelinesAsCodeGithubAppIdKey: []byte(githubAppIdStr)}
 
         // Match installed repositories with Components and get custom branch if defined
         targetsToUpdate := []updateTarget{}
@@ -4321,7 +4323,7 @@ func (u ComponentDependenciesUpdater) GetUpdateTargetsGithubApp(ctx context.Cont
         <span class="cov8" title="1">return targetsToUpdate</span>
 }
 
-// ReadCustomRenovateConfigMaps returns custom renovate options from config map which is either defined in
+// ReadCustomRenovateConfigMap returns custom renovate options from config map which is either defined in
 // component's annotation CustomRenovateConfigMapAnnotation (which takes precedence),
 // or from namespace wide config NamespaceWideRenovateConfigMapName
 func (u ComponentDependenciesUpdater) ReadCustomRenovateConfigMap(ctx context.Context, component *v1alpha1.Component) (*CustomRenovateOptions, error) <span class="cov8" title="1">{
@@ -4588,7 +4590,7 @@ func (u ComponentDependenciesUpdater) CreateRenovaterPipeline(ctx context.Contex
                 return nil
         }</span>
         <span class="cov8" title="1">timestamp := time.Now().Unix()
-        nameSuffix := fmt.Sprintf("%d-%s", timestamp, RandomString(5))
+        nameSuffix := fmt.Sprintf("%d-%s", timestamp, common.RandomString(5))
         name := fmt.Sprintf("renovate-pipeline-%s", nameSuffix)
         namespace := nudgingPipelineRun.Namespace
         caConfigMapName := fmt.Sprintf("renovate-ca-%s", nameSuffix)
@@ -4597,9 +4599,9 @@ func (u ComponentDependenciesUpdater) CreateRenovaterPipeline(ctx context.Contex
         renovateCmds := []string{}
 
         for _, target := range targets </span><span class="cov8" title="1">{
-                randomStr1 := RandomString(5)
-                randomStr2 := RandomString(10)
-                randomStr3 := RandomString(10)
+                randomStr1 := common.RandomString(5)
+                randomStr2 := common.RandomString(10)
+                randomStr3 := common.RandomString(10)
                 secretTokens[randomStr2] = target.Token
                 secretTokens[randomStr3] = target.ImageRepositoryPassword
                 configString := ""
@@ -4636,8 +4638,8 @@ func (u ComponentDependenciesUpdater) CreateRenovaterPipeline(ctx context.Contex
                 CaConfigMapLabel: "true",
         })
 
-        if err := u.Client.List(ctx, allCaConfigMaps, client.InNamespace(BuildServiceNamespaceName), opts); err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to list config maps with label %s in %s namespace: %w", CaConfigMapLabel, BuildServiceNamespaceName, err)
+        if err := u.Client.List(ctx, allCaConfigMaps, client.InNamespace(common.BuildServiceNamespaceName), opts); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to list config maps with label %s in %s namespace: %w", CaConfigMapLabel, common.BuildServiceNamespaceName, err)
         }</span>
         <span class="cov8" title="1">caConfigData := ""
         if len(allCaConfigMaps.Items) &gt; 0 </span><span class="cov8" title="1">{
@@ -4775,8 +4777,8 @@ func (u ComponentDependenciesUpdater) CreateRenovaterPipeline(ctx context.Contex
                         MountPath: CaMountPath,
                         ReadOnly:  true,
                 }
-                pipelineRun.Spec.PipelineSpec.Tasks[0].TaskSpec.TaskSpec.Volumes = append(pipelineRun.Spec.PipelineSpec.Tasks[0].TaskSpec.TaskSpec.Volumes, caVolume)
-                pipelineRun.Spec.PipelineSpec.Tasks[0].TaskSpec.TaskSpec.Steps[0].VolumeMounts = append(pipelineRun.Spec.PipelineSpec.Tasks[0].TaskSpec.TaskSpec.Steps[0].VolumeMounts, caVolumeMount)
+                pipelineRun.Spec.PipelineSpec.Tasks[0].TaskSpec.Volumes = append(pipelineRun.Spec.PipelineSpec.Tasks[0].TaskSpec.Volumes, caVolume)
+                pipelineRun.Spec.PipelineSpec.Tasks[0].TaskSpec.Steps[0].VolumeMounts = append(pipelineRun.Spec.PipelineSpec.Tasks[0].TaskSpec.Steps[0].VolumeMounts, caVolumeMount)
         }</span>
 
         <span class="cov8" title="1">if debug </span><span class="cov8" title="1">{
@@ -4809,7 +4811,7 @@ func (u ComponentDependenciesUpdater) CreateRenovaterPipeline(ctx context.Contex
         <span class="cov8" title="1">if err := u.Client.Create(ctx, configMap); err != nil </span><span class="cov0" title="0">{
                 return err
         }</span>
-        <span class="cov8" title="1">log.Info(fmt.Sprintf("Renovate pipeline %s triggered", pipelineRun.Name), logs.Action, logs.ActionAdd)
+        <span class="cov8" title="1">log.Info(fmt.Sprintf("Renovate pipeline %s triggered", pipelineRun.Name), l.Action, l.ActionAdd)
 
         return nil</span>
 }
@@ -5096,7 +5098,7 @@ import (
         "github.com/bradleyfalzon/ghinstallation/v2"
         "github.com/google/go-github/v45/github"
         "github.com/konflux-ci/build-service/pkg/boerrors"
-        . "github.com/konflux-ci/build-service/pkg/common"
+        "github.com/konflux-ci/build-service/pkg/common"
         "github.com/prometheus/client_golang/prometheus"
         corev1 "k8s.io/api/core/v1"
         "k8s.io/apimachinery/pkg/types"
@@ -5138,20 +5140,20 @@ func (g *GithubAppAvailabilityProbe) CheckAvailability(ctx context.Context) bool
 
 func githubAppCredentials(ctx context.Context, client client.Client) (int64, []byte, error) <span class="cov8" title="1">{
         pacSecret := corev1.Secret{}
-        globalPaCSecretKey := types.NamespacedName{Namespace: BuildServiceNamespaceName, Name: PipelinesAsCodeGitHubAppSecretName}
+        globalPaCSecretKey := types.NamespacedName{Namespace: common.BuildServiceNamespaceName, Name: common.PipelinesAsCodeGitHubAppSecretName}
         if err := client.Get(ctx, globalPaCSecretKey, &amp;pacSecret); err != nil </span><span class="cov8" title="1">{
                 return 0, nil, boerrors.NewBuildOpError(boerrors.EPaCSecretNotFound,
-                        fmt.Errorf("pipelines as Code secret not found in %s namespace", BuildServiceNamespaceName))
+                        fmt.Errorf("pipelines as Code secret not found in %s namespace", common.BuildServiceNamespaceName))
         }</span>
         <span class="cov0" title="0">config := pacSecret.Data
-        githubAppIdStr := string(config[PipelinesAsCodeGithubAppIdKey])
+        githubAppIdStr := string(config[common.PipelinesAsCodeGithubAppIdKey])
         githubAppId, err := strconv.ParseInt(githubAppIdStr, 10, 64)
         if err != nil </span><span class="cov0" title="0">{
                 return 0, nil, boerrors.NewBuildOpError(boerrors.EGitHubAppMalformedId,
                         fmt.Errorf("failed to create git client: failed to convert %s to int: %w", githubAppIdStr, err))
         }</span>
-        <span class="cov0" title="0">privateKey := config[PipelinesAsCodeGithubPrivateKey]
-        if len(config[PipelinesAsCodeGithubPrivateKey]) == 0 </span><span class="cov0" title="0">{
+        <span class="cov0" title="0">privateKey := config[common.PipelinesAsCodeGithubPrivateKey]
+        if len(config[common.PipelinesAsCodeGithubPrivateKey]) == 0 </span><span class="cov0" title="0">{
                 return 0, nil, boerrors.NewBuildOpError(boerrors.EPaCSecretInvalid,
                         fmt.Errorf("invalid configuration in Pipelines as Code secret"))
 
@@ -5410,7 +5412,7 @@ import (
         "fmt"
         "strings"
 
-        "codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v2"
+        "codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v3"
 
         "github.com/konflux-ci/build-service/pkg/boerrors"
         "github.com/konflux-ci/build-service/pkg/common"
@@ -5426,7 +5428,7 @@ var (
         appStudioPaCWebhookEvents = []string{"pull_request", "push", "issue_comment", "commit_comment"}
 )
 
-// Allow mocking for tests
+// NewForgejoClient can be mocked in tests.
 var NewForgejoClient func(accessToken, baseUrl string) (*ForgejoClient, error) = newForgejoClient
 var NewForgejoClientWithBasicAuth func(username, password, baseUrl string) (*ForgejoClient, error) = newForgejoClientWithBasicAuth
 
@@ -5652,12 +5654,9 @@ func (f *ForgejoClient) SetupPaCWebhook(repoUrl string, webhookUrl string, webho
                 return err
         }</span>
 
-        <span class="cov0" title="0">insecureSSL := false
-        if gp.IsInsecureSSL() </span><span class="cov0" title="0">{
-                insecureSSL = true
-        }</span>
+        <span class="cov0" title="0">insecureSSL := gp.IsInsecureSSL()
 
-        <span class="cov0" title="0">if existingWebhook == nil </span><span class="cov0" title="0">{
+        if existingWebhook == nil </span><span class="cov0" title="0">{
                 // Create new webhook
                 hookOpt := &amp;forgejo.CreateHookOption{
                         Type: "forgejo",
@@ -5815,14 +5814,14 @@ func (f *ForgejoClient) IsRepositoryPublic(repoUrl string) (bool, error) <span c
 // Forgejo does not support GitHub-style Apps, so this returns an error.
 func (f *ForgejoClient) GetConfiguredGitAppName() (string, string, error) <span class="cov8" title="1">{
         return "", "", boerrors.NewBuildOpError(boerrors.EForgejoGitAppNotSupported,
-                fmt.Errorf("Forgejo does not support GitHub-style applications"))
+                fmt.Errorf("forgejo does not support GitHub-style applications"))
 }</span>
 
 // GetAppUserId returns the user ID of the configured Git App.
 // Forgejo does not support GitHub-style Apps, so this returns an error.
 func (f *ForgejoClient) GetAppUserId(userName string) (int64, error) <span class="cov8" title="1">{
         return 0, boerrors.NewBuildOpError(boerrors.EForgejoGitAppNotSupported,
-                fmt.Errorf("Forgejo does not support GitHub-style applications"))
+                fmt.Errorf("forgejo does not support GitHub-style applications"))
 }</span>
 
 // newForgejoClient creates a new Forgejo client with token authentication
@@ -5879,7 +5878,7 @@ import (
         "net/url"
         "strings"
 
-        "codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v2"
+        "codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v3"
 
         "github.com/konflux-ci/build-service/pkg/boerrors"
         gp "github.com/konflux-ci/build-service/pkg/git/gitprovider"
@@ -6374,7 +6373,7 @@ import (
         "github.com/konflux-ci/build-service/pkg/common"
 )
 
-// Allow mocking for tests
+// NewGithubClientByApp can be mocked in tests.
 var NewGithubClientByApp func(appId int64, privateKeyPem []byte, repoUrl string) (*GithubClient, error) = newGithubClientByApp
 
 var GetAppInstallationsForRepository func(githubAppIdStr string, appPrivateKeyPem []byte, repoUrl string) (*ApplicationInstallation, string, error) = getAppInstallationsForRepository
@@ -6449,7 +6448,7 @@ func (g *GithubClient) GetConfiguredGitAppName() (string, string, error) <span c
         if g.isAppConfigured() </span><span class="cov0" title="0">{
                 return g.appName, g.appSlug, nil
         }</span> else<span class="cov0" title="0"> {
-                return "", "", fmt.Errorf("Github application is not configured")
+                return "", "", fmt.Errorf("github application is not configured")
         }</span>
 }
 
@@ -6566,7 +6565,7 @@ import (
         gp "github.com/konflux-ci/build-service/pkg/git/gitprovider"
 )
 
-// Allow mocking for tests
+// NewGithubClient can be mocked in tests.
 var NewGithubClient func(accessToken string) *GithubClient = newGithubClient
 var NewGithubClientWithBasicAuth func(username, password string) *GithubClient = newGithubClientWithBasicAuth
 
@@ -7408,7 +7407,7 @@ import (
         gp "github.com/konflux-ci/build-service/pkg/git/gitprovider"
 )
 
-// Allow mocking for tests
+// NewGitlabClient can be mocked in tests.
 var NewGitlabClient func(accessToken, baseUrl string) (*GitlabClient, error) = newGitlabClient
 var NewGitlabClientWithBasicAuth func(username, password, baseUrl string) (*GitlabClient, error) = newGitlabClientWithBasicAuth
 
@@ -8253,7 +8252,7 @@ import (
         "strconv"
 
         "github.com/konflux-ci/build-service/pkg/boerrors"
-        . "github.com/konflux-ci/build-service/pkg/common"
+        "github.com/konflux-ci/build-service/pkg/common"
         "github.com/konflux-ci/build-service/pkg/git/forgejo"
         "github.com/konflux-ci/build-service/pkg/git/github"
         "github.com/konflux-ci/build-service/pkg/git/gitlab"
@@ -8286,7 +8285,7 @@ func createGitClient(gitClientConfig GitClientConfig) (gitprovider.GitProviderCl
         <span class="cov8" title="1">password, passwordExists := secretData["password"]
         _, sshKeyExists := secretData["ssh-privatekey"]
 
-        isAppUsed := IsPaCApplicationConfigured(gitProvider, secretData)
+        isAppUsed := common.IsPaCApplicationConfigured(gitProvider, secretData)
 
         switch gitProvider </span>{
         case "github":<span class="cov8" title="1">
@@ -8305,14 +8304,14 @@ func createGitClient(gitClientConfig GitClientConfig) (gitprovider.GitProviderCl
                                 fmt.Errorf("failed to create git client:  unsupported secret data. Expected username/password or token"))</span>
                 }
 
-                <span class="cov8" title="1">githubAppIdStr := string(secretData[PipelinesAsCodeGithubAppIdKey])
+                <span class="cov8" title="1">githubAppIdStr := string(secretData[common.PipelinesAsCodeGithubAppIdKey])
                 githubAppId, err := strconv.ParseInt(githubAppIdStr, 10, 64)
                 if err != nil </span><span class="cov8" title="1">{
                         return nil, boerrors.NewBuildOpError(boerrors.EGitHubAppMalformedId,
                                 fmt.Errorf("failed to create git client: failed to convert %s to int: %w", githubAppIdStr, err))
                 }</span>
 
-                <span class="cov8" title="1">privateKey := secretData[PipelinesAsCodeGithubPrivateKey]
+                <span class="cov8" title="1">privateKey := secretData[common.PipelinesAsCodeGithubPrivateKey]
 
                 // It's required that the configured Pipelines as Code application is installed into user's account
                 // and enabled for the given repository.
@@ -8348,7 +8347,7 @@ func createGitClient(gitClientConfig GitClientConfig) (gitprovider.GitProviderCl
         case "forgejo":<span class="cov8" title="1">
                 if isAppUsed </span><span class="cov0" title="0">{
                         return nil, boerrors.NewBuildOpError(boerrors.EForgejoGitAppNotSupported,
-                                fmt.Errorf("Forgejo does not support GitHub-style applications"))
+                                fmt.Errorf("forgejo does not support GitHub-style applications"))
                 }</span>
                 <span class="cov8" title="1">baseUrl, err := forgejo.GetBaseUrl(gitClientConfig.RepoUrl)
                 if err != nil </span><span class="cov8" title="1">{
@@ -8489,9 +8488,9 @@ import (
         ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
         "github.com/konflux-ci/build-service/pkg/boerrors"
-        . "github.com/konflux-ci/build-service/pkg/common"
+        "github.com/konflux-ci/build-service/pkg/common"
         "github.com/konflux-ci/build-service/pkg/git"
-        . "github.com/konflux-ci/build-service/pkg/git/credentials"
+        "github.com/konflux-ci/build-service/pkg/git/credentials"
         bslices "github.com/konflux-ci/build-service/pkg/slices"
 )
 
@@ -8512,18 +8511,18 @@ func NewGithubAppConfigReader(client client.Client, scheme *runtime.Scheme, even
 func (k ConfigReader) GetConfig(ctx context.Context) (githubAppIdStr string, appPrivateKeyPem []byte, err error) <span class="cov0" title="0">{
         //Check if GitHub Application is used, if not then skip
         pacSecret := corev1.Secret{}
-        globalPaCSecretKey := types.NamespacedName{Namespace: BuildServiceNamespaceName, Name: PipelinesAsCodeGitHubAppSecretName}
+        globalPaCSecretKey := types.NamespacedName{Namespace: common.BuildServiceNamespaceName, Name: common.PipelinesAsCodeGitHubAppSecretName}
         if err := k.client.Get(ctx, globalPaCSecretKey, &amp;pacSecret); err != nil </span><span class="cov0" title="0">{
                 k.eventRecorder.Event(&amp;pacSecret, "Warning", "ErrorReadingPaCSecret", err.Error())
                 return "", nil, err
         }</span>
 
         // validate content of the fields
-        <span class="cov0" title="0">if _, e := strconv.ParseInt(string(pacSecret.Data[PipelinesAsCodeGithubAppIdKey]), 10, 64); e != nil </span><span class="cov0" title="0">{
+        <span class="cov0" title="0">if _, e := strconv.ParseInt(string(pacSecret.Data[common.PipelinesAsCodeGithubAppIdKey]), 10, 64); e != nil </span><span class="cov0" title="0">{
                 return "", nil, fmt.Errorf(" Pipelines as Code: failed to parse GitHub application ID. Cause: %w", e)
         }</span>
 
-        <span class="cov0" title="0">return string(pacSecret.Data[PipelinesAsCodeGithubAppIdKey]), pacSecret.Data[PipelinesAsCodeGithubPrivateKey], err</span>
+        <span class="cov0" title="0">return string(pacSecret.Data[common.PipelinesAsCodeGithubAppIdKey]), pacSecret.Data[common.PipelinesAsCodeGithubPrivateKey], err</span>
 }
 
 // GitCredentialProvider is an implementation of the git.CredentialsProvider that retrieves
@@ -8538,23 +8537,23 @@ func NewGitCredentialProvider(client client.Client) *GitCredentialProvider <span
         }
 }</span>
 
-func (k *GitCredentialProvider) GetBasicAuthCredentials(ctx context.Context, component *git.ScmComponent) (*BasicAuthCredentials, error) <span class="cov0" title="0">{
+func (k *GitCredentialProvider) GetBasicAuthCredentials(ctx context.Context, component *git.ScmComponent) (*credentials.BasicAuthCredentials, error) <span class="cov0" title="0">{
         secretWithCredentials, err := k.LookupSecret(ctx, component, corev1.SecretTypeBasicAuth)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, err
         }</span>
-        <span class="cov0" title="0">return &amp;BasicAuthCredentials{
+        <span class="cov0" title="0">return &amp;credentials.BasicAuthCredentials{
                 Username: string(secretWithCredentials.Data[corev1.BasicAuthUsernameKey]),
                 Password: string(secretWithCredentials.Data[corev1.BasicAuthPasswordKey]),
         }, nil</span>
 }
 
-func (k *GitCredentialProvider) GetSSHCredentials(ctx context.Context, component *git.ScmComponent) (*SSHCredentials, error) <span class="cov0" title="0">{
+func (k *GitCredentialProvider) GetSSHCredentials(ctx context.Context, component *git.ScmComponent) (*credentials.SSHCredentials, error) <span class="cov0" title="0">{
         secretWithCredentials, err := k.LookupSecret(ctx, component, corev1.SecretTypeSSHAuth)
         if err == nil </span><span class="cov0" title="0">{
                 return nil, err
         }</span>
-        <span class="cov0" title="0">return &amp;SSHCredentials{
+        <span class="cov0" title="0">return &amp;credentials.SSHCredentials{
                 PrivateKey: secretWithCredentials.Data[corev1.SSHAuthPrivateKey],
         }, nil</span>
 }
@@ -8566,8 +8565,8 @@ func (k *GitCredentialProvider) LookupSecret(ctx context.Context, component *git
 
         secretList := &amp;corev1.SecretList{}
         opts := client.ListOption(&amp;client.MatchingLabels{
-                ScmCredentialsSecretLabel: "scm",
-                ScmSecretHostnameLabel:    component.RepositoryHost(),
+                credentials.ScmCredentialsSecretLabel: "scm",
+                credentials.ScmSecretHostnameLabel:    component.RepositoryHost(),
         })
 
         if err := k.client.List(ctx, secretList, client.InNamespace(component.NamespaceName()), opts); err != nil </span><span class="cov0" title="0">{
@@ -8600,7 +8599,7 @@ func bestMatchingSecret(ctx context.Context, componentRepository string, secrets
         var potentialMatches = make(map[int]int, len(secrets))
 
         for index, secret := range secrets </span><span class="cov8" title="1">{
-                repositoryAnnotation, exists := secret.Annotations[ScmSecretRepositoryAnnotation]
+                repositoryAnnotation, exists := secret.Annotations[credentials.ScmSecretRepositoryAnnotation]
                 log.Info("found secret", "repositoryAnnotation", repositoryAnnotation, "exists", exists, "secret", secret.Name)
                 if !exists || repositoryAnnotation == "" </span><span class="cov8" title="1">{
                         hostOnlySecrets = append(hostOnlySecrets, secret)
@@ -8726,7 +8725,7 @@ var _ WebhookURLLoader = ConfigWebhookURLLoader{}
 
 type FileReader func(name string) ([]byte, error)
 
-// Load the prefix to target url from a file
+// LoadMappingFromFile loads the prefix to target url mapping from a file.
 func LoadMappingFromFile(path string, fileReader FileReader) (map[string]string, error) <span class="cov8" title="1">{
         if path == "" </span><span class="cov8" title="1">{
                 log.Info("Webhook config was not provided")
