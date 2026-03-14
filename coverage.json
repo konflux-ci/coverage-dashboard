@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/23035328182",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/23079748519",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 52.7,
+      "coverage": 52.8,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 78.7
+          "coverage": 78.8
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
@@ -99,12 +99,12 @@
           "coverage": 72.0
         },
         {
-          "package": "github.com/konflux-ci/coverage-dashboard/internal/pr",
-          "coverage": 16.8
-        },
-        {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
           "coverage": 9.5
+        },
+        {
+          "package": "github.com/konflux-ci/coverage-dashboard/internal/pr",
+          "coverage": 16.8
         },
         {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/config",
@@ -576,12 +576,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.4,
+      "coverage": 57.1,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.4
+          "coverage": 57.1
         }
       ]
     },
