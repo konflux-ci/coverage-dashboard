@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/23079748519",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/23102949549",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 52.8,
+      "coverage": 52.6,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 78.8
+          "coverage": 78.5
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
@@ -99,12 +99,12 @@
           "coverage": 72.0
         },
         {
-          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
-          "coverage": 9.5
-        },
-        {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/pr",
           "coverage": 16.8
+        },
+        {
+          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
+          "coverage": 9.5
         },
         {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/config",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 71.2,
+      "coverage": 71.1,
       "status": "ok",
       "packages": [
         {
@@ -141,7 +141,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 72.0
+          "coverage": 71.8
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -364,12 +364,12 @@
           "coverage": 17.9
         },
         {
-          "package": "github.com/konflux-ci/operator-toolkit/predicates",
-          "coverage": 4.8
-        },
-        {
           "package": "github.com/konflux-ci/operator-toolkit/utils",
           "coverage": 100.0
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/predicates",
+          "coverage": 4.8
         },
         {
           "package": "github.com/konflux-ci/operator-toolkit/conditions",

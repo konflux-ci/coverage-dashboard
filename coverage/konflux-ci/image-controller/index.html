@@ -59,7 +59,7 @@
 				
 				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (72.6%)</option>
 				
-				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (68.0%)</option>
+				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (67.7%)</option>
 				
 				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller_service_account.go (76.1%)</option>
 				
@@ -1087,7 +1087,7 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
                 return ctrl.Result{}, err
         }</span>
 
-        <span class="cov8" title="1">if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "failed to update imageRepository status", l.Action, l.ActionUpdate)
                 return ctrl.Result{}, err
         }</span>
