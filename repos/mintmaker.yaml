@@ -5,9 +5,6 @@ exclude_dirs:
     - .tekton/
     - hack/
     - proto/
-    - test/
-    - tests/
-    - integration-tests/
     - /fake(/|$)
     - /mock(s)?(/|$)
     - /e2e(-tests)?(/|$)
