@@ -80,6 +80,12 @@ jobs:
             git clone --depth 1 "https://github.com/$REPO.git"
             cd "$REPO_NAME"
 
+            # Check if repo needs CRDs downloaded for testing (e.g., integration-service)
+            if [ -f Makefile ] && grep -q "download-crds:" Makefile; then
+              echo "    Downloading CRDs for testing..."
+              make download-crds || echo "    ⚠️  CRD download failed, continuing anyway"
+            fi
+
             # Build the exclude pattern more carefully
             EXCLUDE_PATTERN=""
             if [ "$EXCLUDE_DIRS_ARRAY" != "[]" ]; then
@@ -151,7 +157,6 @@ jobs:
 
             if [ -n "$INCLUDED_PACKAGES" ]; then
               echo "    Running tests with coverage..."
-              # Fail fast - let test failures fail the workflow for visibility
               # Filter out packages with no test files to avoid covdata errors
               TESTABLE_PACKAGES=""
               for pkg in $INCLUDED_PACKAGES; do
@@ -165,7 +170,15 @@ jobs:
                 STATUS="failed"
                 COVERAGE=null
               else
-                go test -coverprofile=coverage_raw.out $TESTABLE_PACKAGES
+                # Continue even if tests fail - capture partial coverage data
+                if go test -coverprofile=coverage_raw.out $TESTABLE_PACKAGES; then
+                  echo "    ✅ Tests passed"
+                else
+                  TEST_EXIT_CODE=$?
+                  echo "    ⚠️  Tests failed with exit code $TEST_EXIT_CODE"
+                  echo "    Continuing with partial coverage data if available..."
+                  STATUS="failed"
+                fi
               fi
 
               if [ -f coverage_raw.out ]; then
