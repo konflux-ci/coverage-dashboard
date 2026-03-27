@@ -73,21 +73,25 @@
 				
 				<option value="file8">github.com/konflux-ci/integration-service/pkg/metrics/integration.go (55.2%)</option>
 				
-				<option value="file9">github.com/konflux-ci/integration-service/status/format.go (85.1%)</option>
+				<option value="file9">github.com/konflux-ci/integration-service/snapshot/create.go (62.7%)</option>
 				
-				<option value="file10">github.com/konflux-ci/integration-service/status/mock_reporter.go (60.5%)</option>
+				<option value="file10">github.com/konflux-ci/integration-service/snapshot/gcl.go (50.0%)</option>
 				
-				<option value="file11">github.com/konflux-ci/integration-service/status/mock_status.go (0.0%)</option>
+				<option value="file11">github.com/konflux-ci/integration-service/status/format.go (85.7%)</option>
 				
-				<option value="file12">github.com/konflux-ci/integration-service/status/reporter.go (77.4%)</option>
+				<option value="file12">github.com/konflux-ci/integration-service/status/mock_reporter.go (60.5%)</option>
 				
-				<option value="file13">github.com/konflux-ci/integration-service/status/reporter_forgejo.go (57.7%)</option>
+				<option value="file13">github.com/konflux-ci/integration-service/status/mock_status.go (0.0%)</option>
 				
-				<option value="file14">github.com/konflux-ci/integration-service/status/reporter_github.go (76.6%)</option>
+				<option value="file14">github.com/konflux-ci/integration-service/status/reporter.go (77.4%)</option>
 				
-				<option value="file15">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (57.6%)</option>
+				<option value="file15">github.com/konflux-ci/integration-service/status/reporter_forgejo.go (61.0%)</option>
 				
-				<option value="file16">github.com/konflux-ci/integration-service/status/status.go (63.4%)</option>
+				<option value="file16">github.com/konflux-ci/integration-service/status/reporter_github.go (78.6%)</option>
+				
+				<option value="file17">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (64.3%)</option>
+				
+				<option value="file18">github.com/konflux-ci/integration-service/status/status.go (63.3%)</option>
 				
 				</select>
 			</div>
@@ -238,6 +242,11 @@ type ComponentState struct {
         // +optional
         Version string `json:"version"`
 
+        // Git URL for the component. Needed by Release service. Can be used along
+        // with LastPromotedCommit to access the code that has been promoted
+        // +optional
+        URL string `json:"url"`
+
         // Location of the last image for this Component to be promoted. If no
         // image has been promoted then the field will be blank
         // +optional
@@ -257,7 +266,8 @@ type ComponentState struct {
 // ComponentGroupStatus defines the observed state of ComponentGroup
 type ComponentGroupStatus struct {
         // Conditions is an array of the ComponentGroup's status conditions
-        Conditions []metav1.Condition `json:"conditions"`
+        // +optional
+        Conditions []metav1.Condition `json:"conditions,omitempty"`
 
         // The list of recently promoted Components which the integration service
         // uses to create Snapshots
@@ -1695,6 +1705,8 @@ const (
         IntegrationTestStatusTestPassed // TestPassed
         // Integration PLR is invalid
         IntegrationTestStatusTestInvalid // TestInvalid
+        // Integration test PLR ends with Warning
+        IntegrationTestStatusTestWarning // TestWarning
         // Build PLR is in progress
         BuildPLRInProgress // BuildPLRInProgress
         // Snapshot is not created
@@ -1703,6 +1715,7 @@ const (
         BuildPLRFailed // BuildPLRFailed
         // Group snapshot creation failed
         GroupSnapshotCreationFailed //GroupSnapshotCreationFailed
+
 )
 
 const integrationTestStatusesSchema = `{
@@ -1774,7 +1787,8 @@ func (sits *IntegrationTestStatus) IsFinal() bool <span class="cov8" title="1">{
                 IntegrationTestStatusEnvironmentProvisionError_Deprecated,
                 IntegrationTestStatusTestFail,
                 IntegrationTestStatusTestPassed,
-                IntegrationTestStatusTestInvalid:<span class="cov8" title="1">
+                IntegrationTestStatusTestInvalid,
+                IntegrationTestStatusTestWarning:<span class="cov8" title="1">
                 return true</span>
         }
         <span class="cov8" title="1">return false</span>
@@ -1839,6 +1853,7 @@ func (sits *SnapshotIntegrationTestStatuses) UpdateTestStatusIfChanged(scenarioN
                         IntegrationTestStatusTestFail,
                         IntegrationTestStatusTestPassed,
                         IntegrationTestStatusTestInvalid,
+                        IntegrationTestStatusTestWarning,
                         SnapshotCreationFailed,
                         GroupSnapshotCreationFailed,
                         BuildPLRFailed:<span class="cov8" title="1">
@@ -2357,7 +2372,439 @@ type AvailabilityProbe interface {
 }
 </pre>
 		
-		<pre class="file" id="file9" style="display: none">/*
+		<pre class="file" id="file9" style="display: none">package snapshot
+
+import (
+        "context"
+        "crypto/rand"
+        "errors"
+        "fmt"
+        "math/big"
+        "slices"
+        "strconv"
+        "strings"
+        "time"
+
+        "github.com/go-logr/logr"
+        applicationapiv1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
+        "github.com/konflux-ci/integration-service/api/v1beta2"
+        "github.com/konflux-ci/integration-service/gitops"
+        "github.com/konflux-ci/integration-service/helpers"
+        "github.com/konflux-ci/integration-service/tekton"
+        "github.com/konflux-ci/operator-toolkit/metadata"
+        tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+        k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        ctrl "sigs.k8s.io/controller-runtime"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+        "sigs.k8s.io/controller-runtime/pkg/log"
+)
+
+// PrepareSnapshotForPipelineRun prepares the Snapshot for a given PipelineRun,
+// component and application. In case the Snapshot can't be created, an error will be returned.
+func PrepareSnapshotForPipelineRun(ctx context.Context, adapterClient client.Client, pipelineRun *tektonv1.PipelineRun, componentName string, componentGroup *v1beta2.ComponentGroup) (*applicationapiv1alpha1.Snapshot, error) <span class="cov8" title="1">{
+        log := log.FromContext(ctx)
+
+        newSnapshotComponent, err := getSnapshotComponentFromBuildPLR(pipelineRun, componentName, log)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">snapshot, err := PrepareSnapshot(ctx, adapterClient, componentGroup, newSnapshotComponent, log)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">prefixes := []string{gitops.BuildPipelineRunPrefix, gitops.TestLabelPrefix, gitops.CustomLabelPrefix, gitops.ReleaseLabelPrefix}
+        gitops.CopySnapshotLabelsAndAnnotations(&amp;componentGroup.ObjectMeta, snapshot, componentName, &amp;pipelineRun.ObjectMeta, prefixes, false)
+
+        snapshot.Labels[gitops.BuildPipelineRunNameLabel] = pipelineRun.Name
+        if pipelineRun.Status.CompletionTime != nil </span><span class="cov0" title="0">{
+                snapshot.Labels[gitops.BuildPipelineRunFinishTimeLabel] = strconv.FormatInt(pipelineRun.Status.CompletionTime.Unix(), 10)
+        }</span> else<span class="cov8" title="1"> {
+                snapshot.Labels[gitops.BuildPipelineRunFinishTimeLabel] = strconv.FormatInt(time.Now().Unix(), 10)
+        }</span>
+
+        <span class="cov8" title="1">if gitops.IsSnapshotCreatedByPACMergeQueueEvent(snapshot) </span><span class="cov8" title="1">{
+                pullRequestNumber := gitops.ExtractPullRequestNumberFromMergeQueueSnapshot(snapshot)
+                if pullRequestNumber != "" </span><span class="cov8" title="1">{
+                        snapshot.Labels[gitops.PipelineAsCodePullRequestAnnotation] = pullRequestNumber
+                        snapshot.Annotations[gitops.PipelineAsCodePullRequestAnnotation] = pullRequestNumber
+                }</span>
+        }
+
+        // Set BuildPipelineRunStartTime annotation with millisecond precision and override snapshot name
+        <span class="cov8" title="1">var timestampMillis int64
+        // Get the time
+        if pipelineRun.Status.StartTime != nil </span><span class="cov8" title="1">{
+                timestampMillis = pipelineRun.Status.StartTime.UnixMilli()
+        }</span> else<span class="cov8" title="1"> {
+                timestampMillis = time.Now().UnixMilli()
+        }</span>
+        // Naming once, at the end
+        <span class="cov8" title="1">snapshot.Annotations[gitops.BuildPipelineRunStartTime] = strconv.FormatInt(timestampMillis, 10)
+        snapshot.Name = gitops.GenerateSnapshotNameWithTimestamp(componentGroup.Name, timestampMillis)
+
+        // Set the integration workflow annotation based on the PipelineRun type
+        if tekton.IsPLRCreatedByPACPushEvent(pipelineRun) </span><span class="cov8" title="1">{
+                snapshot.Annotations[gitops.IntegrationWorkflowAnnotation] = gitops.IntegrationWorkflowPushValue
+        }</span> else<span class="cov8" title="1"> {
+                snapshot.Annotations[gitops.IntegrationWorkflowAnnotation] = gitops.IntegrationWorkflowPullRequestValue
+        }</span>
+
+        <span class="cov8" title="1">return snapshot, nil</span>
+}
+
+// CreateSnapshotWithCollisionHandling attempts to create a snapshot, retrying with a random suffix if collision occurs
+func CreateSnapshotWithCollisionHandling(ctx context.Context, client client.Client, pipelineRun *tektonv1.PipelineRun, snapshot *applicationapiv1alpha1.Snapshot, componentGroup v1beta2.ComponentGroup, logger helpers.IntegrationLogger) error <span class="cov0" title="0">{
+        originalName := snapshot.Name
+        maxRetries := 5
+
+        for attempt := 0; attempt &lt; maxRetries; attempt++ </span><span class="cov0" title="0">{
+                err := client.Create(ctx, snapshot)
+                if err == nil </span><span class="cov0" title="0">{
+                        // Success
+                        if attempt &gt; 0 </span><span class="cov0" title="0">{
+                                logger.Info("Successfully created snapshot after collision retry",
+                                        "originalName", originalName,
+                                        "finalName", snapshot.Name,
+                                        "attempts", attempt+1)
+                        }</span>
+                        <span class="cov0" title="0">return nil</span>
+                }
+
+                // Check if it's an "already exists" error
+                <span class="cov0" title="0">if !k8sErrors.IsAlreadyExists(err) </span><span class="cov0" title="0">{
+                        // Not a collision error, return immediately
+                        return err
+                }</span>
+
+                // Collision detected - generate new name with suffix
+                <span class="cov0" title="0">if attempt &lt; maxRetries-1 </span><span class="cov0" title="0">{
+                        suffix, suffixErr := generateRandomSuffix()
+                        if suffixErr != nil </span><span class="cov0" title="0">{
+                                logger.Error(suffixErr, "Failed to generate random suffix for snapshot name collision")
+                                return err // Return original collision error
+                        }</span>
+
+                        // Extract timestamp from original name or use current time
+                        <span class="cov0" title="0">var timestampMillis int64
+                        if pipelineRun.Status.StartTime != nil </span><span class="cov0" title="0">{
+                                timestampMillis = pipelineRun.Status.StartTime.UnixMilli()
+                        }</span> else<span class="cov0" title="0"> {
+                                timestampMillis = time.Now().UnixMilli()
+                        }</span>
+
+                        // Regenerate name with suffix
+                        <span class="cov0" title="0">snapshot.Name = gitops.GenerateSnapshotNameWithTimestamp(componentGroup.Name, timestampMillis, suffix)
+                        logger.Info("Snapshot name collision detected, retrying with suffix",
+                                "originalName", originalName,
+                                "newName", snapshot.Name,
+                                "attempt", attempt+1,
+                                "maxRetries", maxRetries)</span>
+                } else<span class="cov0" title="0"> {
+                        // Max retries reached
+                        logger.Error(err, "Failed to create snapshot after max retries due to collisions",
+                                "originalName", originalName,
+                                "attempts", maxRetries)
+                        return err
+                }</span>
+        }
+
+        <span class="cov0" title="0">return fmt.Errorf("failed to create snapshot after %d attempts", maxRetries)</span>
+}
+
+// generateRandomSuffix generates a random 2-character alphanumeric suffix for collision handling
+func generateRandomSuffix() (string, error) <span class="cov0" title="0">{
+        const charset = "0123456789abcdefghijklmnopqrstuvwxyz"
+        const suffixLength = 2
+        suffix := make([]byte, suffixLength)
+        for i := range suffix </span><span class="cov0" title="0">{
+                num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+                if err != nil </span><span class="cov0" title="0">{
+                        return "", err
+                }</span>
+                <span class="cov0" title="0">suffix[i] = charset[num.Int64()]</span>
+        }
+        <span class="cov0" title="0">return string(suffix), nil</span>
+}
+
+// PrepareSnapshot prepares the Snapshot for a given componentGroup, components and the updated component (if any).
+// In case the Snapshot can't be created, an error will be returned.
+func PrepareSnapshot(ctx context.Context, adapterClient client.Client, componentGroup *v1beta2.ComponentGroup, newSnapshotComponent applicationapiv1alpha1.SnapshotComponent, log logr.Logger) (*applicationapiv1alpha1.Snapshot, error) <span class="cov8" title="1">{
+
+        snapshotComponents, invalidComponents := getSnapshotComponentsFromGCL(componentGroup, log)
+        upsertNewComponentImage(&amp;snapshotComponents, &amp;invalidComponents, newSnapshotComponent, log)
+
+        if len(snapshotComponents) == 0 </span><span class="cov0" title="0">{
+                return nil, helpers.NewMissingValidComponentError(joinInvalidComponentNamesAndVersions(invalidComponents))
+        }</span>
+        <span class="cov8" title="1">snapshot := NewSnapshot(componentGroup, &amp;snapshotComponents)
+
+        // expose the source repo URL and SHA in the snapshot as annotation do we don't have to do lookup in integration tests
+        if newSnapshotComponent.Source.GitSource != nil </span><span class="cov8" title="1">{
+                if err := metadata.SetAnnotation(snapshot, gitops.SnapshotGitSourceRepoURLAnnotation, newSnapshotComponent.Source.GitSource.URL); err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to set annotation %s: %w", gitops.SnapshotGitSourceRepoURLAnnotation, err)
+                }</span>
+        }
+
+        // Annotate snapshot with warning about invalid components
+        <span class="cov8" title="1">if len(invalidComponents) &gt; 0 </span><span class="cov8" title="1">{
+                if err := metadata.SetAnnotation(snapshot, helpers.CreateSnapshotAnnotationName, fmt.Sprintf("Component(s) '%s' is(are) not included in snapshot due to missing valid containerImage or git source", joinInvalidComponentNamesAndVersions(invalidComponents))); err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to set annotation %s: %w", gitops.SnapshotGitSourceRepoURLAnnotation, err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">err := ctrl.SetControllerReference(componentGroup, snapshot, adapterClient.Scheme())
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return snapshot, nil</span>
+}
+
+func getSnapshotComponentsFromGCL(componentGroup *v1beta2.ComponentGroup, log logr.Logger) ([]applicationapiv1alpha1.SnapshotComponent, []v1beta2.ComponentState) <span class="cov8" title="1">{
+        var snapshotComponents []applicationapiv1alpha1.SnapshotComponent
+        var invalidComponents []v1beta2.ComponentState
+        for _, gclComponent := range componentGroup.Status.GlobalCandidateList </span><span class="cov8" title="1">{
+                name := gclComponent.Name
+                version := gclComponent.Version
+                image := gclComponent.LastPromotedImage
+
+                // If containerImage is empty, we have run into a race condition in
+                // which multiple components are being built in close succession.
+                // We omit this not-yet-built component from the snapshot rather than
+                // including a component that is incomplete.
+                if image == "" </span><span class="cov8" title="1">{
+                        // skip components that have not been added to GCL yet
+                        log.Info("component cannot be added to snapshot for application due to missing containerImage", "component.Name", gclComponent.Name)
+                        invalidComponents = append(invalidComponents, gclComponent)
+                        continue</span>
+                }
+                <span class="cov8" title="1">err := gitops.ValidateImageDigest(image)
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Error(err, "component cannot be added to snapshot for ComponentGroup due to invalid digest in containerImage", "component.Name", gclComponent.Name)
+                        invalidComponents = append(invalidComponents, gclComponent)
+                        continue</span>
+                }
+
+                // Get ComponentSource for the component which is not built in this pipeline
+                <span class="cov8" title="1">componentSource := getComponentSourceFromGCLComponent(gclComponent)
+
+                snapshotComponents = append(snapshotComponents, applicationapiv1alpha1.SnapshotComponent{
+                        Name:           name,
+                        Version:        version,
+                        ContainerImage: image,
+                        Source:         componentSource,
+                },
+                )</span>
+        }
+        <span class="cov8" title="1">return snapshotComponents, invalidComponents</span>
+}
+
+// Adds the updated Component to the list of snapshotComponents that will be added to the snapshot.  If a SnapshotComponent with
+// a matching name and version already exists in the snapshotComponents list then it will be replaced with the updated component.
+// Otherwise the updated component will be appended to the list.
+func upsertNewComponentImage(snapshotComponents *[]applicationapiv1alpha1.SnapshotComponent, invalidComponents *[]v1beta2.ComponentState, updatedComponent applicationapiv1alpha1.SnapshotComponent, log logr.Logger) <span class="cov8" title="1">{
+        for i, snapshotComponent := range *snapshotComponents </span><span class="cov8" title="1">{
+                if snapshotComponent.Name == updatedComponent.Name </span><span class="cov8" title="1">{
+                        if snapshotComponent.Version == "" || snapshotComponent.Version == updatedComponent.Version </span><span class="cov8" title="1">{
+                                // TODO: can this be removed?
+                                err := gitops.ValidateImageDigest(updatedComponent.ContainerImage)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        log.Error(err, "component cannot be added to snapshot for ComponentGroup due to invalid digest in containerImage", "component.Name", updatedComponent.Name)
+                                        *invalidComponents = append(*invalidComponents, v1beta2.ComponentState{
+                                                Name:    updatedComponent.Name,
+                                                Version: updatedComponent.Version,
+                                        })
+                                        continue</span>
+                                }
+
+                                // replace snapshotComponent
+                                <span class="cov8" title="1">*snapshotComponents = slices.Replace(*snapshotComponents, i, i+1, updatedComponent)
+                                //(*snapshotComponents)[i] = updatedComponent
+                                return</span>
+                        }
+                }
+        }
+
+        // if the component is replacing an invalid component, then we don't care that the old component was invalid
+        <span class="cov8" title="1">for i, invalidComponent := range *invalidComponents </span><span class="cov8" title="1">{
+                if invalidComponent.Name == updatedComponent.Name </span><span class="cov8" title="1">{
+                        if invalidComponent.Version == "" || invalidComponent.Version == updatedComponent.Version </span><span class="cov8" title="1">{
+                                // remove component from invalid list
+                                *snapshotComponents = append(*snapshotComponents, updatedComponent)
+                                // We don't care about the loop skipping problem here because we always exit
+                                // immediately after deleting the component from the list
+                                *invalidComponents = slices.Delete(*invalidComponents, i, i+1)
+
+                                return
+                        }</span>
+                }
+        }
+
+        // If the component is not in the list this is probably because the component has not been added to the GCL yet
+        // In this case we should append the component
+        <span class="cov0" title="0">*snapshotComponents = append(*snapshotComponents, updatedComponent)</span>
+}
+
+// NewSnapshot creates a new snapshot based on the supplied ComponentGroup and components
+func NewSnapshot(componentGroup *v1beta2.ComponentGroup, snapshotComponents *[]applicationapiv1alpha1.SnapshotComponent) *applicationapiv1alpha1.Snapshot <span class="cov8" title="1">{
+        // Use fallback timestamp (current time) - will be overridden in prepareSnapshotForPipelineRun
+        // if BuildPipelineRunStartTime is available
+        fallbackTimestamp := time.Now().UnixMilli()
+
+        snapshot := &amp;applicationapiv1alpha1.Snapshot{
+                ObjectMeta: metav1.ObjectMeta{
+                        Name:      gitops.GenerateSnapshotNameWithTimestamp(componentGroup.Name, fallbackTimestamp),
+                        Namespace: componentGroup.Namespace,
+                },
+                Spec: applicationapiv1alpha1.SnapshotSpec{
+                        ComponentGroup: componentGroup.Name,
+                        Components:     *snapshotComponents,
+                },
+        }
+        return snapshot
+}</span>
+
+func getComponentSourceFromGCLComponent(gclComponent v1beta2.ComponentState) applicationapiv1alpha1.ComponentSource <span class="cov8" title="1">{
+        // NOTE: if we need to fall back on data from component CR we can do it in here
+        componentSource := applicationapiv1alpha1.ComponentSource{
+                ComponentSourceUnion: applicationapiv1alpha1.ComponentSourceUnion{
+                        GitSource: &amp;applicationapiv1alpha1.GitSource{
+                                URL:      gclComponent.URL,
+                                Revision: gclComponent.LastPromotedCommit,
+                        },
+                },
+        }
+        return componentSource
+}</span>
+
+func getSnapshotComponentFromBuildPLR(pipelineRun *tektonv1.PipelineRun, componentName string, log logr.Logger) (applicationapiv1alpha1.SnapshotComponent, error) <span class="cov8" title="1">{
+        containerImage, err := tekton.GetImagePullSpecFromPipelineRun(pipelineRun)
+        if err != nil </span><span class="cov8" title="1">{
+                return applicationapiv1alpha1.SnapshotComponent{}, err
+        }</span>
+        <span class="cov8" title="1">err = gitops.ValidateImageDigest(containerImage)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error(err, "component cannot be added to snapshot for ComponentGroup due to invalid digest in containerImage", "component.Name", componentName)
+                return applicationapiv1alpha1.SnapshotComponent{}, errors.Join(helpers.NewInvalidImageDigestError(componentName, containerImage), err)
+        }</span>
+        <span class="cov8" title="1">componentSource, err := tekton.GetComponentSourceFromPipelineRun(pipelineRun)
+        if err != nil </span><span class="cov0" title="0">{
+                return applicationapiv1alpha1.SnapshotComponent{}, err
+        }</span>
+        <span class="cov8" title="1">componentVersion, err := tekton.GetComponentVersionFromPipelineRun(pipelineRun)
+        if err != nil </span><span class="cov0" title="0">{
+                return applicationapiv1alpha1.SnapshotComponent{}, err
+        }</span>
+
+        <span class="cov8" title="1">return applicationapiv1alpha1.SnapshotComponent{
+                Name:           componentName,
+                Version:        componentVersion,
+                ContainerImage: containerImage,
+                Source:         *componentSource,
+        }, nil</span>
+}
+
+func joinInvalidComponentNamesAndVersions(invalidComponents []v1beta2.ComponentState) string <span class="cov8" title="1">{
+        var sb strings.Builder
+        for _, component := range invalidComponents </span><span class="cov8" title="1">{
+                fmt.Fprintf(&amp;sb, "%s (version %s)", component.Name, component.Version)
+        }</span>
+        <span class="cov8" title="1">return sb.String()</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package snapshot
+
+import (
+        "context"
+        "errors"
+        "fmt"
+        "slices"
+
+        "github.com/konflux-ci/integration-service/api/v1beta2"
+        "github.com/konflux-ci/integration-service/tekton"
+        tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+        "sigs.k8s.io/controller-runtime/pkg/log"
+)
+
+// updateGCLForBuildPLR updates global candidate list for component snapshots
+func UpdateGCLForBuildPLR(ctx context.Context, client client.Client, componentGroups *[]v1beta2.ComponentGroup, pipelineRun *tektonv1.PipelineRun, componentName string) error <span class="cov0" title="0">{
+        containerImage, err := tekton.GetImagePullSpecFromPipelineRun(pipelineRun)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">componentSource, err := tekton.GetComponentSourceFromPipelineRun(pipelineRun)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">componentVersion, err := tekton.GetComponentVersionFromPipelineRun(pipelineRun)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">buildTime := pipelineRun.Status.StartTime
+
+        entry := v1beta2.ComponentState{
+                Name:                  componentName,
+                Version:               componentVersion,
+                URL:                   componentSource.GitSource.URL,
+                LastPromotedCommit:    componentSource.GitSource.Revision,
+                LastPromotedImage:     containerImage,
+                LastPromotedBuildTime: buildTime,
+        }
+
+        for _, componentGroup := range *componentGroups </span><span class="cov0" title="0">{
+                err = errors.Join(err, UpdateGCLEntry(ctx, client, &amp;componentGroup, entry))
+        }</span>
+        <span class="cov0" title="0">return err</span>
+}
+
+func UpdateGCLEntry(ctx context.Context, adapterClient client.Client, componentGroup *v1beta2.ComponentGroup, newEntry v1beta2.ComponentState) error <span class="cov8" title="1">{
+        log := log.FromContext(ctx)
+        patch := client.MergeFrom(componentGroup.DeepCopy())
+
+        // TODO: add mutating webhook for ComponentGroups that adds blank GCL item when component is added to components list and removes existing GCL entry when component is removed from components list
+        // Find matching GCL entry for ComponentVersion
+        replaced := false
+        for i, entry := range componentGroup.Status.GlobalCandidateList </span><span class="cov8" title="1">{
+                if entry.Name == newEntry.Name &amp;&amp; entry.Version == newEntry.Version </span><span class="cov8" title="1">{
+                        if entry == newEntry </span><span class="cov0" title="0">{
+                                // Adapter may successfully update GCL on one ComponentGroup but have to requeue reconciliation because another failed.
+                                // This check prevents us from promoting the same image over and over
+                                log.Info("Refusing to update GCL with identical ComponentState", "name", entry.Name, "version", entry.Version, "url", entry.URL, "lastPromotedCommit", entry.LastPromotedCommit, "lastPromotedImage", entry.LastPromotedImage, "lastPromotedBuildTime", entry.LastPromotedBuildTime)
+                                return nil
+                        }</span>
+                        <span class="cov8" title="1">if newEntry.LastPromotedBuildTime.Before(entry.LastPromotedBuildTime) </span><span class="cov8" title="1">{
+                                log.Info("Refusing to update the Global Candidate List for ComponentGroup and ComponentVersion. Existing GCL entry was built after new entry", "ComponentGroup", componentGroup.Name, "Component.Name", entry.Name, "Component.Version", entry.Version, "oldEntry.LastPromotedBuildTime", entry.LastPromotedBuildTime, "newEntry.LastPromotedBuildTime", newEntry.LastPromotedBuildTime)
+                                return nil
+                        }</span>
+                        <span class="cov8" title="1">componentGroup.Status.GlobalCandidateList = slices.Replace(componentGroup.Status.GlobalCandidateList, i, i+1, newEntry)
+                        replaced = true
+                        break</span>
+                }
+        }
+        <span class="cov8" title="1">if !replaced </span><span class="cov8" title="1">{
+                return fmt.Errorf("could not find ComponentVersion '%s',%s' in ComponentGroup '%s'", newEntry.Name, newEntry.Version, componentGroup.Name)
+        }</span>
+
+        <span class="cov8" title="1">err := adapterClient.Status().Patch(ctx, componentGroup, patch)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error(err, "Failed to updated GCL entry for ComponentVersion", "componentGroup", componentGroup.Name, "component.Name", newEntry.Name, "component.Version", newEntry.Version)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">log.Info("Updated Global Candidate List entry for the ComponentVersion", "ComponentGroup", componentGroup.Name, "Component.Name", newEntry.Name, "Component.Version", newEntry.Version, "URL", newEntry.URL, "LastPromotedCommit", newEntry.LastPromotedCommit, "LastPromotedImage", newEntry.LastPromotedImage, "LastPromotedBuildTime", newEntry.LastPromotedBuildTime)
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2404,10 +2851,10 @@ const summaryTemplate = `
 &lt;/ul&gt;
 &lt;hr&gt;
 
-| Task | Duration | Test Suite | Status | Details |
-| --- | --- | --- | --- | --- |
+| Task | Duration | Test Suite | Status | Details | Note |
+| --- | --- | --- | --- | --- | --- |
 {{- range $tr := .TaskRuns }}
-| &lt;a href="{{ formatTaskLogURL $tr $pipelineRunName $namespace $logger }}"&gt;{{ formatTaskName $tr }}&lt;/a&gt; | {{ $tr.GetDuration.String }} | {{ formatNamespace $tr }} | {{ formatStatus $tr }} | {{ formatDetails $tr }} |
+| &lt;a href="{{ formatTaskLogURL $tr $pipelineRunName $namespace $logger }}"&gt;{{ formatTaskName $tr }}&lt;/a&gt; | {{ $tr.GetDuration.String }} | {{ formatNamespace $tr }} | {{ formatStatus $tr }} | {{ formatDetails $tr }} | {{ formatNote $tr }} |
 {{- end }}
 
 {{ formatFootnotes .TaskRuns }}
@@ -2446,13 +2893,6 @@ type SummaryTemplateData struct {
         Logger                 logr.Logger
 }
 
-// TaskLogTemplateData holds the data necessary to construct a Task log URL.
-type TaskLogTemplateData struct {
-        TaskName        string
-        PipelineRunName string
-        Namespace       string
-}
-
 // CommentTemplateData holds the data necessary to construct a PipelineRun comment.
 type CommentTemplateData struct {
         Title   string
@@ -2466,6 +2906,7 @@ func FormatTestsSummary(taskRuns []*helpers.TaskRun, pipelineRunName string, nam
                 "formatNamespace":      FormatNamespace,
                 "formatStatus":         FormatStatus,
                 "formatDetails":        FormatDetails,
+                "formatNote":           FormatNote,
                 "formatPipelineURL":    FormatPipelineURL,
                 "formatTaskLogURL":     FormatTaskLogURL,
                 "formatFootnotes":      FormatFootnotes,
@@ -2635,6 +3076,21 @@ func FormatDetails(taskRun *helpers.TaskRun) (string, error) <span class="cov8" 
         <span class="cov8" title="1">return strings.Join(details, "&lt;br&gt;"), nil</span>
 }
 
+// FormatNote accepts a TaskRun and returns its note, if any.
+func FormatNote(taskRun *helpers.TaskRun) (string, error) <span class="cov8" title="1">{
+        result, err := taskRun.GetTestResult()
+
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">if result == nil || result.TestOutput == nil || result.TestOutput.Note == "" </span><span class="cov8" title="1">{
+                return "", nil
+        }</span>
+
+        <span class="cov8" title="1">return result.TestOutput.Note, nil</span>
+}
+
 // FormatResults accepts a list of TaskRuns and returns a Markdown friendly representation of their footnotes, if any.
 func FormatFootnotes(taskRuns []*helpers.TaskRun) (string, error) <span class="cov8" title="1">{
         footnotes := []string{}
@@ -2655,19 +3111,43 @@ func FormatFootnotes(taskRuns []*helpers.TaskRun) (string, error) <span class="c
         <span class="cov8" title="1">return strings.Join(footnotes, "\n"), nil</span>
 }
 
+// Console URL env vars (CONSOLE_URL, CONSOLE_URL_TASKLOG) use literal placeholder substitution only.
+// Operator-controlled values are not evaluated as Go templates (avoids CWE-94 / server-side template injection).
+//
+// Supported placeholders:
+//
+//        {{NAMESPACE}}         — Kubernetes namespace
+//        {{PIPELINE_RUN_NAME}} — PipelineRun name
+//        {{TASK_NAME}}         — Pipeline task name (CONSOLE_URL_TASKLOG only; empty for CONSOLE_URL)
+//
+// Legacy placeholders (backward compatible with earlier releases):
+//
+//        {{ .Namespace }}, {{ .PipelineRunName }}, {{ .TaskName }}
+func substituteConsoleURLPlaceholders(pattern string, namespace, pipelineRunName, taskName string) string <span class="cov8" title="1">{
+        // Support both documented placeholders and legacy Go-template-ish forms.
+        legacyAndDocumented := strings.NewReplacer(
+                // Legacy forms with/without spaces around field names
+                "{{ .Namespace }}", namespace,
+                "{{.Namespace}}", namespace,
+                "{{ .PipelineRunName }}", pipelineRunName,
+                "{{.PipelineRunName}}", pipelineRunName,
+                "{{ .TaskName }}", taskName,
+                "{{.TaskName}}", taskName,
+                // Documented placeholders
+                "{{NAMESPACE}}", namespace,
+                "{{PIPELINE_RUN_NAME}}", pipelineRunName,
+                "{{TASK_NAME}}", taskName,
+        )
+        return legacyAndDocumented.Replace(pattern)
+}</span>
+
 // FormatPipelineURL accepts a name of application, pipelinerun, namespace and returns a complete pipelineURL.
-func FormatPipelineURL(pipelinerun string, namespace string, logger logr.Logger) string <span class="cov8" title="1">{
-        console_url := os.Getenv("CONSOLE_URL")
-        if console_url == "" </span><span class="cov8" title="1">{
+func FormatPipelineURL(pipelinerun string, namespace string, _ logr.Logger) string <span class="cov8" title="1">{
+        consoleURL := os.Getenv("CONSOLE_URL")
+        if consoleURL == "" </span><span class="cov8" title="1">{
                 return "https://CONSOLE_URL_NOT_AVAILABLE"
         }</span>
-        <span class="cov8" title="1">buf := bytes.Buffer{}
-        data := SummaryTemplateData{PipelineRunName: pipelinerun, Namespace: namespace}
-        t := template.Must(template.New("").Parse(console_url))
-        if err := t.Execute(&amp;buf, data); err != nil </span><span class="cov0" title="0">{
-                logger.Error(err, "Error occured when executing template.")
-        }</span>
-        <span class="cov8" title="1">return buf.String()</span>
+        <span class="cov8" title="1">return substituteConsoleURLPlaceholders(consoleURL, namespace, pipelinerun, "")</span>
 }
 
 // FormatPullRequestURL accepts a name of application, pipelinerun, namespace and returns a complete pipelineURL.
@@ -2692,24 +3172,17 @@ func FormatRepoURL(repoUrl string) string <span class="cov8" title="1">{
 }
 
 // FormatTaskLogURL accepts name of pipelinerun, task, namespace and returns a complete task log URL.
-func FormatTaskLogURL(taskRun *helpers.TaskRun, pipelinerun string, namespace string, logger logr.Logger) string <span class="cov8" title="1">{
+func FormatTaskLogURL(taskRun *helpers.TaskRun, pipelinerun string, namespace string, _ logr.Logger) string <span class="cov8" title="1">{
         consoleTaskLogURL := os.Getenv("CONSOLE_URL_TASKLOG")
         if consoleTaskLogURL == "" </span><span class="cov8" title="1">{
                 return "https://CONSOLE_URL_TASKLOG_NOT_AVAILABLE"
         }</span>
-
         <span class="cov8" title="1">taskName := taskRun.GetPipelineTaskName()
-        buf := bytes.Buffer{}
-        data := TaskLogTemplateData{PipelineRunName: pipelinerun, TaskName: taskName, Namespace: namespace}
-        t := template.Must(template.New("").Parse(consoleTaskLogURL))
-        if err := t.Execute(&amp;buf, data); err != nil </span><span class="cov0" title="0">{
-                logger.Error(err, "Error occured when executing task log template.")
-        }</span>
-        <span class="cov8" title="1">return buf.String()</span>
+        return substituteConsoleURLPlaceholders(consoleTaskLogURL, namespace, pipelinerun, taskName)</span>
 }
 </pre>
 		
-		<pre class="file" id="file10" style="display: none">// Code generated by MockGen. DO NOT EDIT.
+		<pre class="file" id="file12" style="display: none">// Code generated by MockGen. DO NOT EDIT.
 // Source: status/reporter.go
 
 // Source: github.com/konflux-ci/integration-service/status (interfaces: ReporterInterface)
@@ -2838,7 +3311,7 @@ func (mr *MockReporterInterfaceMockRecorder) UpdateStatusInComment(arg0, arg1 in
 }</span>
 </pre>
 		
-		<pre class="file" id="file11" style="display: none">// Code generated by MockGen. DO NOT EDIT.
+		<pre class="file" id="file13" style="display: none">// Code generated by MockGen. DO NOT EDIT.
 // Source: status/status.go
 // Source: github.com/konflux-ci/integration-service/status (interfaces: StatusInterface)
 //
@@ -2958,7 +3431,7 @@ func (mr *MockStatusInterfaceMockRecorder) IsPRMRInSnapshotOpened(arg0, arg1 int
 }</span>
 </pre>
 		
-		<pre class="file" id="file12" style="display: none">/*
+		<pre class="file" id="file14" style="display: none">/*
 Copyright 2024 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2987,6 +3460,7 @@ import (
         pacv1alpha1 "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
         v1 "k8s.io/api/core/v1"
         "k8s.io/apimachinery/pkg/types"
+        "k8s.io/apimachinery/pkg/util/wait"
         "sigs.k8s.io/controller-runtime/pkg/client"
         "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -2994,6 +3468,15 @@ import (
         "github.com/konflux-ci/integration-service/helpers"
         intgteststat "github.com/konflux-ci/integration-service/pkg/integrationteststatus"
 )
+
+// reporterRetryBackoff defines the retry backoff for transient git provider API errors (GitLab, GitHub, Forgejo).
+// Retries up to 5 times with exponential backoff: ~1s, ~2s, ~4s, ~8s, ~16s.
+var reporterRetryBackoff = wait.Backoff{
+        Steps:    5,
+        Duration: 1 * time.Second,
+        Factor:   2.0,
+        Jitter:   0.1,
+}
 
 type TestReport struct {
         // FullName describing the snapshot and integration test
@@ -3090,7 +3573,7 @@ func GetPACGitProviderToken(ctx context.Context, k8sClient client.Client, snapsh
 }
 </pre>
 		
-		<pre class="file" id="file13" style="display: none">/*
+		<pre class="file" id="file15" style="display: none">/*
 Copyright 2026 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3323,7 +3806,7 @@ func (r *ForgejoReporter) setCommitStatus(report TestReport) (int, error) <span 
         if resp != nil </span><span class="cov8" title="1">{
                 statusCode = resp.StatusCode
         }</span>
-        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
                 return statusCode, fmt.Errorf("failed to set commit status to %s: %w", fjState, err)
         }</span>
 
@@ -3461,19 +3944,29 @@ func (r *ForgejoReporter) ReportStatus(ctx context.Context, report TestReport) (
         }</span>
 
         <span class="cov8" title="1">var err error
-        err = retry.RetryOnConflict(retry.DefaultRetry, func() error </span><span class="cov8" title="1">{
+        err = retry.OnError(reporterRetryBackoff, func(err error) bool </span><span class="cov8" title="1">{
+                // statusCode 0 means no HTTP response was received (network/timeout error), always retry
+                retryable := statusCode == 0 || !r.ReturnCodeIsUnrecoverable(statusCode)
+                if retryable </span><span class="cov8" title="1">{
+                        r.logger.Info("retrying to set forgejo commit status after transient error",
+                                "scenario.name", report.ScenarioName, "statusCode", statusCode, "error", err.Error())
+                }</span>
+                <span class="cov8" title="1">return retryable</span>
+        }, func() error <span class="cov8" title="1">{
+                statusCode = 0 // reset before each attempt to avoid stale values
                 statusCode, err = r.setCommitStatus(report)
                 return err
         }</span>)
 
-        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
-                r.logger.Error(err, "failed to set forgejo commit status, please refer to the comment created on the PR")
+        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
+                r.logger.Error(err, "failed to set forgejo commit status after all retries, please refer to the comment created on the PR",
+                        "scenario.name", report.ScenarioName, "statusCode", statusCode)
                 return statusCode, err
         }</span>
         <span class="cov8" title="1">return statusCode, nil</span>
 }
 
-func (r *ForgejoReporter) ReturnCodeIsUnrecoverable(statusCode int) bool <span class="cov0" title="0">{
+func (r *ForgejoReporter) ReturnCodeIsUnrecoverable(statusCode int) bool <span class="cov8" title="1">{
         return statusCode == http.StatusForbidden || statusCode == http.StatusUnauthorized || statusCode == http.StatusBadRequest
 }</span>
 
@@ -3505,6 +3998,8 @@ func GenerateForgejoCommitState(state intgteststat.IntegrationTestStatus, option
                         break</span>
                 }
                 <span class="cov8" title="1">fjState = "error"</span>
+        case intgteststat.IntegrationTestStatusTestWarning:<span class="cov8" title="1">
+                fjState = "warning"</span>
         default:<span class="cov0" title="0">
                 return fjState, fmt.Errorf("unknown status %s", state)</span>
         }
@@ -3513,7 +4008,7 @@ func GenerateForgejoCommitState(state intgteststat.IntegrationTestStatus, option
 }
 </pre>
 		
-		<pre class="file" id="file14" style="display: none">/*
+		<pre class="file" id="file16" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3550,6 +4045,7 @@ import (
         "github.com/konflux-ci/operator-toolkit/metadata"
         v1 "k8s.io/api/core/v1"
         "k8s.io/apimachinery/pkg/types"
+        "k8s.io/client-go/util/retry"
         "sigs.k8s.io/controller-runtime/pkg/client"
         "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -4065,6 +4561,8 @@ func generateCheckRunTitle(state intgteststat.IntegrationTestStatus) (string, er
                 title = "Deleted"</span>
         case intgteststat.IntegrationTestStatusTestPassed:<span class="cov8" title="1">
                 title = "Succeeded"</span>
+        case intgteststat.IntegrationTestStatusTestWarning:<span class="cov8" title="1">
+                title = "Warning"</span>
         case intgteststat.IntegrationTestStatusTestFail,
                 intgteststat.SnapshotCreationFailed,
                 intgteststat.BuildPLRFailed,
@@ -4099,6 +4597,8 @@ func GenerateCheckRunConclusion(state intgteststat.IntegrationTestStatus, option
                 conclusion = ""</span>
         case intgteststat.SnapshotCreationFailed, intgteststat.BuildPLRFailed, intgteststat.GroupSnapshotCreationFailed:<span class="cov8" title="1">
                 conclusion = gitops.IntegrationTestStatusCancelledGithub</span>
+        case intgteststat.IntegrationTestStatusTestWarning:<span class="cov8" title="1">
+                conclusion = gitops.IntegrationTestStatusNeutralGithub</span>
         default:<span class="cov0" title="0">
                 return conclusion, fmt.Errorf("unknown status")</span>
         }
@@ -4124,6 +4624,8 @@ func generateGithubCommitState(state intgteststat.IntegrationTestStatus) (string
         case intgteststat.IntegrationTestStatusPending, intgteststat.IntegrationTestStatusInProgress,
                 intgteststat.BuildPLRInProgress:<span class="cov8" title="1">
                 commitState = gitops.IntegrationTestStatusPendingGithub</span>
+        case intgteststat.IntegrationTestStatusTestWarning:<span class="cov8" title="1">
+                commitState = gitops.IntegrationTestStatusSuccessGithub</span>
         default:<span class="cov0" title="0">
                 return commitState, fmt.Errorf("unknown status")</span>
         }
@@ -4199,19 +4701,34 @@ func (r *GitHubReporter) ReportStatus(ctx context.Context, report TestReport) (i
                 return statusCode, fmt.Errorf("reporter is not initialized")
         }</span>
 
-        <span class="cov8" title="1">if statusCode, err = r.updater.UpdateStatus(ctx, report); err != nil </span><span class="cov0" title="0">{
-                r.logger.Error(err, fmt.Sprintf("failed to update status for snapshot %s", report.SnapshotName))
+        <span class="cov8" title="1">err = retry.OnError(reporterRetryBackoff, func(err error) bool </span><span class="cov8" title="1">{
+                // statusCode 0 means no HTTP response was received (network/timeout error), always retry
+                retryable := statusCode == 0 || !r.ReturnCodeIsUnrecoverable(statusCode)
+                if retryable </span><span class="cov8" title="1">{
+                        r.logger.Info("retrying to update github status after transient error",
+                                "snapshot.name", report.SnapshotName, "statusCode", statusCode, "error", err.Error())
+                }</span>
+                <span class="cov8" title="1">return retryable</span>
+        }, func() error <span class="cov8" title="1">{
+                statusCode = 0 // reset before each attempt to avoid stale values
+                statusCode, err = r.updater.UpdateStatus(ctx, report)
+                return err
+        }</span>)
+
+        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
+                r.logger.Error(err, "failed to update github status after all retries",
+                        "snapshot.name", report.SnapshotName, "statusCode", statusCode)
                 return statusCode, err
         }</span>
         <span class="cov8" title="1">return statusCode, nil</span>
 }
 
-func (r *GitHubReporter) ReturnCodeIsUnrecoverable(statusCode int) bool <span class="cov0" title="0">{
+func (r *GitHubReporter) ReturnCodeIsUnrecoverable(statusCode int) bool <span class="cov8" title="1">{
         return statusCode == http.StatusForbidden || statusCode == http.StatusUnauthorized || statusCode == http.StatusBadRequest
 }</span>
 </pre>
 		
-		<pre class="file" id="file15" style="display: none">/*
+		<pre class="file" id="file17" style="display: none">/*
 Copyright 2024 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4437,29 +4954,33 @@ func (r *GitLabReporter) setCommitStatus(report TestReport) (int, error) <span c
         <span class="cov8" title="1">if sourceProjectErr == nil </span><span class="cov8" title="1">{
                 r.logger.Info("Created gitlab commit status", "scenario.name", report.ScenarioName, "commitStatus.ID", sourceProjectCommitStatus.ID, "TargetURL", opt.TargetURL)
                 return statusCode, nil
-        }</span> else<span class="cov0" title="0"> if strings.Contains(sourceProjectErr.Error(), "Cannot transition status via :enqueue from :pending") </span><span class="cov0" title="0">{
+        }</span> else<span class="cov8" title="1"> if strings.Contains(sourceProjectErr.Error(), "Cannot transition status via :enqueue from :pending") </span><span class="cov0" title="0">{
                 r.logger.Info("Ignoring the error when transition from pending to pending when the commitStatus might be created/updated in multiple threads at the same time occasionally")
                 return statusCode, nil
-        }</span> else<span class="cov0" title="0"> {
-                r.logger.Error(sourceProjectErr, "failed to set commit status to gitlab source project, try to set commit status to gitlab target project", "sourceProjectID", r.sourceProjectID, "targetProjectID", r.targetProjectID, "sha", r.sha, "scenario.name", report.ScenarioName)
+        }</span> else<span class="cov8" title="1"> {
+                r.logger.Error(sourceProjectErr, "failed to set commit status to gitlab source project, try to set commit status to gitlab target project",
+                        "sourceProjectID", r.sourceProjectID, "targetProjectID", r.targetProjectID, "sha", r.sha,
+                        "scenario.name", report.ScenarioName, "statusCode", statusCode, "targetState", string(glState))
         }</span>
 
-        <span class="cov0" title="0">targetProjectCommitStatus, targetProjectResponse, targetProjectErr := r.client.Commits.SetCommitStatus(r.targetProjectID, r.sha, &amp;opt)
-        if targetProjectResponse != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">targetProjectCommitStatus, targetProjectResponse, targetProjectErr := r.client.Commits.SetCommitStatus(r.targetProjectID, r.sha, &amp;opt)
+        if targetProjectResponse != nil </span><span class="cov8" title="1">{
                 statusCode = targetProjectResponse.StatusCode
         }</span>
-        <span class="cov0" title="0">if targetProjectErr == nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if targetProjectErr == nil </span><span class="cov0" title="0">{
                 r.logger.Info("Created gitlab commit status", "scenario.name", report.ScenarioName, "commitStatus2.ID", targetProjectCommitStatus.ID, "TargetURL", opt.TargetURL)
                 return statusCode, nil
         }</span>
         // this code will only be reached if both source project and target project cannot be updated
         // when commitStatus is created in multiple thread occasionally, we can still see the transition error, so let's ignore it as a workaround
-        <span class="cov0" title="0">if strings.Contains(targetProjectErr.Error(), "Cannot transition status via :enqueue from :pending") </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if strings.Contains(targetProjectErr.Error(), "Cannot transition status via :enqueue from :pending") </span><span class="cov0" title="0">{
                 r.logger.Info("Ignoring the error when transition from pending to pending when the commitStatus might be created/updated in multiple threads at the same time occasionally")
                 return statusCode, nil
         }</span>
 
-        <span class="cov0" title="0">r.logger.Error(errors.Join(targetProjectErr, sourceProjectErr), "failed to set commit status to gitlab source project and target project", "sourceProjectID", r.sourceProjectID, "targetProjectID", r.targetProjectID, "sha", r.sha, "scenario.name", report.ScenarioName)
+        <span class="cov8" title="1">r.logger.Error(errors.Join(targetProjectErr, sourceProjectErr), "failed to set commit status to gitlab source project and target project",
+                "sourceProjectID", r.sourceProjectID, "targetProjectID", r.targetProjectID, "sha", r.sha,
+                "scenario.name", report.ScenarioName, "statusCode", statusCode, "targetState", string(glState))
         return statusCode, fmt.Errorf("failed to set commit status to %s with returned statusCode %d: %w", string(glState), statusCode, errors.Join(targetProjectErr, sourceProjectErr))</span>
 }
 
@@ -4590,20 +5111,30 @@ func (r *GitLabReporter) ReportStatus(ctx context.Context, report TestReport) (i
         }</span>
 
         <span class="cov8" title="1">var err error
-        err = retry.RetryOnConflict(retry.DefaultRetry, func() error </span><span class="cov8" title="1">{
+        err = retry.OnError(reporterRetryBackoff, func(err error) bool </span><span class="cov8" title="1">{
+                // statusCode 0 means no HTTP response was received (network/timeout error), always retry
+                retryable := statusCode == 0 || !r.ReturnCodeIsUnrecoverable(statusCode)
+                if retryable </span><span class="cov8" title="1">{
+                        r.logger.Info("retrying to set gitlab commit status after transient error",
+                                "scenario.name", report.ScenarioName, "statusCode", statusCode, "error", err.Error())
+                }</span>
+                <span class="cov8" title="1">return retryable</span>
+        }, func() error <span class="cov8" title="1">{
+                statusCode = 0 // reset before each attempt to avoid stale values
                 statusCode, err = r.setCommitStatus(report)
                 return err
         }</span>)
 
-        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
-                r.logger.Error(err, "failed to set gitlab commit status, please refer to the comment created on the MR")
+        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
+                r.logger.Error(err, "failed to set gitlab commit status after all retries, please refer to the comment created on the MR",
+                        "scenario.name", report.ScenarioName, "statusCode", statusCode)
                 return statusCode, err
         }</span>
         <span class="cov8" title="1">return statusCode, nil</span>
 
 }
 
-func (r *GitLabReporter) ReturnCodeIsUnrecoverable(statusCode int) bool <span class="cov0" title="0">{
+func (r *GitLabReporter) ReturnCodeIsUnrecoverable(statusCode int) bool <span class="cov8" title="1">{
         return statusCode == http.StatusForbidden || statusCode == http.StatusUnauthorized || statusCode == http.StatusBadRequest
 }</span>
 
@@ -4622,6 +5153,8 @@ func GenerateGitlabCommitState(state intgteststat.IntegrationTestStatus, optiona
                         intgteststat.SnapshotCreationFailed, intgteststat.GroupSnapshotCreationFailed:<span class="cov0" title="0">
                         glState = gitlab.Canceled</span>
                 case intgteststat.IntegrationTestStatusTestPassed:<span class="cov0" title="0">
+                        glState = gitlab.Success</span>
+                case intgteststat.IntegrationTestStatusTestWarning:<span class="cov0" title="0">
                         glState = gitlab.Success</span>
                 default:<span class="cov0" title="0">
                         return glState, fmt.Errorf("unknown status %s", state)</span>
@@ -4642,6 +5175,8 @@ func GenerateGitlabCommitState(state intgteststat.IntegrationTestStatus, optiona
                         glState = gitlab.Canceled</span>
                 case intgteststat.IntegrationTestStatusTestPassed:<span class="cov8" title="1">
                         glState = gitlab.Success</span>
+                case intgteststat.IntegrationTestStatusTestWarning:<span class="cov8" title="1">
+                        glState = gitlab.Success</span>
                 default:<span class="cov0" title="0">
                         return glState, fmt.Errorf("unknown status %s", state)</span>
                 }
@@ -4651,7 +5186,7 @@ func GenerateGitlabCommitState(state intgteststat.IntegrationTestStatus, optiona
 }
 </pre>
 		
-		<pre class="file" id="file16" style="display: none">/*
+		<pre class="file" id="file18" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4944,7 +5479,7 @@ func generateText(ctx context.Context, client client.Client, integrationTestStat
 
         <span class="cov8" title="1">pr_group := snapshot.GetAnnotations()[gitops.PRGroupAnnotation]
 
-        if integrationTestStatusDetail.Status == intgteststat.IntegrationTestStatusTestPassed || integrationTestStatusDetail.Status == intgteststat.IntegrationTestStatusTestFail </span><span class="cov8" title="1">{
+        if integrationTestStatusDetail.Status == intgteststat.IntegrationTestStatusTestPassed || integrationTestStatusDetail.Status == intgteststat.IntegrationTestStatusTestFail || integrationTestStatusDetail.Status == intgteststat.IntegrationTestStatusTestWarning </span><span class="cov8" title="1">{
                 pipelineRunName := integrationTestStatusDetail.TestPipelineRunName
                 pipelineRun := &amp;tektonv1.PipelineRun{}
                 err := client.Get(ctx, types.NamespacedName{
@@ -4982,7 +5517,7 @@ func generateShortText(integrationTestStatusDetail intgteststat.IntegrationTestS
         var componentSnapshotInfos []*gitops.ComponentSnapshotInfo
         var err error
         var shortText string
-        if integrationTestStatusDetail.Status == intgteststat.IntegrationTestStatusTestPassed || integrationTestStatusDetail.Status == intgteststat.IntegrationTestStatusTestFail </span><span class="cov8" title="1">{
+        if integrationTestStatusDetail.Status == intgteststat.IntegrationTestStatusTestPassed || integrationTestStatusDetail.Status == intgteststat.IntegrationTestStatusTestFail || integrationTestStatusDetail.Status == intgteststat.IntegrationTestStatusTestWarning </span><span class="cov8" title="1">{
                 if componentSnapshotInfoString, ok := snapshot.Annotations[gitops.GroupSnapshotInfoAnnotation]; ok </span><span class="cov0" title="0">{
                         componentSnapshotInfos, err = gitops.UnmarshalJSON([]byte(componentSnapshotInfoString))
                         if err != nil </span><span class="cov0" title="0">{
@@ -5023,6 +5558,8 @@ func GenerateSummary(state intgteststat.IntegrationTestStatus, snapshotName, sce
                 statusDesc = "has failed"</span>
         case intgteststat.IntegrationTestStatusTestInvalid:<span class="cov8" title="1">
                 statusDesc = "is invalid"</span>
+        case intgteststat.IntegrationTestStatusTestWarning:<span class="cov8" title="1">
+                statusDesc = "has warning(s)"</span>
         case intgteststat.BuildPLRInProgress:<span class="cov8" title="1">
                 statusDesc = "is pending because build pipelinerun is still running and snapshot has not been created"</span>
         case intgteststat.SnapshotCreationFailed:<span class="cov8" title="1">
@@ -5068,6 +5605,8 @@ func GenerateSummaryForAllScenarios(state intgteststat.IntegrationTestStatus, co
                 statusDesc = "has not run and is considered as failed because the build pipelinerun failed and snapshot was not created"</span>
         case intgteststat.GroupSnapshotCreationFailed:<span class="cov8" title="1">
                 statusDesc = "has not run and is considered as failed because group snapshot was not created"</span>
+        case intgteststat.IntegrationTestStatusTestWarning:<span class="cov0" title="0">
+                statusDesc = "has passed but has experienced warnings"</span>
         default:<span class="cov8" title="1">
                 return summary, fmt.Errorf("unsupported status")</span>
         }

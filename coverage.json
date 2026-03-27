@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/23127418484",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/23659653547",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 52.6,
+      "coverage": 62.1,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 78.5
+          "coverage": 81.7
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
@@ -38,7 +38,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git/forgejo",
-          "coverage": 20.4
+          "coverage": 20.8
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/bometrics",
@@ -132,20 +132,24 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 71.2,
+      "coverage": 75.8,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/image-controller/pkg/metrics",
-          "coverage": 53.1
+          "coverage": 52.8
+        },
+        {
+          "package": "github.com/konflux-ci/image-controller/cmd",
+          "coverage": 20.0
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 72.0
+          "coverage": 73.4
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
-          "coverage": 70.5
+          "coverage": 96.4
         }
       ]
     },
@@ -170,12 +174,16 @@
     },
     {
       "repo": "konflux-ci/integration-service",
-      "coverage": 68.4,
-      "status": "ok",
+      "coverage": 69.0,
+      "status": "failed",
       "packages": [
         {
+          "package": "github.com/konflux-ci/integration-service/snapshot",
+          "coverage": 60.0
+        },
+        {
           "package": "github.com/konflux-ci/integration-service/status",
-          "coverage": 64.7
+          "coverage": 66.8
         },
         {
           "package": "github.com/konflux-ci/integration-service/pkg/metrics",
@@ -217,12 +225,12 @@
           "coverage": 84.0
         },
         {
-          "package": "github.com/konflux-ci/internal-services/tekton/utils",
-          "coverage": 0.0
-        },
-        {
           "package": "github.com/konflux-ci/internal-services/tekton",
           "coverage": 97.7
+        },
+        {
+          "package": "github.com/konflux-ci/internal-services/tekton/utils",
+          "coverage": 0.0
         },
         {
           "package": "github.com/konflux-ci/internal-services/api/v1alpha1",
@@ -265,12 +273,16 @@
     },
     {
       "repo": "konflux-ci/mintmaker",
-      "coverage": 43.9,
+      "coverage": 58.6,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/mintmaker/tools/osv-generator",
-          "coverage": 78.3
+          "coverage": 79.5
+        },
+        {
+          "package": "github.com/konflux-ci/mintmaker/internal/config",
+          "coverage": 77.1
         },
         {
           "package": "github.com/konflux-ci/mintmaker/internal/controller",
@@ -278,15 +290,27 @@
         },
         {
           "package": "github.com/konflux-ci/mintmaker/internal/tekton",
-          "coverage": 0.0
+          "coverage": 98.2
         },
         {
           "package": "github.com/konflux-ci/mintmaker/internal/component/github",
-          "coverage": 16.5
+          "coverage": 16.9
+        },
+        {
+          "package": "github.com/konflux-ci/mintmaker/internal/metrics",
+          "coverage": 32.4
+        },
+        {
+          "package": "github.com/konflux-ci/mintmaker/internal/slices",
+          "coverage": 100.0
         },
         {
           "package": "github.com/konflux-ci/mintmaker/internal/utils",
-          "coverage": 21.3
+          "coverage": 85.7
+        },
+        {
+          "package": "github.com/konflux-ci/mintmaker/internal/component",
+          "coverage": 35.5
         }
       ]
     },
@@ -553,35 +577,27 @@
     },
     {
       "repo": "konflux-ci/segment-bridge",
-      "coverage": 88.1,
+      "coverage": 58.5,
       "status": "ok",
       "packages": [
-        {
-          "package": "github.com/redhat-appstudio/segment-bridge.git/queryprint",
-          "coverage": 100.0
-        },
         {
           "package": "github.com/redhat-appstudio/segment-bridge.git/stats",
           "coverage": 84.4
         },
         {
           "package": "github.com/redhat-appstudio/segment-bridge.git/scripts",
-          "coverage": 39.3
-        },
-        {
-          "package": "github.com/redhat-appstudio/segment-bridge.git/querygen",
-          "coverage": 98.2
+          "coverage": 33.3
         }
       ]
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 57.1,
+      "coverage": 58.4,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 57.1
+          "coverage": 58.4
         }
       ]
     },

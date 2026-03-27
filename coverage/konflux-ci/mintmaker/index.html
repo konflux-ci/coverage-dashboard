@@ -3,7 +3,7 @@
 <html>
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-		<title>github: Go Coverage Report</title>
+		<title>component: Go Coverage Report</title>
 		<style>
 			body {
 				background: black;
@@ -55,29 +55,39 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/mintmaker/internal/component/github/cache.go (75.0%)</option>
+				<option value="file0">github.com/konflux-ci/mintmaker/internal/component/component.go (35.5%)</option>
 				
-				<option value="file1">github.com/konflux-ci/mintmaker/internal/component/github/github.go (0.0%)</option>
+				<option value="file1">github.com/konflux-ci/mintmaker/internal/component/github/cache.go (75.0%)</option>
 				
-				<option value="file2">github.com/konflux-ci/mintmaker/internal/controller/common.go (0.0%)</option>
+				<option value="file2">github.com/konflux-ci/mintmaker/internal/component/github/github.go (0.0%)</option>
 				
-				<option value="file3">github.com/konflux-ci/mintmaker/internal/controller/dependencyupdatecheck_controller.go (64.0%)</option>
+				<option value="file3">github.com/konflux-ci/mintmaker/internal/config/config.go (77.1%)</option>
 				
-				<option value="file4">github.com/konflux-ci/mintmaker/internal/controller/event_controller.go (75.2%)</option>
+				<option value="file4">github.com/konflux-ci/mintmaker/internal/controller/common.go (0.0%)</option>
 				
-				<option value="file5">github.com/konflux-ci/mintmaker/internal/controller/pipelinerun_controller.go (92.3%)</option>
+				<option value="file5">github.com/konflux-ci/mintmaker/internal/controller/dependencyupdatecheck_controller.go (64.0%)</option>
 				
-				<option value="file6">github.com/konflux-ci/mintmaker/internal/tekton/pipeline_run_builder.go (0.0%)</option>
+				<option value="file6">github.com/konflux-ci/mintmaker/internal/controller/event_controller.go (75.2%)</option>
 				
-				<option value="file7">github.com/konflux-ci/mintmaker/internal/utils/random.go (75.0%)</option>
+				<option value="file7">github.com/konflux-ci/mintmaker/internal/controller/pipelinerun_controller.go (92.3%)</option>
 				
-				<option value="file8">github.com/konflux-ci/mintmaker/internal/utils/sanitize.go (100.0%)</option>
+				<option value="file8">github.com/konflux-ci/mintmaker/internal/metrics/backend_probe.go (100.0%)</option>
 				
-				<option value="file9">github.com/konflux-ci/mintmaker/internal/utils/utils.go (0.0%)</option>
+				<option value="file9">github.com/konflux-ci/mintmaker/internal/metrics/common.go (24.2%)</option>
 				
-				<option value="file10">github.com/konflux-ci/mintmaker/tools/osv-generator/cve_parser.go (81.6%)</option>
+				<option value="file10">github.com/konflux-ci/mintmaker/internal/slices/slice.go (100.0%)</option>
 				
-				<option value="file11">github.com/konflux-ci/mintmaker/tools/osv-generator/generator.go (72.9%)</option>
+				<option value="file11">github.com/konflux-ci/mintmaker/internal/tekton/pipeline_run_builder.go (98.2%)</option>
+				
+				<option value="file12">github.com/konflux-ci/mintmaker/internal/utils/random.go (75.0%)</option>
+				
+				<option value="file13">github.com/konflux-ci/mintmaker/internal/utils/sanitize.go (100.0%)</option>
+				
+				<option value="file14">github.com/konflux-ci/mintmaker/internal/utils/utils.go (84.2%)</option>
+				
+				<option value="file15">github.com/konflux-ci/mintmaker/tools/osv-generator/cve_parser.go (83.3%)</option>
+				
+				<option value="file16">github.com/konflux-ci/mintmaker/tools/osv-generator/generator.go (72.9%)</option>
 				
 				</select>
 			</div>
@@ -92,6 +102,120 @@
 		<div id="content">
 		
 		<pre class="file" id="file0" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package component
+
+import (
+        "context"
+        "fmt"
+
+        corev1 "k8s.io/api/core/v1"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+
+        appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
+
+        "github.com/konflux-ci/mintmaker/internal/component/forgejo"
+        github "github.com/konflux-ci/mintmaker/internal/component/github"
+        gitlab "github.com/konflux-ci/mintmaker/internal/component/gitlab"
+        utils "github.com/konflux-ci/mintmaker/internal/utils"
+)
+
+// GitComponentFactory is a function that creates a GitComponent from a Kubernetes Component resource.
+type GitComponentFactory func(ctx context.Context, comp *appstudiov1alpha1.Component, client client.Client) (GitComponent, error)
+
+type GitComponent interface {
+        GetName() string
+        GetNamespace() string
+        GetApplication() string
+        GetPlatform() string
+        GetHost() string
+        GetGitURL() string
+        GetRepository() string
+        GetToken() (string, error)
+        GetBranches() ([]string, error)
+        GetAPIEndpoint() string
+        GetRenovateConfig(*corev1.Secret, string) (string, error)
+        GetRPMActivationKey(context.Context, client.Client) (string, string, error)
+}
+
+func NewGitComponent(ctx context.Context, comp *appstudiov1alpha1.Component, client client.Client) (GitComponent, error) <span class="cov0" title="0">{
+        // First check if source url exists and is properly defined
+        gitUrl, oldCRDVersion, err := GetGitURL(comp)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">platform, err := utils.GetGitPlatform(gitUrl)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">switch platform </span>{
+        case "github":<span class="cov0" title="0">
+                c, err := github.NewComponent(ctx, comp, client, gitUrl, GetVersions(comp), oldCRDVersion)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("error creating git component: %w", err)
+                }</span>
+                <span class="cov0" title="0">return c, nil</span>
+        case "gitlab":<span class="cov0" title="0">
+                c, err := gitlab.NewComponent(ctx, comp, client, gitUrl, GetVersions(comp), oldCRDVersion)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("error creating git component: %w", err)
+                }</span>
+                <span class="cov0" title="0">return c, nil</span>
+        case "forgejo":<span class="cov0" title="0">
+                c, err := forgejo.NewComponent(ctx, comp, client, gitUrl, GetVersions(comp), oldCRDVersion)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("error creating git component: %w", err)
+                }</span>
+                <span class="cov0" title="0">return c, nil</span>
+        default:<span class="cov0" title="0">
+                return nil, fmt.Errorf("unsupported platform: %s", platform)</span>
+        }
+}
+
+// GetGitURL returns the git URL for the component
+// It supports both the old and new component models
+// It returns a boolean indicating if the component is using the old model
+func GetGitURL(comp *appstudiov1alpha1.Component) (string, bool, error) <span class="cov8" title="1">{
+        if comp.Spec.Source.GitSource != nil &amp;&amp; comp.Spec.Source.GitSource.URL != "" </span><span class="cov8" title="1">{
+                return comp.Spec.Source.GitSource.URL, true, nil
+        }</span>
+
+        <span class="cov8" title="1">if comp.Spec.Source.GitURL != "" </span><span class="cov8" title="1">{
+                return comp.Spec.Source.GitURL, false, nil
+        }</span>
+
+        <span class="cov8" title="1">return "", false, fmt.Errorf("component %s has no git source or empty URL defined", comp.Name)</span>
+}
+
+func GetVersions(comp *appstudiov1alpha1.Component) []string <span class="cov8" title="1">{
+        if comp.Spec.Source.GitSource != nil &amp;&amp; comp.Spec.Source.GitSource.Revision != "" </span><span class="cov8" title="1">{
+                return []string{comp.Spec.Source.GitSource.Revision}
+        }</span>
+
+        <span class="cov8" title="1">versions := make([]string, 0, len(comp.Spec.Source.Versions))
+        for _, v := range comp.Spec.Source.Versions </span><span class="cov8" title="1">{
+                versions = append(versions, v.Revision)
+        }</span>
+
+        <span class="cov8" title="1">return versions</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Copyright 2024 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -250,7 +374,7 @@ func (c *TokenCache) Get(key string) (TokenInfo, bool) <span class="cov0" title=
 }
 </pre>
 		
-		<pre class="file" id="file1" style="display: none">// Copyright 2024 Red Hat, Inc.
+		<pre class="file" id="file2" style="display: none">// Copyright 2024 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -300,10 +424,6 @@ var (
         ghAppPrivateKey             []byte
         ghUserID                    int64
         ghAppSlug                   string
-        // vars for mocking purposes, during testing
-        GetRenovateConfigFn func(registrySecret *corev1.Secret, currentBranch string) (string, error)
-        GetTokenFn          func() (string, error)
-        GetBranchesFn       func() ([]string, error)
 )
 
 type AppInstallation struct {
@@ -379,11 +499,7 @@ func NewComponent(ctx context.Context, comp *appstudiov1alpha1.Component, client
 }
 
 func (c *Component) GetBranches() ([]string, error) <span class="cov0" title="0">{
-        if GetBranchesFn != nil </span><span class="cov0" title="0">{
-                return GetBranchesFn()
-        }</span>
-
-        <span class="cov0" title="0">if len(c.Versions) == 0 &amp;&amp; c.OldCRDVersion </span><span class="cov0" title="0">{
+        if len(c.Versions) == 0 &amp;&amp; c.OldCRDVersion </span><span class="cov0" title="0">{
                 defaultBranch, err := c.getDefaultBranch()
                 if err != nil </span><span class="cov0" title="0">{
                         return []string{}, fmt.Errorf("component does not have a branch specified and failed to get default branch: %w", err)
@@ -444,12 +560,7 @@ func (c *Component) getInstallationID() (int64, error) <span class="cov0" title=
 }
 
 func (c *Component) GetToken() (string, error) <span class="cov0" title="0">{
-
-        if GetTokenFn != nil </span><span class="cov0" title="0">{
-                return GetTokenFn()
-        }</span>
-
-        <span class="cov0" title="0">installationID, err := c.getInstallationID()
+        installationID, err := c.getInstallationID()
         if err != nil </span><span class="cov0" title="0">{
                 return "", fmt.Errorf("failed to get installation ID: %w", err)
         }</span>
@@ -643,11 +754,7 @@ func (c *Component) getUserId(username string) (int64, error) <span class="cov0"
 }
 
 func (c *Component) GetRenovateConfig(registrySecret *corev1.Secret, currentBranch string) (string, error) <span class="cov0" title="0">{
-        if GetRenovateConfigFn != nil </span><span class="cov0" title="0">{
-                return GetRenovateConfigFn(registrySecret, currentBranch)
-        }</span>
-
-        <span class="cov0" title="0">baseConfig, err := c.GetRenovateBaseConfig(c.ctx, c.client)
+        baseConfig, err := c.GetRenovateBaseConfig(c.ctx, c.client)
         if err != nil </span><span class="cov0" title="0">{
                 return "", err
         }</span>
@@ -711,7 +818,230 @@ func (c *Component) getOwnerAndRepo() (string, string, error) <span class="cov0"
 }
 </pre>
 		
-		<pre class="file" id="file2" style="display: none">// Copyright 2024 Red Hat, Inc.
+		<pre class="file" id="file3" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package config provides configuration management for the MintMaker controller.
+//
+// Configuration is loaded from a JSON file. The file path can be specified
+// via the MINTMAKER_CONFIG_PATH environment variable, defaulting to
+// /etc/mintmaker/config.json.
+//
+// Example config.json:
+//
+//        {
+//          "github": {
+//            "token-ttl": "60m",
+//            "token-min-validity": "30m"
+//          },
+//          "kite": {
+//            "enabled": true,
+//            "api-url": "https://kite.example.com"
+//          }
+//        }
+//
+// GitHub Token Configuration:
+//
+// GitHub installation tokens have a limited lifetime (token-ttl). To ensure
+// tokens remain valid throughout their usage, we renew them before they expire.
+// The token-min-validity specifies the minimum remaining validity required
+// for a token to be considered usable.
+//
+// Example: With token-ttl=60m and token-min-validity=30m:
+//   - Token created at 20:00, expires at 21:00
+//   - At 20:25 (35m remaining &gt; 30m min): token is usable
+//   - At 20:35 (25m remaining &lt; 30m min): token needs renewal
+//
+// Kite Configuration:
+//
+// Kite integration reports issues to Kite after analyzing Renovate logs.
+// It is disabled by default.
+//
+//   - enabled: Set to true to enable Kite integration. When enabled, a
+//     log-analyzer step is added to the pipelinerun. Defaults to false.
+//   - api-url: The URL of the Kite API endpoint. Can also be set via
+//     KITE_API_URL environment variable (config file takes precedence).
+package config
+
+import (
+        "encoding/json"
+        "os"
+        "sync"
+        "time"
+
+        "github.com/go-logr/logr"
+        ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
+)
+
+const (
+        defaultConfigPath       = "/etc/mintmaker/config.json"
+        configPathEnvVar        = "MINTMAKER_CONFIG_PATH"
+        defaultTokenTTL         = 60 * time.Minute
+        defaultTokenMinValidity = 30 * time.Minute
+)
+
+// GitHubConfig holds GitHub-related configuration.
+type GitHubConfig struct {
+        // TokenTTL is the total validity period of a GitHub installation token
+        // from the time it is created. GitHub installation tokens typically
+        // expire after 1 hour.
+        TokenTTL time.Duration
+
+        // TokenMinValidity is the minimum remaining validity required for a token
+        // to be considered usable. When a token's remaining lifetime falls below
+        // this value, it should be renewed.
+        //
+        // For example, with TokenTTL=60m and TokenMinValidity=30m:
+        // - A token with 35 minutes remaining is usable
+        // - A token with 25 minutes remaining needs renewal
+        TokenMinValidity time.Duration
+}
+
+// KiteConfig holds Kite-related configuration.
+type KiteConfig struct {
+        // Enabled controls whether Kite integration is active.
+        // When enabled, a log-analyzer step is added to the pipeline to send
+        // Renovate logs to the Kite API. Defaults to false.
+        Enabled bool
+
+        // APIURL is the URL of the Kite API. Required when Enabled is true.
+        APIURL string
+}
+
+// Config holds all controller configuration.
+type Config struct {
+        GitHub GitHubConfig
+        Kite   KiteConfig
+}
+
+// fileConfig represents the JSON structure of the config file.
+type fileConfig struct {
+        GitHub struct {
+                TokenTTL         string `json:"token-ttl"`
+                TokenMinValidity string `json:"token-min-validity"`
+        } `json:"github"`
+        Kite struct {
+                Enabled bool   `json:"enabled"`
+                APIURL  string `json:"api-url"`
+        } `json:"kite"`
+}
+
+var (
+        instance *Config
+        once     sync.Once
+)
+
+// defaultConfig returns a Config with default values.
+func defaultConfig() *Config <span class="cov8" title="1">{
+        return &amp;Config{
+                GitHub: GitHubConfig{
+                        TokenTTL:         defaultTokenTTL,
+                        TokenMinValidity: defaultTokenMinValidity,
+                },
+                Kite: KiteConfig{
+                        Enabled: false,
+                        APIURL:  os.Getenv("KITE_API_URL"),
+                },
+        }
+}</span>
+
+// load reads configuration from a file and returns a Config.
+// If the file doesn't exist or is invalid, it returns default configuration.
+func load(path string) *Config <span class="cov8" title="1">{
+        log := ctrllog.Log.WithName("config")
+
+        data, err := os.ReadFile(path)
+        if err != nil </span><span class="cov8" title="1">{
+                if os.IsNotExist(err) </span><span class="cov8" title="1">{
+                        log.Info("config file not found, using defaults", "path", path)
+                }</span> else<span class="cov0" title="0"> {
+                        log.Error(err, "failed to read config file, using defaults", "path", path)
+                }</span>
+                <span class="cov8" title="1">return defaultConfig()</span>
+        }
+
+        <span class="cov0" title="0">return parse(data, log)</span>
+}
+
+// parse unmarshals and validates the config data.
+func parse(data []byte, log logr.Logger) *Config <span class="cov8" title="1">{
+        var fc fileConfig
+        if err := json.Unmarshal(data, &amp;fc); err != nil </span><span class="cov8" title="1">{
+                log.Error(err, "failed to parse config file, using defaults")
+                return defaultConfig()
+        }</span>
+
+        <span class="cov8" title="1">cfg := defaultConfig()
+
+        // GitHub token config
+        if ttl, err := time.ParseDuration(fc.GitHub.TokenTTL); err == nil &amp;&amp; ttl &gt; 0 </span><span class="cov8" title="1">{
+                cfg.GitHub.TokenTTL = ttl
+        }</span>
+
+        <span class="cov8" title="1">if minValidity, err := time.ParseDuration(fc.GitHub.TokenMinValidity); err == nil &amp;&amp; minValidity &gt; 0 </span><span class="cov8" title="1">{
+                cfg.GitHub.TokenMinValidity = minValidity
+        }</span>
+
+        // Kite config: file takes precedence over env var
+        <span class="cov8" title="1">cfg.Kite.Enabled = fc.Kite.Enabled
+        if fc.Kite.APIURL != "" </span><span class="cov8" title="1">{
+                cfg.Kite.APIURL = fc.Kite.APIURL
+        }</span>
+
+        <span class="cov8" title="1">if err := cfg.validate(log); err != nil </span><span class="cov8" title="1">{
+                return defaultConfig()
+        }</span>
+        <span class="cov8" title="1">return cfg</span>
+}
+
+// validate checks that the configuration values are valid.
+func (c *Config) validate(log logr.Logger) error <span class="cov8" title="1">{
+        if c.GitHub.TokenMinValidity &gt;= c.GitHub.TokenTTL </span><span class="cov8" title="1">{
+                log.Info("invalid config: token-min-validity must be less than token-ttl, using defaults",
+                        "token-ttl", c.GitHub.TokenTTL,
+                        "token-min-validity", c.GitHub.TokenMinValidity)
+                return errInvalidConfig
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+var errInvalidConfig = &amp;configError{"invalid configuration"}
+
+type configError struct {
+        msg string
+}
+
+func (e *configError) Error() string <span class="cov8" title="1">{
+        return e.msg
+}</span>
+
+// Get returns the global configuration.
+// On first call, it loads the config from file (path from MINTMAKER_CONFIG_PATH
+// env var, or /etc/mintmaker/config.json by default).
+func Get() *Config <span class="cov0" title="0">{
+        once.Do(func() </span><span class="cov0" title="0">{
+                path := os.Getenv(configPathEnvVar)
+                if path == "" </span><span class="cov0" title="0">{
+                        path = defaultConfigPath
+                }</span>
+                <span class="cov0" title="0">instance = load(path)</span>
+        })
+        <span class="cov0" title="0">return instance</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">// Copyright 2024 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -783,7 +1113,7 @@ func getFilteredComponents(ctx context.Context, namespaces []mmv1alpha1.Namespac
 }
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">// Copyright 2024 Red Hat, Inc.
+		<pre class="file" id="file5" style="display: none">// Copyright 2024 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -836,14 +1166,16 @@ const InternalSecretLabelName = "appstudio.redhat.com/internal"
 
 // DependencyUpdateCheckReconciler reconciles a DependencyUpdateCheck object
 type DependencyUpdateCheckReconciler struct {
-        Client client.Client
-        Scheme *runtime.Scheme
+        Client          client.Client
+        Scheme          *runtime.Scheme
+        NewGitComponent component.GitComponentFactory
 }
 
-func NewDependencyUpdateCheckReconciler(client client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder) *DependencyUpdateCheckReconciler <span class="cov8" title="1">{
+func NewDependencyUpdateCheckReconciler(client client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder, newGitComponent component.GitComponentFactory) *DependencyUpdateCheckReconciler <span class="cov8" title="1">{
         return &amp;DependencyUpdateCheckReconciler{
-                Client: client,
-                Scheme: scheme,
+                Client:          client,
+                Scheme:          scheme,
+                NewGitComponent: newGitComponent,
         }
 }</span>
 
@@ -1302,7 +1634,7 @@ func (r *DependencyUpdateCheckReconciler) Reconcile(ctx context.Context, req ctr
                         "componentNamespace", appstudioComponent.Namespace)
                 ctx = ctrllog.IntoContext(ctx, compLog)
 
-                comp, err := component.NewGitComponent(ctx, &amp;appstudioComponent, r.Client)
+                comp, err := r.NewGitComponent(ctx, &amp;appstudioComponent, r.Client)
                 if err != nil </span><span class="cov0" title="0">{
                         compLog.Error(err, "failed to handle component")
                         continue</span>
@@ -1365,7 +1697,7 @@ func (r *DependencyUpdateCheckReconciler) SetupWithManager(mgr ctrl.Manager) err
 }
 </pre>
 		
-		<pre class="file" id="file4" style="display: none">// Copyright 2024 Red Hat, Inc.
+		<pre class="file" id="file6" style="display: none">// Copyright 2024 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1404,7 +1736,8 @@ import (
 // EventReconciler reconciles a Event object
 type EventReconciler struct {
         client.Client
-        Scheme *runtime.Scheme
+        Scheme          *runtime.Scheme
+        NewGitComponent component.GitComponentFactory
 }
 
 // markEventAsProcessed adds an annotation to the event indicating it has been processed
@@ -1572,7 +1905,7 @@ func (r *EventReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
                 }
 
                 // Create GitComponent from Component
-                <span class="cov8" title="1">gitComp, err := component.NewGitComponent(ctx, &amp;comp, r.Client)
+                <span class="cov8" title="1">gitComp, err := r.NewGitComponent(ctx, &amp;comp, r.Client)
                 if err != nil </span><span class="cov0" title="0">{
                         errMessage = err.Error()
                         // Do not requeue, the error is not related to the cluster issues
@@ -1638,7 +1971,7 @@ func (r *EventReconciler) SetupWithManager(mgr ctrl.Manager) error <span class="
 }
 </pre>
 		
-		<pre class="file" id="file5" style="display: none">// Copyright 2024 Red Hat, Inc.
+		<pre class="file" id="file7" style="display: none">// Copyright 2024 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1734,7 +2067,176 @@ func (r *PipelineRunReconciler) SetupWithManager(mgr ctrl.Manager) error <span c
 }
 </pre>
 		
-		<pre class="file" id="file6" style="display: none">// Copyright 2024 Red Hat, Inc.
+		<pre class="file" id="file8" style="display: none">package mintmakermetrics
+
+import (
+        "context"
+        "sync/atomic"
+)
+
+type BackendProbe struct {
+        scheduledRuns atomic.Int32
+}
+
+func NewBackendProbe() AvailabilityProbe <span class="cov8" title="1">{
+        return &amp;BackendProbe{
+                scheduledRuns: atomic.Int32{},
+        }
+}</span>
+
+func (q *BackendProbe) CheckEvents(_ context.Context) float64 <span class="cov8" title="1">{
+        defer q.scheduledRuns.Store(0)
+        return float64(q.scheduledRuns.Load())
+}</span>
+
+func (q *BackendProbe) AddEvent() <span class="cov8" title="1">{
+        q.scheduledRuns.Add(1)
+}</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package mintmakermetrics
+
+import (
+        "context"
+        "fmt"
+        "time"
+
+        "github.com/go-logr/logr"
+        "github.com/prometheus/client_golang/prometheus"
+)
+
+var (
+        probeSuccess              *AvailabilityProbe
+        probeFailure              *AvailabilityProbe
+        controllerAvailabilityVec = prometheus.NewGaugeVec(
+                prometheus.GaugeOpts{
+                        Subsystem: "mintmaker",
+                        Name:      "pipelinerun_scheduled",
+                        Help:      "Number of scheduled MintMaker PipelineRuns (successes and failures)",
+                },
+                []string{"status"}, // "success" or "failure"
+        )
+        dependencyUpdateCheckCreationTime = prometheus.NewGaugeVec(
+                prometheus.GaugeOpts{
+                        Subsystem: "mintmaker",
+                        Name:      "dependency_update_check_creation_time",
+                        Help:      "Unix timestamp when the last DependencyUpdateCheck resource was created",
+                },
+                []string{"namespace", "name"},
+        )
+)
+
+func RegisterCommonMetrics(ctx context.Context, registerer prometheus.Registerer) error <span class="cov0" title="0">{
+        log := logr.FromContextOrDiscard(ctx)
+        if err := registerer.Register(controllerAvailabilityVec); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to register metrics: %w", err)
+        }</span>
+        <span class="cov0" title="0">if err := registerer.Register(dependencyUpdateCheckCreationTime); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to register metrics: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">ticker := time.NewTicker(10 * time.Minute)
+        log.Info("Starting metrics")
+        go func() </span><span class="cov0" title="0">{
+                for </span><span class="cov0" title="0">{
+                        select </span>{
+                        case &lt;-ctx.Done():<span class="cov0" title="0"> // Shutdown if context is canceled
+                                log.Info("Shutting down metrics")
+                                ticker.Stop()
+                                return</span>
+                        case &lt;-ticker.C:<span class="cov0" title="0">
+                                checkProbes(ctx)</span>
+                        }
+                }
+        }()
+        <span class="cov0" title="0">return nil</span>
+}
+
+func checkProbes(ctx context.Context) <span class="cov0" title="0">{
+        log := logr.FromContextOrDiscard(ctx)
+        // Set availability metric based on contoller events (scheduled PipelineRuns)
+        if probeSuccess != nil </span><span class="cov0" title="0">{
+                successEvents := (*probeSuccess).CheckEvents(ctx)
+                controllerAvailabilityVec.WithLabelValues("success").Set(successEvents)
+                log.Info("Availability probe found %d successful events", successEvents)
+        }</span>
+        <span class="cov0" title="0">if probeFailure != nil </span><span class="cov0" title="0">{
+                failureEvents := (*probeFailure).CheckEvents(ctx)
+                controllerAvailabilityVec.WithLabelValues("failure").Set(failureEvents)
+        }</span>
+
+}
+
+func CountScheduledRunSuccess() <span class="cov8" title="1">{
+        if probeSuccess == nil </span><span class="cov8" title="1">{
+                watcher := NewBackendProbe()
+                probeSuccess = &amp;watcher
+        }</span>
+        <span class="cov8" title="1">(*probeSuccess).AddEvent()</span>
+}
+
+func CountScheduledRunFailure() <span class="cov8" title="1">{
+        if probeFailure == nil </span><span class="cov8" title="1">{
+                watcher := NewBackendProbe()
+                probeFailure = &amp;watcher
+        }</span>
+        <span class="cov8" title="1">(*probeFailure).AddEvent()</span>
+}
+
+// RecordDependencyUpdateCheckCreation records the creation of a DependencyUpdateCheck resource
+func RecordDependencyUpdateCheckCreation(namespace, name string) <span class="cov0" title="0">{
+        now := float64(time.Now().Unix())
+        dependencyUpdateCheckCreationTime.WithLabelValues(namespace, name).Set(now)
+}</span>
+
+type AvailabilityProbe interface {
+        CheckEvents(ctx context.Context) float64
+        AddEvent()
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">// Copyright 2024 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package slices
+
+// Filter returns a new slice containing only the elements of slice that satisfy the test function.
+func Filter[T any](slice []T, testFunction func(T) bool) (ret []T) <span class="cov8" title="1">{
+        for _, s := range slice </span><span class="cov8" title="1">{
+                if testFunction(s) </span><span class="cov8" title="1">{
+                        ret = append(ret, s)
+                }</span>
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// Intersection returns the number of elements intersection between two slices with respect to the order,
+// i.e. Intersection(["a", "b", "c"], ["a", "b", "d"]) == 2 but Intersection(["a", "b", "c"], ["b", "a", "c"]) == 0
+func Intersection(s1, s2 []string) int <span class="cov8" title="1">{
+        var count int
+        for i, e1 := range s1 </span><span class="cov8" title="1">{
+                if i &lt; len(s2) &amp;&amp; e1 == s2[i] </span><span class="cov8" title="1">{
+                        count++
+                }</span> else<span class="cov8" title="1"> {
+                        break</span>
+                }
+        }
+        <span class="cov8" title="1">return count</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">// Copyright 2024 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1791,7 +2293,7 @@ type MountOptions struct {
 }
 
 // NewMountOptions creates a new MountOptions with default values
-func NewMountOptions() *MountOptions <span class="cov0" title="0">{
+func NewMountOptions() *MountOptions <span class="cov8" title="1">{
         readOnly := true
         defaultMode := int32(0644)
         optional := false
@@ -1805,41 +2307,41 @@ func NewMountOptions() *MountOptions <span class="cov0" title="0">{
         }
 }</span>
 
-func (o *MountOptions) WithTaskName(taskName string) *MountOptions <span class="cov0" title="0">{
+func (o *MountOptions) WithTaskName(taskName string) *MountOptions <span class="cov8" title="1">{
         o.TaskName = taskName
         return o
 }</span>
 
-func (o *MountOptions) WithStepNames(stepNames []string) *MountOptions <span class="cov0" title="0">{
+func (o *MountOptions) WithStepNames(stepNames []string) *MountOptions <span class="cov8" title="1">{
         o.StepNames = stepNames
         return o
 }</span>
 
-func (o *MountOptions) WithReadOnly(readOnly bool) *MountOptions <span class="cov0" title="0">{
+func (o *MountOptions) WithReadOnly(readOnly bool) *MountOptions <span class="cov8" title="1">{
         o.ReadOnly = &amp;readOnly
         return o
 }</span>
 
-func (o *MountOptions) WithDefaultMode(mode int32) *MountOptions <span class="cov0" title="0">{
+func (o *MountOptions) WithDefaultMode(mode int32) *MountOptions <span class="cov8" title="1">{
         o.DefaultMode = &amp;mode
         return o
 }</span>
 
-func (o *MountOptions) WithOptional(optional bool) *MountOptions <span class="cov0" title="0">{
+func (o *MountOptions) WithOptional(optional bool) *MountOptions <span class="cov8" title="1">{
         o.Optional = &amp;optional
         return o
 }</span>
 
 // NewPipelineRunBuilder initializes a new PipelineRunBuilder with the given name prefix and namespace.
 // It sets the name of the PipelineRun to be generated with the provided prefix and sets its namespace.
-func NewPipelineRunBuilder(name, namespace string) *PipelineRunBuilder <span class="cov0" title="0">{
+func NewPipelineRunBuilder(name, namespace string) *PipelineRunBuilder <span class="cov8" title="1">{
         var rootUser int64 = 0
         var normalUser int64 = 1001120000
         renovateImageURL := os.Getenv(RenovateImageEnvName)
-        if renovateImageURL == "" </span><span class="cov0" title="0">{
+        if renovateImageURL == "" </span><span class="cov8" title="1">{
                 renovateImageURL = DefaultRenovateImageURL
         }</span>
-        <span class="cov0" title="0">return &amp;PipelineRunBuilder{
+        <span class="cov8" title="1">return &amp;PipelineRunBuilder{
                 pipelineRun: &amp;tektonv1.PipelineRun{
                         ObjectMeta: metav1.ObjectMeta{
                                 Name:      name,
@@ -1993,43 +2495,43 @@ func NewPipelineRunBuilder(name, namespace string) *PipelineRunBuilder <span cla
 }
 
 // Build returns the constructed PipelineRun and any accumulated error.
-func (b *PipelineRunBuilder) Build() (*tektonv1.PipelineRun, error) <span class="cov0" title="0">{
+func (b *PipelineRunBuilder) Build() (*tektonv1.PipelineRun, error) <span class="cov8" title="1">{
         return b.pipelineRun, b.err.ErrorOrNil()
 }</span>
 
 // WithAnnotations appends or updates annotations to the PipelineRun's metadata.
 // If the PipelineRun does not have existing annotations, it initializes them before adding.
-func (b *PipelineRunBuilder) WithAnnotations(annotations map[string]string) *PipelineRunBuilder <span class="cov0" title="0">{
-        if b.pipelineRun.ObjectMeta.Annotations == nil </span><span class="cov0" title="0">{
+func (b *PipelineRunBuilder) WithAnnotations(annotations map[string]string) *PipelineRunBuilder <span class="cov8" title="1">{
+        if b.pipelineRun.ObjectMeta.Annotations == nil </span><span class="cov8" title="1">{
                 b.pipelineRun.ObjectMeta.Annotations = make(map[string]string)
         }</span>
-        <span class="cov0" title="0">for key, value := range annotations </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">for key, value := range annotations </span><span class="cov8" title="1">{
                 b.pipelineRun.ObjectMeta.Annotations[key] = value
         }</span>
-        <span class="cov0" title="0">return b</span>
+        <span class="cov8" title="1">return b</span>
 }
 
 // WithFinalizer adds the given finalizer to the PipelineRun's metadata.
-func (b *PipelineRunBuilder) WithFinalizer(finalizer string) *PipelineRunBuilder <span class="cov0" title="0">{
+func (b *PipelineRunBuilder) WithFinalizer(finalizer string) *PipelineRunBuilder <span class="cov8" title="1">{
         controllerutil.AddFinalizer(b.pipelineRun, finalizer)
         return b
 }</span>
 
 // WithLabels appends or updates labels to the PipelineRun's metadata.
 // If the PipelineRun does not have existing labels, it initializes them before adding.
-func (b *PipelineRunBuilder) WithLabels(labels map[string]string) *PipelineRunBuilder <span class="cov0" title="0">{
-        if b.pipelineRun.ObjectMeta.Labels == nil </span><span class="cov0" title="0">{
+func (b *PipelineRunBuilder) WithLabels(labels map[string]string) *PipelineRunBuilder <span class="cov8" title="1">{
+        if b.pipelineRun.ObjectMeta.Labels == nil </span><span class="cov8" title="1">{
                 b.pipelineRun.ObjectMeta.Labels = make(map[string]string)
         }</span>
-        <span class="cov0" title="0">for key, value := range labels </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">for key, value := range labels </span><span class="cov8" title="1">{
                 b.pipelineRun.ObjectMeta.Labels[key] = value
         }</span>
-        <span class="cov0" title="0">return b</span>
+        <span class="cov8" title="1">return b</span>
 }
 
 // sanitizeVolumeName returns a name safe for use as a Kubernetes volume name (DNS-1123 label).
 // Volume names must not contain dots.
-func sanitizeVolumeName(name string) string <span class="cov0" title="0">{
+func sanitizeVolumeName(name string) string <span class="cov8" title="1">{
         return strings.ReplaceAll(name, ".", "-")
 }</span>
 
@@ -2038,21 +2540,21 @@ func sanitizeVolumeName(name string) string <span class="cov0" title="0">{
 // - mountPath: where the ConfigMap should be mounted to
 // - items: items from ConfigMap to be mounted. If nil, all items will be mounted
 // - opts: mount options
-func (b *PipelineRunBuilder) WithConfigMap(name, mountPath string, items []corev1.KeyToPath, opts *MountOptions) *PipelineRunBuilder <span class="cov0" title="0">{
-        if opts == nil </span><span class="cov0" title="0">{
+func (b *PipelineRunBuilder) WithConfigMap(name, mountPath string, items []corev1.KeyToPath, opts *MountOptions) *PipelineRunBuilder <span class="cov8" title="1">{
+        if opts == nil </span><span class="cov8" title="1">{
                 opts = &amp;MountOptions{}
         }</span>
-        <span class="cov0" title="0">if opts.TaskName == "" </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if opts.TaskName == "" </span><span class="cov8" title="1">{
                 opts.TaskName = "build"
         }</span>
-        <span class="cov0" title="0">if opts.ReadOnly == nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if opts.ReadOnly == nil </span><span class="cov8" title="1">{
                 readOnly := true
                 opts.ReadOnly = &amp;readOnly
         }</span>
 
-        <span class="cov0" title="0">for i, task := range b.pipelineRun.Spec.PipelineSpec.Tasks </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">for i, task := range b.pipelineRun.Spec.PipelineSpec.Tasks </span><span class="cov8" title="1">{
                 // Add volume when task matches
-                if task.Name == opts.TaskName &amp;&amp; task.TaskSpec != nil </span><span class="cov0" title="0">{
+                if task.Name == opts.TaskName &amp;&amp; task.TaskSpec != nil </span><span class="cov8" title="1">{
                         volumeName := fmt.Sprintf("configmap-%s", sanitizeVolumeName(name))
                         volume := corev1.Volume{
                                 Name: volumeName,
@@ -2079,17 +2581,17 @@ func (b *PipelineRunBuilder) WithConfigMap(name, mountPath string, items []corev
                                 ReadOnly:  *opts.ReadOnly,
                         }
 
-                        for j := range b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Steps </span><span class="cov0" title="0">{
+                        for j := range b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Steps </span><span class="cov8" title="1">{
                                 step := &amp;b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Steps[j]
-                                if len(opts.StepNames) == 0 || slices.Contains(opts.StepNames, step.Name) </span><span class="cov0" title="0">{
+                                if len(opts.StepNames) == 0 || slices.Contains(opts.StepNames, step.Name) </span><span class="cov8" title="1">{
                                         step.VolumeMounts = append(step.VolumeMounts, volumeMount)
                                 }</span>
                         }
-                        <span class="cov0" title="0">break</span>
+                        <span class="cov8" title="1">break</span>
                 }
         }
         // TODO: error when the specified task is not found
-        <span class="cov0" title="0">return b</span>
+        <span class="cov8" title="1">return b</span>
 }
 
 // Mounts a Secret to the specified task and steps.
@@ -2097,21 +2599,21 @@ func (b *PipelineRunBuilder) WithConfigMap(name, mountPath string, items []corev
 // - mountPath: where the Secret should be mounted to
 // - items: items from Secret to be mounted. If nil, all items will be mounted
 // - opts: mount options
-func (b *PipelineRunBuilder) WithSecret(name, mountPath string, items []corev1.KeyToPath, opts *MountOptions) *PipelineRunBuilder <span class="cov0" title="0">{
-        if opts == nil </span><span class="cov0" title="0">{
+func (b *PipelineRunBuilder) WithSecret(name, mountPath string, items []corev1.KeyToPath, opts *MountOptions) *PipelineRunBuilder <span class="cov8" title="1">{
+        if opts == nil </span><span class="cov8" title="1">{
                 opts = &amp;MountOptions{}
         }</span>
-        <span class="cov0" title="0">if opts.TaskName == "" </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if opts.TaskName == "" </span><span class="cov8" title="1">{
                 opts.TaskName = "build"
         }</span>
-        <span class="cov0" title="0">if opts.ReadOnly == nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if opts.ReadOnly == nil </span><span class="cov8" title="1">{
                 readOnly := true
                 opts.ReadOnly = &amp;readOnly
         }</span>
 
         // Find the specified task
-        <span class="cov0" title="0">for i, task := range b.pipelineRun.Spec.PipelineSpec.Tasks </span><span class="cov0" title="0">{
-                if task.Name == opts.TaskName &amp;&amp; task.TaskSpec != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">for i, task := range b.pipelineRun.Spec.PipelineSpec.Tasks </span><span class="cov8" title="1">{
+                if task.Name == opts.TaskName &amp;&amp; task.TaskSpec != nil </span><span class="cov8" title="1">{
                         // Generate unique volume name using random string to avoid conflicts
                         // when the same secret is mounted multiple times
                         volumeName := fmt.Sprintf("secret-%s-%s", sanitizeVolumeName(name), utils.RandomString(8))
@@ -2138,24 +2640,24 @@ func (b *PipelineRunBuilder) WithSecret(name, mountPath string, items []corev1.K
                                 ReadOnly:  *opts.ReadOnly,
                         }
 
-                        for j := range b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Steps </span><span class="cov0" title="0">{
+                        for j := range b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Steps </span><span class="cov8" title="1">{
                                 step := &amp;b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Steps[j]
-                                if len(opts.StepNames) == 0 || slices.Contains(opts.StepNames, step.Name) </span><span class="cov0" title="0">{
+                                if len(opts.StepNames) == 0 || slices.Contains(opts.StepNames, step.Name) </span><span class="cov8" title="1">{
                                         step.VolumeMounts = append(step.VolumeMounts, volumeMount)
                                 }</span>
                         }
-                        <span class="cov0" title="0">break</span>
+                        <span class="cov8" title="1">break</span>
                 }
         }
         // TODO: error when the specified task is not found
-        <span class="cov0" title="0">return b</span>
+        <span class="cov8" title="1">return b</span>
 }
 
 // WithObjectReferences constructs tektonv1.Param entries for each of the provided client.Objects.
 // Each param name is derived from the object's Kind (with the first letter made lowercase) and
 // the value is a combination of the object's Namespace and Name.
-func (b *PipelineRunBuilder) WithObjectReferences(objects ...client.Object) *PipelineRunBuilder <span class="cov0" title="0">{
-        for _, obj := range objects </span><span class="cov0" title="0">{
+func (b *PipelineRunBuilder) WithObjectReferences(objects ...client.Object) *PipelineRunBuilder <span class="cov8" title="1">{
+        for _, obj := range objects </span><span class="cov8" title="1">{
                 name := []rune(obj.GetObjectKind().GroupVersionKind().Kind)
                 name[0] = unicode.ToLower(name[0])
                 b.WithParams(tektonv1.Param{
@@ -2166,28 +2668,28 @@ func (b *PipelineRunBuilder) WithObjectReferences(objects ...client.Object) *Pip
                         },
                 })
         }</span>
-        <span class="cov0" title="0">return b</span>
+        <span class="cov8" title="1">return b</span>
 }
 
 // WithObjectSpecsAsJson constructs tektonv1.Param entries for the Spec field of each of the provided client.Objects.
 // Each param name is derived from the object's Kind (with the first letter made lowercase).
 // The value for each param is the JSON representation of the object's Spec.
 // If an error occurs during extraction or serialization, it's accumulated in the builder's err field using multierror.
-func (b *PipelineRunBuilder) WithObjectSpecsAsJson(objects ...client.Object) *PipelineRunBuilder <span class="cov0" title="0">{
-        for _, obj := range objects </span><span class="cov0" title="0">{
+func (b *PipelineRunBuilder) WithObjectSpecsAsJson(objects ...client.Object) *PipelineRunBuilder <span class="cov8" title="1">{
+        for _, obj := range objects </span><span class="cov8" title="1">{
                 name := []rune(obj.GetObjectKind().GroupVersionKind().Kind)
                 name[0] = unicode.ToLower(name[0])
                 value := reflect.ValueOf(obj).Elem().FieldByName("Spec")
-                if !value.IsValid() </span><span class="cov0" title="0">{
+                if !value.IsValid() </span><span class="cov8" title="1">{
                         b.err = multierror.Append(b.err, fmt.Errorf("failed to extract spec for object: %s", string(name)))
                         continue</span>
                 }
-                <span class="cov0" title="0">jsonData, err := json.Marshal(value.Interface())
+                <span class="cov8" title="1">jsonData, err := json.Marshal(value.Interface())
                 if err != nil </span><span class="cov0" title="0">{
                         b.err = multierror.Append(b.err, fmt.Errorf("failed to serialize spec of object %s to JSON: %v", string(name), err))
                         continue</span>
                 }
-                <span class="cov0" title="0">b.WithParams(tektonv1.Param{
+                <span class="cov8" title="1">b.WithParams(tektonv1.Param{
                         Name: string(name),
                         Value: tektonv1.ParamValue{
                                 Type:      tektonv1.ParamTypeString,
@@ -2195,45 +2697,45 @@ func (b *PipelineRunBuilder) WithObjectSpecsAsJson(objects ...client.Object) *Pi
                         },
                 })</span>
         }
-        <span class="cov0" title="0">return b</span>
+        <span class="cov8" title="1">return b</span>
 }
 
 // WithParams appends the provided params to the PipelineRun's spec.
-func (b *PipelineRunBuilder) WithParams(params ...tektonv1.Param) *PipelineRunBuilder <span class="cov0" title="0">{
-        if b.pipelineRun.Spec.Params == nil </span><span class="cov0" title="0">{
+func (b *PipelineRunBuilder) WithParams(params ...tektonv1.Param) *PipelineRunBuilder <span class="cov8" title="1">{
+        if b.pipelineRun.Spec.Params == nil </span><span class="cov8" title="1">{
                 b.pipelineRun.Spec.Params = make([]tektonv1.Param, 0)
         }</span>
-        <span class="cov0" title="0">b.pipelineRun.Spec.Params = append(b.pipelineRun.Spec.Params, params...)
+        <span class="cov8" title="1">b.pipelineRun.Spec.Params = append(b.pipelineRun.Spec.Params, params...)
         return b</span>
 }
 
 // WithServiceAccount sets the ServiceAccountName for the PipelineRun's TaskRunTemplate.
-func (b *PipelineRunBuilder) WithServiceAccount(serviceAccount string) *PipelineRunBuilder <span class="cov0" title="0">{
+func (b *PipelineRunBuilder) WithServiceAccount(serviceAccount string) *PipelineRunBuilder <span class="cov8" title="1">{
         b.pipelineRun.Spec.TaskRunTemplate.ServiceAccountName = serviceAccount
         return b
 }</span>
 
 // WithTimeouts sets the Timeouts for the PipelineRun.
-func (b *PipelineRunBuilder) WithTimeouts(timeouts *tektonv1.TimeoutFields) *PipelineRunBuilder <span class="cov0" title="0">{
+func (b *PipelineRunBuilder) WithTimeouts(timeouts *tektonv1.TimeoutFields) *PipelineRunBuilder <span class="cov8" title="1">{
         defaultTimeouts := &amp;tektonv1.TimeoutFields{
                 Pipeline: &amp;metav1.Duration{Duration: 1 * time.Hour},
         }
-        if timeouts == nil || *timeouts == (tektonv1.TimeoutFields{}) </span><span class="cov0" title="0">{
+        if timeouts == nil || *timeouts == (tektonv1.TimeoutFields{}) </span><span class="cov8" title="1">{
                 b.pipelineRun.Spec.Timeouts = defaultTimeouts
-        }</span> else<span class="cov0" title="0"> {
+        }</span> else<span class="cov8" title="1"> {
                 b.pipelineRun.Spec.Timeouts = timeouts
         }</span>
-        <span class="cov0" title="0">return b</span>
+        <span class="cov8" title="1">return b</span>
 }
 
 // WithKiteIntegration adds a log-analyzer step to analyzing Renovate logs and create issues
 // in Kite
-func (b *PipelineRunBuilder) WithKiteIntegration(kiteAPIURL string) *PipelineRunBuilder <span class="cov0" title="0">{
+func (b *PipelineRunBuilder) WithKiteIntegration(kiteAPIURL string) *PipelineRunBuilder <span class="cov8" title="1">{
         var normalUser int64 = 1001120000
 
         // Find the build task and add log-analyzer step
-        for i, task := range b.pipelineRun.Spec.PipelineSpec.Tasks </span><span class="cov0" title="0">{
-                if task.Name == "build" &amp;&amp; task.TaskSpec != nil </span><span class="cov0" title="0">{
+        for i, task := range b.pipelineRun.Spec.PipelineSpec.Tasks </span><span class="cov8" title="1">{
+                if task.Name == "build" &amp;&amp; task.TaskSpec != nil </span><span class="cov8" title="1">{
                         steps := &amp;b.pipelineRun.Spec.PipelineSpec.Tasks[i].TaskSpec.TaskSpec.Steps
                         logAnalyzerStep := tektonv1.Step{
                                 Name:   "log-analyzer",
@@ -2316,11 +2818,11 @@ func (b *PipelineRunBuilder) WithKiteIntegration(kiteAPIURL string) *PipelineRun
                         break</span>
                 }
         }
-        <span class="cov0" title="0">return b</span>
+        <span class="cov8" title="1">return b</span>
 }
 </pre>
 		
-		<pre class="file" id="file7" style="display: none">// Copyright 2024 Red Hat, Inc.
+		<pre class="file" id="file12" style="display: none">// Copyright 2024 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -2350,7 +2852,7 @@ func RandomString(length int) string <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file8" style="display: none">// Copyright 2025 Red Hat, Inc.
+		<pre class="file" id="file13" style="display: none">// Copyright 2025 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -2400,7 +2902,7 @@ func NormalizeLabelValue(value string) string <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file9" style="display: none">// Copyright 2024 Red Hat, Inc.
+		<pre class="file" id="file14" style="display: none">// Copyright 2024 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -2422,70 +2924,74 @@ import (
         "strings"
 )
 
-func GetGitPlatform(giturl string) (string, error) <span class="cov0" title="0">{
-        allowedGitPlatforms := []string{"github", "gitlab"}
+func GetGitPlatform(giturl string) (string, error) <span class="cov8" title="1">{
+        allowedGitPlatforms := []string{"github", "gitlab", "forge"}
         host, err := GetGitHost(giturl)
         if err != nil </span><span class="cov0" title="0">{
                 return "", err
         }</span>
 
-        <span class="cov0" title="0">var gitPlatform string
-        for _, platform := range allowedGitPlatforms </span><span class="cov0" title="0">{
-                if strings.Contains(host, platform) </span><span class="cov0" title="0">{
-                        gitPlatform = platform
-                        break</span>
+        <span class="cov8" title="1">var gitPlatform string
+        for _, platform := range allowedGitPlatforms </span><span class="cov8" title="1">{
+                if strings.Contains(host, platform) </span><span class="cov8" title="1">{
+                        if platform == "forge" </span><span class="cov8" title="1">{
+                                gitPlatform = "forgejo"
+                        }</span> else<span class="cov8" title="1"> {
+                                gitPlatform = platform
+                        }</span>
+                        <span class="cov8" title="1">break</span>
                 }
         }
-        <span class="cov0" title="0">if gitPlatform == "" </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if gitPlatform == "" </span><span class="cov8" title="1">{
                 return "", fmt.Errorf("unsupported git platform for repository %s", giturl)
         }</span>
-        <span class="cov0" title="0">return gitPlatform, nil</span>
+        <span class="cov8" title="1">return gitPlatform, nil</span>
 }
 
-func GetGitHost(giturl string) (string, error) <span class="cov0" title="0">{
+func GetGitHost(giturl string) (string, error) <span class="cov8" title="1">{
         // Handle SSH URLs (user@host:path)
-        if strings.Contains(giturl, "@") </span><span class="cov0" title="0">{
+        if strings.Contains(giturl, "@") </span><span class="cov8" title="1">{
                 parts := strings.SplitN(giturl, ":", 2)
                 if len(parts) != 2 </span><span class="cov0" title="0">{
                         return "", fmt.Errorf("invalid SSH URL format: %s", giturl)
                 }</span>
-                <span class="cov0" title="0">hostPart := strings.SplitN(parts[0], "@", 2)
+                <span class="cov8" title="1">hostPart := strings.SplitN(parts[0], "@", 2)
                 if len(hostPart) != 2 </span><span class="cov0" title="0">{
                         return "", fmt.Errorf("invalid SSH URL format: %s", giturl)
                 }</span>
-                <span class="cov0" title="0">return hostPart[1], nil</span>
+                <span class="cov8" title="1">return hostPart[1], nil</span>
         }
 
-        <span class="cov0" title="0">u, err := url.Parse(giturl)
+        <span class="cov8" title="1">u, err := url.Parse(giturl)
         if err != nil </span><span class="cov0" title="0">{
                 return "", err
         }</span>
-        <span class="cov0" title="0">host := u.Hostname()
+        <span class="cov8" title="1">host := u.Hostname()
 
         return host, nil</span>
 }
 
-func GetGitPath(giturl string) (string, error) <span class="cov0" title="0">{
+func GetGitPath(giturl string) (string, error) <span class="cov8" title="1">{
         giturl = strings.TrimSuffix(strings.TrimSuffix(giturl, "/"), ".git")
         // Handle SSH URLs (user@host:path)
-        if strings.Contains(giturl, "@") </span><span class="cov0" title="0">{
+        if strings.Contains(giturl, "@") </span><span class="cov8" title="1">{
                 parts := strings.SplitN(giturl, ":", 2)
                 if len(parts) != 2 </span><span class="cov0" title="0">{
                         return "", fmt.Errorf("invalid SSH URL format: %s", giturl)
                 }</span>
-                <span class="cov0" title="0">return strings.TrimPrefix(parts[1], "/"), nil</span>
+                <span class="cov8" title="1">return strings.TrimPrefix(parts[1], "/"), nil</span>
         }
 
-        <span class="cov0" title="0">u, err := url.Parse(giturl)
+        <span class="cov8" title="1">u, err := url.Parse(giturl)
         if err != nil </span><span class="cov0" title="0">{
                 return "", err
         }</span>
-        <span class="cov0" title="0">path := strings.TrimPrefix(u.Path, "/")
+        <span class="cov8" title="1">path := strings.TrimPrefix(u.Path, "/")
         return path, nil</span>
 }
 </pre>
 		
-		<pre class="file" id="file10" style="display: none">// Copyright 2024 Red Hat, Inc.
+		<pre class="file" id="file15" style="display: none">// Copyright 2024 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -2575,8 +3081,16 @@ func ConvertToOSV(vexData VEX, containerVulns bool) []OSV <span class="cov8" tit
         }
 
         <span class="cov8" title="1">for _, vulnerability := range vexData.Vulnerabilities </span><span class="cov8" title="1">{
+                summary, ok := getSummary(vulnerability)
+                if !ok </span><span class="cov8" title="1">{
+                        // SDEngine, the software that generates the VEX data,
+                        // specifically omits the summary if the CVE doesn't affect any known software.
+                        fmt.Printf("Skipped CVE %s because it doesn't affect any known software\n", vulnerability.Cve)
+                        continue</span>
+                }
+
                 // Create OSV vulnerability object for each CVE
-                osvVulnerability := OSV{
+                <span class="cov8" title="1">osvVulnerability := OSV{
                         IdInternal:    uniuri.New(),
                         SchemaVersion: "1.6.0",
                         Id:            vulnerability.Cve,
@@ -2586,14 +3100,14 @@ func ConvertToOSV(vexData VEX, containerVulns bool) []OSV <span class="cov8" tit
                         },
                         Modified:   time.Now().Format("2006-01-02T15:04:05Z"),
                         Published:  getPublishedDate(vulnerability),
-                        Summary:    getSummary(vulnerability),
+                        Summary:    summary,
                         Details:    getDetails(vulnerability),
                         References: getReferencesList(vulnerability),
                         Affected:   affectedList,
                 }
 
-                vulnerabilities = append(vulnerabilities, osvVulnerability)
-        }</span>
+                vulnerabilities = append(vulnerabilities, osvVulnerability)</span>
+        }
         <span class="cov8" title="1">return vulnerabilities</span>
 }
 
@@ -2746,13 +3260,14 @@ func getDetails(vulnerability *Vulnerability) string <span class="cov8" title="1
         <span class="cov0" title="0">panic("No CVE details found")</span>
 }
 
-func getSummary(vulnerability *Vulnerability) string <span class="cov8" title="1">{
+func getSummary(vulnerability *Vulnerability) (string, bool) <span class="cov8" title="1">{
         for _, note := range vulnerability.Notes </span><span class="cov8" title="1">{
                 if note.Category == "summary" </span><span class="cov8" title="1">{
-                        return note.Text
+                        return note.Text, true
                 }</span>
         }
-        <span class="cov0" title="0">panic("No CVE summary found")</span>
+
+        <span class="cov8" title="1">return "", false</span>
 }
 
 func getPublishedDate(vulnerability *Vulnerability) string <span class="cov8" title="1">{
@@ -2774,7 +3289,7 @@ func contains(affectedList []*Affected, affectedPackage Affected) bool <span cla
 }
 </pre>
 		
-		<pre class="file" id="file11" style="display: none">// Copyright 2024 Red Hat, Inc.
+		<pre class="file" id="file16" style="display: none">// Copyright 2024 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
