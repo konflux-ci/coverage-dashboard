@@ -57,15 +57,15 @@
 				
 				<option value="file0">github.com/konflux-ci/image-controller/cmd/main.go (20.0%)</option>
 				
-				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/application_controller.go (81.2%)</option>
+				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/application_controller.go (84.0%)</option>
 				
 				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (74.2%)</option>
 				
-				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (69.9%)</option>
+				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (70.0%)</option>
 				
 				<option value="file4">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller_service_account.go (78.9%)</option>
 				
-				<option value="file5">github.com/konflux-ci/image-controller/internal/controller/imagerepository_notifications.go (75.2%)</option>
+				<option value="file5">github.com/konflux-ci/image-controller/internal/controller/imagerepository_notifications.go (76.2%)</option>
 				
 				<option value="file6">github.com/konflux-ci/image-controller/pkg/metrics/metrics.go (39.1%)</option>
 				
@@ -536,7 +536,7 @@ func (r *ApplicationPullSecretCreator) Reconcile(ctx context.Context, req ctrl.R
 
                 <span class="cov8" title="1">if controllerutil.ContainsFinalizer(application, ApplicationSecretLinkToSaFinalizer) </span><span class="cov8" title="1">{
                         controllerutil.RemoveFinalizer(application, ApplicationSecretLinkToSaFinalizer)
-                        if err := r.Client.Update(ctx, application); err != nil </span><span class="cov0" title="0">{
+                        if err := r.Client.Update(ctx, application); err != nil </span><span class="cov8" title="1">{
                                 log.Error(err, "failed to remove application finalizer", l.Action, l.ActionUpdate)
                                 return ctrl.Result{}, err
                         }</span>
@@ -569,7 +569,7 @@ func (r *ApplicationPullSecretCreator) Reconcile(ctx context.Context, req ctrl.R
                         return ctrl.Result{}, err
                 }</span>
 
-                <span class="cov8" title="1">if err := r.createApplicationPullSecret(ctx, applicationPullSecretName, application, pullSecretNames); err != nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if err := r.createApplicationPullSecret(ctx, applicationPullSecretName, application, pullSecretNames); err != nil </span><span class="cov8" title="1">{
                         return ctrl.Result{}, err
                 }</span>
         }
@@ -715,7 +715,7 @@ func (r *ApplicationPullSecretCreator) createApplicationPullSecret(ctx context.C
                 return err
         }</span>
 
-        <span class="cov8" title="1">if err := r.Client.Create(ctx, applicationPullSecret); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := r.Client.Create(ctx, applicationPullSecret); err != nil </span><span class="cov8" title="1">{
                 log.Error(err, "failed to create application pull secret", "secretName", applicationPullSecretName, l.Action, l.ActionAdd)
                 return err
         }</span>
@@ -1339,9 +1339,10 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
                 <span class="cov8" title="1">return ctrl.Result{}, nil</span>
         }
 
-        <span class="cov8" title="1">if imageRepository.Status.State == imagerepositoryv1alpha1.ImageRepositoryStateDamaged </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if imageRepository.Status.State == imagerepositoryv1alpha1.ImageRepositoryStateDamaged ||
+                imageRepository.Status.State == imagerepositoryv1alpha1.ImageRepositoryStateMissing </span><span class="cov8" title="1">{
                 if controllerutil.ContainsFinalizer(imageRepository, ImageRepositoryFinalizer) </span><span class="cov8" title="1">{
-                        // Do not perform any action on object which status was manually damaged.
+                        // Do not perform any action on object which was damaged.
                         return ctrl.Result{}, nil
                 }</span>
                 // Finalizer is not present, let operator try to recover the image repository.
@@ -1382,7 +1383,8 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
                 }</span>
                 <span class="cov8" title="1">return ctrl.Result{}, nil</span>
         } else<span class="cov8" title="1"> {
-                // Finalizer is present, image repository should exists.
+                // Finalizer is present, image repository should exist.
+
                 // Check status fields and mark the object as damaged if status was lost.
                 s := imageRepository.Status
                 if s.State == "" || s.Image.URL == "" || s.Image.Visibility == "" ||
@@ -1391,9 +1393,27 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
                         imageRepository.Status.State = imagerepositoryv1alpha1.ImageRepositoryStateDamaged
                         imageRepository.Status.Message = fmt.Sprintf("Object status was damaged. Remove %s finalizer to try to recover.", ImageRepositoryFinalizer)
                         if err = r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov8" title="1">{
-                                log.Error(err, "failed to update imageRepository status", l.Action, l.ActionUpdate)
+                                log.Error(err, "failed to update status", l.Action, l.ActionUpdate)
                         }</span> else<span class="cov8" title="1"> {
                                 log.Info("Marked image repository as damaged", l.Action, l.ActionUpdate)
+                        }</span>
+                        <span class="cov8" title="1">return ctrl.Result{}, err</span>
+                }
+
+                // Check if the image repository exists on Quay.
+                <span class="cov8" title="1">imageRepoName, _ := r.getQuayImageNameAndURL(imageRepository)
+                repositoryExists, err := r.QuayClient.RepositoryExists(r.QuayOrganization, imageRepoName)
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Error(err, "failed to check image repository existance")
+                        return ctrl.Result{}, err
+                }</span>
+                <span class="cov8" title="1">if !repositoryExists </span><span class="cov8" title="1">{
+                        imageRepository.Status.State = imagerepositoryv1alpha1.ImageRepositoryStateMissing
+                        imageRepository.Status.Message = fmt.Sprintf("Image repository is missing. Remove %s finalizer to try to recover.", ImageRepositoryFinalizer)
+                        if err = r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov0" title="0">{
+                                log.Error(err, "failed to update status", l.Action, l.ActionUpdate)
+                        }</span> else<span class="cov8" title="1"> {
+                                log.Info("Marked image repository as missing", l.Action, l.ActionUpdate)
                         }</span>
                         <span class="cov8" title="1">return ctrl.Result{}, err</span>
                 }
@@ -2839,12 +2859,6 @@ func (r *ImageRepositoryReconciler) HandleNotifications(ctx context.Context, ima
                 return r.handleError(ctx, imageRepository, err, "Couldn't retrieve all Quay notifications")
         }</span>
         <span class="cov8" title="1">if !r.checkNotificationChangesExists(imageRepository, allNotifications) </span><span class="cov8" title="1">{
-                return nil
-        }</span>
-
-        <span class="cov8" title="1">repositoryExists, _ := r.QuayClient.RepositoryExists(r.QuayOrganization, imageRepository.Spec.Image.Name)
-        if !repositoryExists </span><span class="cov0" title="0">{
-                log.Info("repository does not exist, skipping handling notifications", "organization", r.QuayOrganization, "repository", imageRepository.Spec.Image.Name)
                 return nil
         }</span>
 
