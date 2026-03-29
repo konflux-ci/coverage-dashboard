@@ -57,7 +57,7 @@
 				
 				<option value="file0">github.com/konflux-ci/image-controller/cmd/main.go (20.0%)</option>
 				
-				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/application_controller.go (84.0%)</option>
+				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/application_controller.go (81.2%)</option>
 				
 				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (74.2%)</option>
 				
@@ -536,7 +536,7 @@ func (r *ApplicationPullSecretCreator) Reconcile(ctx context.Context, req ctrl.R
 
                 <span class="cov8" title="1">if controllerutil.ContainsFinalizer(application, ApplicationSecretLinkToSaFinalizer) </span><span class="cov8" title="1">{
                         controllerutil.RemoveFinalizer(application, ApplicationSecretLinkToSaFinalizer)
-                        if err := r.Client.Update(ctx, application); err != nil </span><span class="cov8" title="1">{
+                        if err := r.Client.Update(ctx, application); err != nil </span><span class="cov0" title="0">{
                                 log.Error(err, "failed to remove application finalizer", l.Action, l.ActionUpdate)
                                 return ctrl.Result{}, err
                         }</span>
@@ -569,7 +569,7 @@ func (r *ApplicationPullSecretCreator) Reconcile(ctx context.Context, req ctrl.R
                         return ctrl.Result{}, err
                 }</span>
 
-                <span class="cov8" title="1">if err := r.createApplicationPullSecret(ctx, applicationPullSecretName, application, pullSecretNames); err != nil </span><span class="cov8" title="1">{
+                <span class="cov8" title="1">if err := r.createApplicationPullSecret(ctx, applicationPullSecretName, application, pullSecretNames); err != nil </span><span class="cov0" title="0">{
                         return ctrl.Result{}, err
                 }</span>
         }
@@ -715,7 +715,7 @@ func (r *ApplicationPullSecretCreator) createApplicationPullSecret(ctx context.C
                 return err
         }</span>
 
-        <span class="cov8" title="1">if err := r.Client.Create(ctx, applicationPullSecret); err != nil </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if err := r.Client.Create(ctx, applicationPullSecret); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "failed to create application pull secret", "secretName", applicationPullSecretName, l.Action, l.ActionAdd)
                 return err
         }</span>
