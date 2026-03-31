@@ -85,11 +85,11 @@
 				
 				<option value="file14">github.com/konflux-ci/integration-service/status/reporter.go (77.4%)</option>
 				
-				<option value="file15">github.com/konflux-ci/integration-service/status/reporter_forgejo.go (61.0%)</option>
+				<option value="file15">github.com/konflux-ci/integration-service/status/reporter_forgejo.go (63.5%)</option>
 				
 				<option value="file16">github.com/konflux-ci/integration-service/status/reporter_github.go (78.6%)</option>
 				
-				<option value="file17">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (64.3%)</option>
+				<option value="file17">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (79.3%)</option>
 				
 				<option value="file18">github.com/konflux-ci/integration-service/status/status.go (63.3%)</option>
 				
@@ -3296,18 +3296,18 @@ func (mr *MockReporterInterfaceMockRecorder) ReturnCodeIsUnrecoverable(statusCod
 }</span>
 
 // UpdateStatusInComment mocks base method.
-func (m *MockReporterInterface) UpdateStatusInComment(arg0, arg1 string) (int, error) <span class="cov8" title="1">{
+func (m *MockReporterInterface) UpdateStatusInComment(arg0, arg1 string, arg2 bool) (int, error) <span class="cov8" title="1">{
         m.ctrl.T.Helper()
-        ret := m.ctrl.Call(m, "UpdateStatusInComment", arg0, arg1)
+        ret := m.ctrl.Call(m, "UpdateStatusInComment", arg0, arg1, arg2)
         ret0, _ := ret[0].(int)
         ret1, _ := ret[1].(error)
         return ret0, ret1
 }</span>
 
 // UpdateStatusInComment indicates an expected call of UpdateStatusInComment.
-func (mr *MockReporterInterfaceMockRecorder) UpdateStatusInComment(arg0, arg1 interface{}) *gomock.Call <span class="cov8" title="1">{
+func (mr *MockReporterInterfaceMockRecorder) UpdateStatusInComment(arg0, arg1, arg2 interface{}) *gomock.Call <span class="cov8" title="1">{
         mr.mock.ctrl.T.Helper()
-        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStatusInComment", reflect.TypeOf((*MockReporterInterface)(nil).UpdateStatusInComment), arg0, arg1)
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStatusInComment", reflect.TypeOf((*MockReporterInterface)(nil).UpdateStatusInComment), arg0, arg1, arg2)
 }</span>
 </pre>
 		
@@ -3515,7 +3515,7 @@ type ReporterInterface interface {
         // Is the return code a recoverable error
         ReturnCodeIsUnrecoverable(statusCode int) bool
         // Update status comment in the gitlab merge request, implemented and used in reporter_gitlab.go
-        UpdateStatusInComment(string, string) (int, error)
+        UpdateStatusInComment(string, string, bool) (int, error)
 }
 
 // GetPACGitProviderToken lookup for configured repo and fetch token from namespace
@@ -3815,23 +3815,47 @@ func (r *ForgejoReporter) setCommitStatus(report TestReport) (int, error) <span 
 }
 
 // UpdateStatusInComment searches and updates existing comments or creates a new comment in the PR which creates snapshot
-func (r *ForgejoReporter) UpdateStatusInComment(commentPrefix, comment string) (int, error) <span class="cov8" title="1">{
+// retry to get comment if no existing comment is found for final status to avoid the duplicate comments are created
+func (r *ForgejoReporter) UpdateStatusInComment(commentPrefix, comment string, isFinalStatus bool) (int, error) <span class="cov8" title="1">{
         var statusCode = 0
+        var resp *forgejo.Response
 
-        // get all existing integration test comments according to commentPrefix
-        // In Forgejo, PRs are issues, so we use the Issues service
-        allComments, resp, err := r.client.ListIssueComments(r.owner, r.repo, int64(r.pullRequest), forgejo.ListIssueCommentOptions{})
-        if resp != nil </span><span class="cov8" title="1">{
-                statusCode = resp.StatusCode
+        var commentIDs []int64
+        var err error
+        var allComments []*forgejo.Comment
+        err = retry.OnError(reporterRetryBackoff, func(err error) bool </span><span class="cov8" title="1">{
+                // statusCode 0 means no HTTP response was received (network/timeout error), always retry
+                retryable := !r.ReturnCodeIsUnrecoverable(statusCode)
+                if retryable </span><span class="cov8" title="1">{
+                        r.logger.Info("failed to find existing comment for final integration test status, retrying")
+                }</span>
+                <span class="cov8" title="1">return retryable</span>
+        }, func() error <span class="cov8" title="1">{
+                statusCode = 0
+                // get all existing integration test comments according to commentPrefix
+                // In Forgejo, PRs are issues, so we use the Issues service
+                allComments, resp, err = r.client.ListIssueComments(r.owner, r.repo, int64(r.pullRequest), forgejo.ListIssueCommentOptions{})
+                if resp != nil </span><span class="cov8" title="1">{
+                        statusCode = resp.StatusCode
+                }</span>
+                <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                        r.logger.Error(err, "error while getting all comments for pull-request", "pullRequest", r.pullRequest, "report.SnapshotName", r.snapshot.Name)
+                        return err
+                }</span>
+
+                <span class="cov8" title="1">commentIDs = r.GetExistingCommentIDs(allComments, commentPrefix)
+                if len(commentIDs) == 0 &amp;&amp; isFinalStatus </span><span class="cov8" title="1">{
+                        r.logger.Info("no existing comment found for final status, retrying to find comment since it might be created with delay")
+                        return fmt.Errorf("no existing comment found for final status with commentPrefix %s", commentPrefix)
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        })
+
+        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
+                r.logger.Error(err, "failed to get existing comment for final status after retries, will create a new comment without updating existing comments, please refer to the comment created on the PR", "commentPrefix", commentPrefix)
         }</span>
-        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
-                r.logger.Error(err, "error while getting all comments for pull-request", "pullRequest", r.pullRequest, "report.SnapshotName", r.snapshot.Name)
-                return statusCode, fmt.Errorf("error while getting all comments for pull-request %d: %w", r.pullRequest, err)
-        }</span>
 
-        <span class="cov8" title="1">commentIDs := r.GetExistingCommentIDs(allComments, commentPrefix)
-
-        if len(commentIDs) &gt; 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if len(commentIDs) &gt; 0 </span><span class="cov0" title="0">{
                 // update the first existing comment but delete others because sometimes there might be multiple existing comments for the same component due to previous intermittent errors
                 r.logger.Info("found multiple existing comments for the same component, updating the first one but delete others", "commentPrefix", commentPrefix, "count", len(allComments))
                 commentIdToBeUpdated := commentIDs[0]
@@ -3849,7 +3873,7 @@ func (r *ForgejoReporter) UpdateStatusInComment(commentPrefix, comment string) (
                         Body: comment,
                 }
                 err = retry.RetryOnConflict(retry.DefaultRetry, func() error </span><span class="cov0" title="0">{
-                        _, resp, err = r.client.EditIssueComment(r.owner, r.repo, commentIdToBeUpdated, editOpt)
+                        _, resp, err := r.client.EditIssueComment(r.owner, r.repo, commentIdToBeUpdated, editOpt)
                         if resp != nil </span><span class="cov0" title="0">{
                                 statusCode = resp.StatusCode
                         }</span>
@@ -3865,7 +3889,7 @@ func (r *ForgejoReporter) UpdateStatusInComment(commentPrefix, comment string) (
                 createOpt := forgejo.CreateIssueCommentOption{
                         Body: comment,
                 }
-                _, resp, err = r.client.CreateIssueComment(r.owner, r.repo, int64(r.pullRequest), createOpt)
+                _, resp, err := r.client.CreateIssueComment(r.owner, r.repo, int64(r.pullRequest), createOpt)
                 if resp != nil </span><span class="cov8" title="1">{
                         statusCode = resp.StatusCode
                 }</span>
@@ -4640,7 +4664,7 @@ func (r *GitHubReporter) Detect(snapshot *applicationapiv1alpha1.Snapshot) bool 
 }</span>
 
 // blank implementation to satisfy ReporterInterface
-func (r *GitHubReporter) UpdateStatusInComment(arg1, arg2 string) (int, error) <span class="cov0" title="0">{
+func (r *GitHubReporter) UpdateStatusInComment(arg0, arg1 string, arg2 bool) (int, error) <span class="cov0" title="0">{
         return 0, nil
 }</span>
 
@@ -4922,6 +4946,54 @@ func (r *GitLabReporter) setCommitStatus(report TestReport) (int, error) <span c
                 opt.TargetURL = gitlab.Ptr(url)
         }</span>
 
+        // try to find the MR pipeline from target project first since that's the one shown in MR view,
+        // if not found, then try to find the pipeline in source project, if still not found, then create commit status without pipeline association
+        // Give more tries because the integration status reporter is called after build pipeline is triggered
+        <span class="cov8" title="1">var existingMergeRequestPipelineID int
+        var joinedError error
+        err = retry.OnError(reporterRetryBackoff, func(err error) bool </span><span class="cov8" title="1">{
+                // statusCode 0 means no HTTP response was received (network/timeout error), always retry
+                retryable := !r.ReturnCodeIsUnrecoverable(statusCode)
+                if retryable </span><span class="cov8" title="1">{
+                        r.logger.Info("retrying to get Merge Request pipeline ID", "target project", r.targetProjectID, "source project", r.sourceProjectID, "error", err.Error())
+                }</span>
+                <span class="cov8" title="1">return retryable</span>
+        }, func() error <span class="cov8" title="1">{
+                statusCode = 0 // reset before each attempt to avoid stale values
+                projectIDs := []int{r.targetProjectID, r.sourceProjectID}
+                for _, projectID := range projectIDs </span><span class="cov8" title="1">{
+                        var pID int
+                        var getErr error
+                        pID, statusCode, getErr = r.GetExistingMergeRequestPipelineID(projectID, r.sha)
+                        if getErr != nil </span><span class="cov0" title="0">{
+                                r.logger.Info("failed to get existing Merge Request pipeline", "projectID: ", projectID, "commitSHA", r.sha, "statusCode", statusCode, "error", getErr)
+                                joinedError = errors.Join(joinedError, getErr)
+                                return getErr
+                        }</span>
+                        <span class="cov8" title="1">if pID != 0 </span><span class="cov8" title="1">{
+                                existingMergeRequestPipelineID = pID
+                                r.logger.Info("found existing merge request pipeline", "projectID", projectID, "pipelineID", pID)
+                                return nil
+                        }</span>
+                }
+                <span class="cov8" title="1">return fmt.Errorf("can't find existing merge request pipeline for commit %s in both source project %d and target project %d", r.sha, r.sourceProjectID, r.targetProjectID)</span>
+        })
+
+        <span class="cov8" title="1">if existingMergeRequestPipelineID != 0 </span><span class="cov8" title="1">{
+                opt.PipelineID = gitlab.Ptr(existingMergeRequestPipelineID)
+        }</span> else<span class="cov8" title="1"> {
+                logFields := []interface{}{
+                        "commitSHA", r.sha,
+                        "sourceProjectID", r.sourceProjectID,
+                        "targetProjectID", r.targetProjectID,
+                }
+                if err != nil &amp;&amp; statusCode != 200 </span><span class="cov0" title="0">{
+                        r.logger.Error(joinedError, "API error while searching for Merge Request pipeline, proceeding without association", logFields...)
+                }</span> else<span class="cov8" title="1"> {
+                        r.logger.Info("no existing merge request pipeline found after retries, creating commit status without pipeline association", logFields...)
+                }</span>
+        }
+
         // Fetch commit statuses only if necessary
         <span class="cov8" title="1">if glState == gitlab.Running || glState == gitlab.Pending </span><span class="cov8" title="1">{
                 allCommitStatuses, response, err := r.client.Commits.GetCommitStatuses(r.sourceProjectID, r.sha, nil)
@@ -4985,27 +5057,51 @@ func (r *GitLabReporter) setCommitStatus(report TestReport) (int, error) <span c
 }
 
 // UpdateStatusInComment searches and deletes existing comments according to commentPrefix and create a new comment in the MR which creates snapshot
-func (r *GitLabReporter) UpdateStatusInComment(commentPrefix, comment string) (int, error) <span class="cov8" title="1">{
+// retry to get comment if not existing comment is found for final status
+func (r *GitLabReporter) UpdateStatusInComment(commentPrefix, comment string, isFinalStatus bool) (int, error) <span class="cov8" title="1">{
         var statusCode = 0
+        var response *gitlab.Response
 
-        // get all existing integration test comment according to commentPrefix in integration test summary and delete them
-        allNotes, response, err := r.client.Notes.ListMergeRequestNotes(r.targetProjectID, r.mergeRequest, nil)
-        if response != nil </span><span class="cov8" title="1">{
-                statusCode = response.StatusCode
+        var err error
+        var noteIDs []int
+        var allNotes []*gitlab.Note
+        err = retry.OnError(reporterRetryBackoff, func(err error) bool </span><span class="cov8" title="1">{
+                // statusCode 0 means no HTTP response was received (network/timeout error), always retry
+                retryable := !r.ReturnCodeIsUnrecoverable(statusCode)
+                if retryable </span><span class="cov8" title="1">{
+                        r.logger.Info("failed to find existing comment for final integration test status, retrying")
+                }</span>
+                <span class="cov8" title="1">return retryable</span>
+        }, func() error <span class="cov8" title="1">{
+                statusCode = 0
+                // get all existing integration test comment according to commentPrefix in integration test summary and delete them
+                allNotes, response, err = r.client.Notes.ListMergeRequestNotes(r.targetProjectID, r.mergeRequest, nil)
+                if err != nil </span><span class="cov0" title="0">{
+                        r.logger.Error(err, "error while getting all comments for merge-request", "mergeRequest", r.mergeRequest, "report.SnapshotName", r.snapshot.Name)
+                        return err
+                }</span>
+                <span class="cov8" title="1">if response != nil </span><span class="cov8" title="1">{
+                        statusCode = response.StatusCode
+                }</span>
+
+                <span class="cov8" title="1">noteIDs = r.GetExistingCommentIDs(allNotes, commentPrefix)
+                if len(noteIDs) == 0 &amp;&amp; isFinalStatus </span><span class="cov8" title="1">{
+                        r.logger.Info("no existing comment found with matching commentPrefix for final status, retrying to get comment", "commentPrefix", commentPrefix)
+                        return fmt.Errorf("no existing comment found with matching commentPrefix %s for final status", commentPrefix)
+                }</span>
+                <span class="cov8" title="1">return nil</span>
+        })
+
+        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
+                r.logger.Error(err, "failed to get existing comment for final status after retries, will create a new comment without updating existing comments, please refer to the comment created on the MR for details", "commentPrefix", commentPrefix)
         }</span>
-        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
-                r.logger.Error(err, "error while getting all comments for merge-request", "mergeRequest", r.mergeRequest, "report.SnapshotName", r.snapshot.Name)
-                return statusCode, fmt.Errorf("error while getting all comments for merge-request %d: %w", r.mergeRequest, err)
-        }</span>
 
-        <span class="cov8" title="1">noteIDs := r.GetExistingCommentIDs(allNotes, commentPrefix)
-
-        if len(noteIDs) &gt; 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if len(noteIDs) &gt; 0 </span><span class="cov8" title="1">{
                 // update the first existing comment but delete others because sometimes there might be multiple existing comments for the same component due to previous intermittent errors
                 r.logger.Info("found multiple existing notes for the same component, updating the first one but delete others", "commentPrefix", commentPrefix, "count", len(allNotes))
                 noteIdToBeUpdated := noteIDs[0]
 
-                if len(noteIDs) &gt; 1 </span><span class="cov0" title="0">{
+                if len(noteIDs) &gt; 1 </span><span class="cov8" title="1">{
                         r.logger.Info("deleting other existing notes since we will update the first one", "noteIDsToBeDeleted", noteIDs[1:])
                         statusCode, err = r.DeleteExistingNotes(noteIDs[1:])
                         if err != nil </span><span class="cov0" title="0">{
@@ -5014,18 +5110,18 @@ func (r *GitLabReporter) UpdateStatusInComment(commentPrefix, comment string) (i
                 }
 
                 // update the first existing comment
-                <span class="cov0" title="0">noteOptions := gitlab.UpdateMergeRequestNoteOptions{Body: &amp;comment}
-                err = retry.RetryOnConflict(retry.DefaultRetry, func() error </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">noteOptions := gitlab.UpdateMergeRequestNoteOptions{Body: &amp;comment}
+                err = retry.RetryOnConflict(retry.DefaultRetry, func() error </span><span class="cov8" title="1">{
                         _, response, err = r.client.Notes.UpdateMergeRequestNote(r.targetProjectID, r.mergeRequest, noteIdToBeUpdated, &amp;noteOptions)
                         return err
                 }</span>)
-                <span class="cov0" title="0">if response != nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if response != nil </span><span class="cov8" title="1">{
                         statusCode = response.StatusCode
                 }</span>
-                <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
                         return statusCode, fmt.Errorf("error while updating comment %d for merge-request %d: %w", noteIdToBeUpdated, r.mergeRequest, err)
                 }</span>
-                <span class="cov0" title="0">r.logger.Info("updated existing note with matching commentPrefix", "noteID", noteIdToBeUpdated, "commentPrefix", commentPrefix)</span>
+                <span class="cov8" title="1">r.logger.Info("updated existing note with matching commentPrefix", "noteID", noteIdToBeUpdated, "commentPrefix", commentPrefix)</span>
         } else<span class="cov8" title="1"> {
                 // create a new comment
                 r.logger.Info("no existing notes found with matching commentPrefix, creating a new note", "commentPrefix", commentPrefix)
@@ -5064,7 +5160,7 @@ func (r *GitLabReporter) GetExistingCommentIDs(notes []*gitlab.Note, commentPref
         for _, note := range notes </span><span class="cov8" title="1">{
                 // get existing note by search commentTitle in report summary
                 // GetExistingCommentIDs for github comment has the similar logic
-                if strings.Contains(note.Body, commentPrefix) </span><span class="cov0" title="0">{
+                if strings.Contains(note.Body, commentPrefix) </span><span class="cov8" title="1">{
                         r.logger.Info("found note ID with a matching commentTitle", "commentTitle", commentPrefix, "noteID", &amp;note.ID)
                         commentIDs = append(commentIDs, note.ID)
                 }</span>
@@ -5074,33 +5170,58 @@ func (r *GitLabReporter) GetExistingCommentIDs(notes []*gitlab.Note, commentPref
         return commentIDs</span>
 }
 
+func (r *GitLabReporter) GetExistingMergeRequestPipelineID(sourceProjectID int, sha string) (int, int, error) <span class="cov8" title="1">{
+        opt := &amp;gitlab.ListProjectPipelinesOptions{
+                SHA:     gitlab.Ptr(sha),
+                OrderBy: gitlab.Ptr("id"),
+                Sort:    gitlab.Ptr("desc"),
+        }
+
+        var statusCode int
+        pipelines, response, err := r.client.Pipelines.ListProjectPipelines(sourceProjectID, opt)
+        if response != nil </span><span class="cov8" title="1">{
+                statusCode = response.StatusCode
+        }</span>
+        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                r.logger.Error(err, "failed to list Merge Request pipelines", "sourceProjectID", sourceProjectID, "commitSHA", sha)
+                return 0, statusCode, err
+        }</span>
+
+        <span class="cov8" title="1">if len(pipelines) == 0 </span><span class="cov0" title="0">{
+                r.logger.Info("No Merge Request pipelines found for commit", "commitSHA", sha)
+                return 0, statusCode, nil
+        }</span>
+
+        <span class="cov8" title="1">return pipelines[0].ID, statusCode, nil</span>
+}
+
 // DeleteExistingNotes deletes existing GitLab note with given noteIDs.
-func (r *GitLabReporter) DeleteExistingNotes(noteIDs []int) (int, error) <span class="cov0" title="0">{
+func (r *GitLabReporter) DeleteExistingNotes(noteIDs []int) (int, error) <span class="cov8" title="1">{
         var lastStatusCode = 0
         var errs []error // collect errors during deletion
 
-        for _, noteID := range noteIDs </span><span class="cov0" title="0">{
-                err := retry.RetryOnConflict(retry.DefaultRetry, func() error </span><span class="cov0" title="0">{
+        for _, noteID := range noteIDs </span><span class="cov8" title="1">{
+                err := retry.RetryOnConflict(retry.DefaultRetry, func() error </span><span class="cov8" title="1">{
                         response, err := r.client.Notes.DeleteMergeRequestNote(r.targetProjectID, r.mergeRequest, noteID)
-                        if response != nil </span><span class="cov0" title="0">{
+                        if response != nil </span><span class="cov8" title="1">{
                                 lastStatusCode = response.StatusCode
                         }</span>
-                        <span class="cov0" title="0">return err</span>
+                        <span class="cov8" title="1">return err</span>
                 })
 
-                <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
                         r.logger.Error(err, "failed to delete note", "noteID", noteID)
                         errs = append(errs, fmt.Errorf("noteID %d: %w", noteID, err))
                         continue</span> // continue to delete next note
                 }
-                <span class="cov0" title="0">r.logger.Info("existing note deleted", "noteID", noteID)</span>
+                <span class="cov8" title="1">r.logger.Info("existing note deleted", "noteID", noteID)</span>
         }
 
-        <span class="cov0" title="0">if len(errs) &gt; 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if len(errs) &gt; 0 </span><span class="cov0" title="0">{
                 return lastStatusCode, fmt.Errorf("errors occurred during deletion existing notes on mergerequest %d of target project %d: %v", r.mergeRequest, r.targetProjectID, errs)
         }</span>
 
-        <span class="cov0" title="0">return lastStatusCode, nil</span>
+        <span class="cov8" title="1">return lastStatusCode, nil</span>
 }
 
 // ReportStatus reports test result to gitlab
@@ -5943,7 +6064,7 @@ func IterateIntegrationTestScenarioWithSameStatus(ctx context.Context, client cl
                         if err != nil </span><span class="cov0" title="0">{
                                 return statusCode, fmt.Errorf("failed to format summary message: %w", err)
                         }</span>
-                        <span class="cov8" title="1">statusCode, err := reporter.UpdateStatusInComment(commentPrefix, commentText)
+                        <span class="cov8" title="1">statusCode, err := reporter.UpdateStatusInComment(commentPrefix, commentText, integrationTestStatusDetail.Status.IsFinal())
                         if err != nil </span><span class="cov0" title="0">{
                                 return statusCode, err
                         }</span>
