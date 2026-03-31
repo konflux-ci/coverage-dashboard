@@ -170,7 +170,7 @@ jobs:
                 STATUS="no_tests"
                 COVERAGE=null
               else
-                # Run all tests (unit + integration) to match CodeCov behavior
+                # Run tests normally (matching CodeCov/Makefile behavior)
                 # Continue even if tests fail - capture partial coverage data
                 if go test -coverprofile=coverage_raw.out $TESTABLE_PACKAGES; then
                   echo "    ✅ Tests passed"
@@ -244,12 +244,11 @@ jobs:
                 # Find packages in coverage.out
                 PACKAGES_WITH_COVERAGE=$(echo "$COVERAGE_STATS" | grep -v "^TOTAL:" | cut -d: -f1)
 
-                # Count actual statements in packages WITHOUT tests
+                # Count statements in packages WITHOUT tests using AST-based method
                 UNTESTED_STMTS=0
-                echo "    Counting statements in packages without tests..."
+                echo "    Counting statements in untested packages..."
                 for pkg in $INCLUDED_PACKAGES; do
                   if ! echo "$PACKAGES_WITH_COVERAGE" | grep -q "^${pkg}$"; then
-                    # Package not in coverage - get actual statement count
                     echo "      Analyzing $pkg..."
 
                     # Get package directory and name
@@ -257,21 +256,25 @@ jobs:
                     PKG_NAME=$(go list -f '{{.Name}}' "$pkg" 2>/dev/null || echo "")
 
                     if [ -n "$PKG_DIR" ] && [ -n "$PKG_NAME" ]; then
-                      # Create temporary test file to enable coverage
-                      echo "package $PKG_NAME" > "$PKG_DIR/zzz_temp_test.go"
-                      echo "" >> "$PKG_DIR/zzz_temp_test.go"
-                      echo "import \"testing\"" >> "$PKG_DIR/zzz_temp_test.go"
-                      echo "" >> "$PKG_DIR/zzz_temp_test.go"
-                      echo "func TestCoverageDummy(t *testing.T) {}" >> "$PKG_DIR/zzz_temp_test.go"
-                      # Run coverage
-                      if go test -coverprofile=pkg_coverage.out "$pkg" >/dev/null 2>&1; then
-                        # Count statements (excluding temp test file)
-                        PKG_STMTS=$(awk 'NR>1 && $1 !~ /zzz_temp_test\.go/ {sum+=$2} END {print sum+0}' pkg_coverage.out)
+                      # Check if package has test files
+                      HAS_TESTS=$(go list -f '{{if or .TestGoFiles .XTestGoFiles}}yes{{end}}' "$pkg" 2>/dev/null)
+
+                      if [ -z "$HAS_TESTS" ]; then
+                        # No test files - create minimal internal test (same package to see unexported code)
+                        echo "package $PKG_NAME" > "$PKG_DIR/zzz_coverage_test.go"
+                        echo "import \"testing\"" >> "$PKG_DIR/zzz_coverage_test.go"
+                        echo "func TestCoverage(t *testing.T) {}" >> "$PKG_DIR/zzz_coverage_test.go"
+                      fi
+
+                      # Run with -run=^$ to match no real tests
+                      if go test -run=^$ -coverprofile=pkg_coverage.out "$pkg" >/dev/null 2>&1; then
+                        PKG_STMTS=$(awk 'NR>1 && $1 !~ /zzz_coverage_test\.go/ {sum+=$2} END {print sum+0}' pkg_coverage.out)
                         UNTESTED_STMTS=$((UNTESTED_STMTS + PKG_STMTS))
                         echo "        → $PKG_STMTS statements (0% coverage)"
                       fi
+
                       # Cleanup
-                      rm -f "$PKG_DIR/zzz_temp_test.go" pkg_coverage.out
+                      rm -f pkg_coverage.out "$PKG_DIR/zzz_coverage_test.go"
                     fi
                   fi
                 done
@@ -283,7 +286,7 @@ jobs:
                   COVERAGE=$(awk "BEGIN {printf \"%.1f\", ($COVERED_STMTS / $TOTAL_STMTS) * 100}")
                   echo "    Coverage: $COVERED_STMTS covered / $TOTAL_STMTS total = $COVERAGE%"
                   if [ $UNTESTED_STMTS -gt 0 ]; then
-                    echo "    (Including $UNTESTED_STMTS statements from packages without tests)"
+                    echo "    (Including $UNTESTED_STMTS statements from untested packages)"
                   fi
                 else
                   COVERAGE="0.0"

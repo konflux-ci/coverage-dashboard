@@ -6,6 +6,7 @@ exclude_dirs:
     - hack/
     - proto/
     - cmd/
+    - api/v1alpha1
     - /fake(/|$)
     - /mock(s)?(/|$)
     - /e2e(-tests)?(/|$)
@@ -16,4 +17,3 @@ exclude_files:
     - '*.pb.go'
     - mock_*.go
     - '*_mock.go'
-    - dependencyupdatecheck_types.go
