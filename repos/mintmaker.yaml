@@ -5,6 +5,7 @@ exclude_dirs:
     - .tekton/
     - hack/
     - proto/
+    - cmd/
     - /fake(/|$)
     - /mock(s)?(/|$)
     - /e2e(-tests)?(/|$)
@@ -15,3 +16,4 @@ exclude_files:
     - '*.pb.go'
     - mock_*.go
     - '*_mock.go'
+    - dependencyupdatecheck_types.go
