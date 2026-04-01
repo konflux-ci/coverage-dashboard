@@ -102,8 +102,8 @@ jobs:
                   */*)
                     # Pattern with slashes - treat as path pattern
                     if [[ "$PATTERN" == /* ]]; then
-                      # Starts with slash, use as-is but escape special chars
-                      ESCAPED_PATTERN=$(echo "$PATTERN" | sed 's/[[\.*^$()+{}|]/\\&/g')
+                      # Starts with slash - already a regex pattern, use as-is
+                      ESCAPED_PATTERN="$PATTERN"
                     else
                       # Add leading slash and treat trailing slash specially
                       if [[ "$PATTERN" == */ ]]; then
@@ -166,10 +166,11 @@ jobs:
               done
 
               if [ -z "$TESTABLE_PACKAGES" ]; then
-                echo "    ❌ No packages with test files found"
-                STATUS="failed"
+                echo "    ⚠️  No packages with test files found"
+                STATUS="no_tests"
                 COVERAGE=null
               else
+                # Run tests normally (matching CodeCov/Makefile behavior)
                 # Continue even if tests fail - capture partial coverage data
                 if go test -coverprofile=coverage_raw.out $TESTABLE_PACKAGES; then
                   echo "    ✅ Tests passed"
@@ -188,11 +189,110 @@ jobs:
                 FILE_COUNT=$(echo "$EXCLUDE_FILES" | yq 'length')
                 for j in $(seq 0 $((FILE_COUNT - 1))); do
                   FILE=$(echo "$EXCLUDE_FILES" | yq ".[$j]" | tr -d '"')
-                  echo "    Removing $FILE from coverage"
-                  sed -i "/$FILE/d" coverage.out || true
+                  echo "    Removing files matching: $FILE"
+
+                  # Convert glob patterns to regex for sed/grep
+                  # *.pb.go -> .*\.pb\.go
+                  # mock_*.go -> mock_.*\.go
+                  PATTERN=$(echo "$FILE" | sed 's/\./\\./g' | sed 's/\*/\.\*/g')
+
+                  # Remove matching lines
+                  grep -v "$PATTERN" coverage.out > coverage.out.tmp || true
+                  mv coverage.out.tmp coverage.out
                 done
 
-                COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+                # Calculate coverage including packages not in coverage.out
+                # Parse coverage.out directly (format: file:lines numStmts execCount)
+                COVERAGE_STATS=$(awk '
+                  NR==1 {next}  # Skip "mode: set" line
+                  {
+                    # Extract package from file path
+                    split($1, parts, ":")
+                    file = parts[1]
+                    # Remove filename to get package
+                    n = split(file, pathParts, "/")
+                    pkg = ""
+                    for (i=1; i<n; i++) {
+                      if (i>1) pkg = pkg "/"
+                      pkg = pkg pathParts[i]
+                    }
+
+                    numStmts = $2
+                    execCount = $3
+
+                    pkgTotal[pkg] += numStmts
+                    if (execCount > 0) {
+                      pkgCovered[pkg] += numStmts
+                    }
+                  }
+                  END {
+                    total_stmts = 0
+                    covered_stmts = 0
+                    for (p in pkgTotal) {
+                      total_stmts += pkgTotal[p]
+                      covered_stmts += pkgCovered[p]
+                      print p ":" pkgCovered[p] ":" pkgTotal[p]
+                    }
+                    print "TOTAL:" covered_stmts ":" total_stmts
+                  }
+                ' coverage.out)
+
+                # Extract totals from coverage.out (only packages with tests)
+                COVERED_STMTS=$(echo "$COVERAGE_STATS" | grep "^TOTAL:" | cut -d: -f2)
+                TOTAL_STMTS_TESTED=$(echo "$COVERAGE_STATS" | grep "^TOTAL:" | cut -d: -f3)
+
+                # Find packages in coverage.out
+                PACKAGES_WITH_COVERAGE=$(echo "$COVERAGE_STATS" | grep -v "^TOTAL:" | cut -d: -f1)
+
+                # Count statements in packages WITHOUT tests
+                UNTESTED_STMTS=0
+                echo "    Counting statements in untested packages..."
+                for pkg in $INCLUDED_PACKAGES; do
+                  if ! echo "$PACKAGES_WITH_COVERAGE" | grep -Fxq "$pkg"; then
+                    echo "      Analyzing $pkg..."
+
+                    # Get package directory and name
+                    PKG_DIR=$(go list -f '{{.Dir}}' "$pkg" 2>/dev/null || echo "")
+                    PKG_NAME=$(go list -f '{{.Name}}' "$pkg" 2>/dev/null || echo "")
+
+                    if [ -n "$PKG_DIR" ] && [ -n "$PKG_NAME" ]; then
+                      # Check if package has test files
+                      HAS_TESTS=$(go list -f '{{if or .TestGoFiles .XTestGoFiles}}yes{{end}}' "$pkg" 2>/dev/null)
+
+                      if [ -z "$HAS_TESTS" ]; then
+                        # No test files - create minimal internal test (same package to see unexported code)
+                        echo "package $PKG_NAME" > "$PKG_DIR/zzz_coverage_test.go"
+                        echo "import \"testing\"" >> "$PKG_DIR/zzz_coverage_test.go"
+                        echo "func TestCoverage(t *testing.T) {}" >> "$PKG_DIR/zzz_coverage_test.go"
+                      fi
+
+                      # Run with -run=^$ to match no real tests
+                      if go test -run=^$ -coverprofile=pkg_coverage.out "$pkg" >/dev/null 2>&1; then
+                        PKG_STMTS=$(awk 'NR>1 && $1 !~ /zzz_coverage_test\.go/ {sum+=$2} END {print sum+0}' pkg_coverage.out)
+                        UNTESTED_STMTS=$((UNTESTED_STMTS + PKG_STMTS))
+                        echo "        → $PKG_STMTS statements (0% coverage)"
+                      else
+                        echo "        ⚠️  Failed to generate coverage for $pkg"
+                      fi
+
+                      # Cleanup
+                      rm -f pkg_coverage.out "$PKG_DIR/zzz_coverage_test.go"
+                    fi
+                  fi
+                done
+
+                # Calculate total coverage including untested packages
+                TOTAL_STMTS=$((TOTAL_STMTS_TESTED + UNTESTED_STMTS))
+
+                if [ $TOTAL_STMTS -gt 0 ]; then
+                  COVERAGE=$(awk "BEGIN {printf \"%.1f\", ($COVERED_STMTS / $TOTAL_STMTS) * 100}")
+                  echo "    Coverage: $COVERED_STMTS covered / $TOTAL_STMTS total = $COVERAGE%"
+                  if [ $UNTESTED_STMTS -gt 0 ]; then
+                    echo "    (Including $UNTESTED_STMTS statements from untested packages)"
+                  fi
+                else
+                  COVERAGE="0.0"
+                fi
 
                 # Extract per-package coverage by parsing coverage profile directly
                 # This gives statement-weighted coverage, not function-count average
@@ -234,14 +334,19 @@ jobs:
                 mkdir -p ../../gh-pages/coverage/$REPO
                 cp coverage.html ../../gh-pages/coverage/$REPO/index.html
               else
-                echo "    ❌ No coverage file generated - tests may not have run properly"
-                STATUS="failed"
+                # Only mark as failed if we haven't already determined there are no tests
+                if [ "$STATUS" != "no_tests" ]; then
+                  echo "    ❌ No coverage file generated - tests may not have run properly"
+                  STATUS="failed"
+                else
+                  echo "    ℹ️  No coverage file (no test files found)"
+                fi
                 COVERAGE=null
                 PACKAGES_JSON="[]"
               fi
             else
-              echo "    ❌ No testable packages found"
-              STATUS="failed"
+              echo "    ⚠️  No testable packages found"
+              STATUS="no_tests"
               COVERAGE=null
               PACKAGES_JSON="[]"
             fi
