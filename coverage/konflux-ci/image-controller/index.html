@@ -55,13 +55,13 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/image-controller/cmd/main.go (20.0%)</option>
+				<option value="file0">github.com/konflux-ci/image-controller/cmd/main.go (44.9%)</option>
 				
-				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/application_controller.go (81.2%)</option>
+				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/application_controller.go (79.6%)</option>
 				
 				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (74.2%)</option>
 				
-				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (70.0%)</option>
+				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (69.7%)</option>
 				
 				<option value="file4">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller_service_account.go (78.9%)</option>
 				
@@ -112,6 +112,7 @@ import (
         "net/http"
         "net/url"
         "os"
+        "path/filepath"
         "strings"
         "time"
 
@@ -145,10 +146,20 @@ import (
 )
 
 const (
-        quayApiPath string = "/workspace/quayapiurl"
+        QuaySecretMountPointEnvVarName = "QUAY_SECRET_MOUNT_POINT" // #nosec G101
+        QuayApiUrlEnvVarName           = "QUAY_API_URL"
+        QuayOrgEnvVarName              = "QUAY_ORG"
+        QuayTokenEnvVarName            = "QUAY_TOKEN"
+        QuayAdditionalCAEnvVarName     = "QUAY_ADDITIONAL_CA"
+
+        // Default mount point of k8s secret with Quay configuration for the operator.
+        // Could be changed by setting QUAY_SECRET_MOUNT_POINT environment variable.
+        DefaultQuaySecretMountPoint string = "/workspace"
+        // Fields of the k8s secret:
+        QuayApiFileName string = "quayapiurl"
         /* #nosec it's the path to the token, not the token itself */
-        quayTokenPath string = "/workspace/quaytoken"
-        quayOrgPath   string = "/workspace/organization"
+        QuayTokenFileName string = "quaytoken"
+        QuayOrgFileName   string = "organization"
 )
 
 var (
@@ -269,53 +280,21 @@ func main() <span class="cov0" title="0">{
                 os.Exit(1)
         }</span>
 
-        // Read Quay config (from the mounted secret)
-        <span class="cov0" title="0">readConfig := func(path string) (string, error) </span><span class="cov0" title="0">{
-                /* #nosec we are sure the input path is clean */
-                tokenContent, err := os.ReadFile(path)
-                if err != nil </span><span class="cov0" title="0">{
-                        return "", fmt.Errorf("unable to read %s: %w", path, err)
-                }</span>
-                <span class="cov0" title="0">return strings.TrimSpace(string(tokenContent)), nil</span>
-        }
-
-        <span class="cov0" title="0">quayApiUrl, err := readConfig(quayApiPath)
+        <span class="cov0" title="0">quayApiUrl, quayOrganization, buildQuayClientFunc, err := readQuayConfig()
         if err != nil </span><span class="cov0" title="0">{
-                if !errors.Is(err, os.ErrNotExist) </span><span class="cov0" title="0">{
-                        setupLog.Error(err, "unable to read Quay API URL")
-                        os.Exit(2)
-                }</span>
-                // Quay API URL is not set, fall back to default
-                <span class="cov0" title="0">quayApiUrl = "https://quay.io/api/v1"</span>
-        }
-        <span class="cov0" title="0">setupLog.Info(fmt.Sprintf("using Quay API URL: %s", quayApiUrl))
-
-        quayOrganization, err := readConfig(quayOrgPath)
-        if err != nil </span><span class="cov0" title="0">{
-                setupLog.Error(err, "unable to read Quay Org")
+                setupLog.Error(err, "failed to read Quay config")
                 os.Exit(2)
         }</span>
-        <span class="cov0" title="0">setupLog.Info(fmt.Sprintf("using Quay Org: %s", quayOrganization))
-
-        quayHttpClient, err := buildQuayHttpClient()
-        if err != nil </span><span class="cov0" title="0">{
-                setupLog.Error(err, "unable to build Quay http client")
-        }</span>
-        <span class="cov0" title="0">buildQuayClientFunc := func() (quay.QuayService, error) </span><span class="cov0" title="0">{
-                token, err := readConfig(quayTokenPath)
-                if err != nil </span><span class="cov0" title="0">{
-                        return nil, fmt.Errorf("unable to get quay token: %w", err)
-                }</span>
-                <span class="cov0" title="0">quayClient := quay.NewQuayClient(quayHttpClient, token, quayApiUrl)
-                return quayClient, nil</span>
-        }
         <span class="cov0" title="0">quayHost, err := getQuayHost(quayApiUrl)
         if err != nil </span><span class="cov0" title="0">{
-                setupLog.Error(err, "unable to obtain Quay host from API URL")
+                setupLog.Error(err, "unable to obtain Quay host from API URL: "+quayApiUrl)
                 os.Exit(2)
         }</span>
+        <span class="cov0" title="0">setupLog.Info(fmt.Sprintf("Quay host: %s", quayHost))
+        setupLog.Info(fmt.Sprintf("Quay API URL: %s", quayApiUrl))
+        setupLog.Info(fmt.Sprintf("Quay Org: %s", quayOrganization))
 
-        <span class="cov0" title="0">if err = (&amp;controllers.ComponentReconciler{
+        if err = (&amp;controllers.ComponentReconciler{
                 Client: mgr.GetClient(),
                 Scheme: mgr.GetScheme(),
         }).SetupWithManager(mgr); err != nil </span><span class="cov0" title="0">{
@@ -373,13 +352,108 @@ func main() <span class="cov0" title="0">{
         }</span>
 }
 
-func getCacheExcludedObjectsTypes() []client.Object <span class="cov0" title="0">{
+func getCacheExcludedObjectsTypes() []client.Object <span class="cov8" title="1">{
         return []client.Object{
                 &amp;imagerepositoryv1alpha1.ImageRepository{},
                 &amp;corev1.Secret{},
                 &amp;corev1.ConfigMap{},
         }
 }</span>
+
+// readConfig reads single operator config value (e.g. quay token).
+// The config value is taken from the given environment variable or file (usually the mounted secret).
+// If both specified and present environment variable takes precedence.
+func readConfig(envVarName string, path string) (string, error) <span class="cov8" title="1">{
+        configValue := ""
+        if envVarName != "" </span><span class="cov8" title="1">{
+                if val, exists := os.LookupEnv(envVarName); exists </span><span class="cov8" title="1">{
+                        configValue = val
+                }</span>
+        }
+
+        <span class="cov8" title="1">if configValue == "" &amp;&amp; path != "" </span><span class="cov8" title="1">{
+                fileInfo, err := os.Stat(path)
+                if err != nil </span><span class="cov8" title="1">{
+                        if errors.Is(err, os.ErrNotExist) </span><span class="cov8" title="1">{
+                                // No config provided
+                                return "", nil
+                        }</span>
+                        <span class="cov0" title="0">return "", fmt.Errorf("unable to stat %s: %w", path, err)</span>
+                }
+                <span class="cov8" title="1">if fileInfo.IsDir() </span><span class="cov8" title="1">{
+                        return "", fmt.Errorf("%s is a directory", path)
+                }</span>
+                /* #nosec we are sure the input path is clean */
+                <span class="cov8" title="1">if val, err := os.ReadFile(path); err != nil </span><span class="cov0" title="0">{
+                        return "", fmt.Errorf("unable to read %s: %w", path, err)
+                }</span> else<span class="cov8" title="1"> {
+                        configValue = string(val)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return strings.TrimSpace(configValue), nil</span>
+}
+
+// readQuayConfig reads operator Quay configuration.
+// Returns error if failed to read a config value or required config is not set.
+func readQuayConfig() (apiUrl, org string, buildQuayClientFunc func() (quay.QuayService, error), err error) <span class="cov8" title="1">{
+        mountPoint := os.Getenv(QuaySecretMountPointEnvVarName)
+        if mountPoint == "" </span><span class="cov8" title="1">{
+                mountPoint = DefaultQuaySecretMountPoint
+        }</span>
+
+        <span class="cov8" title="1">quayApiFilePath := filepath.Join(mountPoint, QuayApiFileName)
+        apiUrl, err = readConfig(QuayApiUrlEnvVarName, quayApiFilePath)
+        if err != nil </span><span class="cov0" title="0">{
+                err = fmt.Errorf("unable to read Quay API URL: %w", err)
+                return
+        }</span>
+        <span class="cov8" title="1">if apiUrl == "" </span><span class="cov8" title="1">{
+                // Quay API URL is not set, fall back to default
+                apiUrl = "https://quay.io/api/v1"
+        }</span>
+
+        <span class="cov8" title="1">quayOrgPath := filepath.Join(mountPoint, QuayOrgFileName)
+        org, err = readConfig(QuayOrgEnvVarName, quayOrgPath)
+        if err != nil </span><span class="cov0" title="0">{
+                err = fmt.Errorf("unable to read Quay Org: %w", err)
+                return
+        }</span>
+        <span class="cov8" title="1">if org == "" </span><span class="cov8" title="1">{
+                err = errors.New("Quay Org is not set")
+                return
+        }</span>
+
+        <span class="cov8" title="1">quayHttpClient, err := buildQuayHttpClient()
+        if err != nil </span><span class="cov8" title="1">{
+                err = fmt.Errorf("unable to build Quay http client: %w", err)
+                return
+        }</span>
+        <span class="cov8" title="1">quayTokenPath := filepath.Join(mountPoint, QuayTokenFileName)
+        // Read the token for the first time, to make sure it is set.
+        token, err := readConfig(QuayTokenEnvVarName, quayTokenPath)
+        if err != nil </span><span class="cov0" title="0">{
+                err = fmt.Errorf("unable to read quay token: %w", err)
+                return
+        }</span>
+        <span class="cov8" title="1">if token == "" </span><span class="cov8" title="1">{
+                err = errors.New("Quay token is not provided")
+                return
+        }</span>
+        // Create function that re-reads the token to support token rotation without operator restart.
+        <span class="cov8" title="1">buildQuayClientFunc = func() (quay.QuayService, error) </span><span class="cov8" title="1">{
+                token, err := readConfig(QuayTokenEnvVarName, quayTokenPath)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("unable to get quay token: %w", err)
+                }</span>
+                <span class="cov8" title="1">if token == "" </span><span class="cov0" title="0">{
+                        return nil, errors.New("Quay token is not provided")
+                }</span>
+                <span class="cov8" title="1">quayClient := quay.NewQuayClient(quayHttpClient, token, apiUrl)
+                return quayClient, nil</span>
+        }
+        <span class="cov8" title="1">return</span>
+}
 
 // buildQuayHttpClient creates an http client with optional custom CA certificates.
 // If the QUAY_ADDITIONAL_CA environment variable is set, it reads the CA certificate
@@ -388,7 +462,7 @@ func buildQuayHttpClient() (*http.Client, error) <span class="cov8" title="1">{
         transport := &amp;http.Transport{}
 
         // Check if additional CA certificate path is provided
-        caCertPath := os.Getenv("QUAY_ADDITIONAL_CA")
+        caCertPath := os.Getenv(QuayAdditionalCAEnvVarName)
         if caCertPath != "" </span><span class="cov8" title="1">{
                 setupLog.Info(fmt.Sprintf("Loading additional CA certificate from: %s", caCertPath))
 
@@ -569,7 +643,7 @@ func (r *ApplicationPullSecretCreator) Reconcile(ctx context.Context, req ctrl.R
                         return ctrl.Result{}, err
                 }</span>
 
-                <span class="cov8" title="1">if err := r.createApplicationPullSecret(ctx, applicationPullSecretName, application, pullSecretNames); err != nil </span><span class="cov8" title="1">{
+                <span class="cov8" title="1">if err := r.createApplicationPullSecret(ctx, applicationPullSecretName, application, pullSecretNames); err != nil </span><span class="cov0" title="0">{
                         return ctrl.Result{}, err
                 }</span>
         }
@@ -715,7 +789,7 @@ func (r *ApplicationPullSecretCreator) createApplicationPullSecret(ctx context.C
                 return err
         }</span>
 
-        <span class="cov8" title="1">if err := r.Client.Create(ctx, applicationPullSecret); err != nil </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if err := r.Client.Create(ctx, applicationPullSecret); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "failed to create application pull secret", "secretName", applicationPullSecretName, l.Action, l.ActionAdd)
                 return err
         }</span>
@@ -1585,7 +1659,7 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
                 return ctrl.Result{}, err
         }</span>
 
-        <span class="cov8" title="1">if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "failed to update imageRepository status", l.Action, l.ActionUpdate)
                 return ctrl.Result{}, err
         }</span>
@@ -3337,7 +3411,7 @@ func (c *QuayClient) RepositoryExists(organization, imageRepository string) (boo
         }</span>
 
         <span class="cov8" title="1">if resp.GetStatusCode() == 404 </span><span class="cov8" title="1">{
-                return false, fmt.Errorf("repository %s does not exist in %s organization", imageRepository, organization)
+                return false, nil
         }</span> else<span class="cov8" title="1"> if resp.GetStatusCode() == 200 </span><span class="cov8" title="1">{
                 return true, nil
         }</span>

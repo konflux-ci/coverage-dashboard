@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/23779797271",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/23831409454",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 75.8,
+      "coverage": 76.5,
       "status": "ok",
       "packages": [
         {
@@ -141,11 +141,11 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/cmd",
-          "coverage": 20.0
+          "coverage": 44.9
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 73.5
+          "coverage": 73.1
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -388,12 +388,12 @@
           "coverage": 17.9
         },
         {
-          "package": "github.com/konflux-ci/operator-toolkit/utils",
-          "coverage": 100.0
-        },
-        {
           "package": "github.com/konflux-ci/operator-toolkit/predicates",
           "coverage": 4.8
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/utils",
+          "coverage": 100.0
         },
         {
           "package": "github.com/konflux-ci/operator-toolkit/conditions",
@@ -533,12 +533,12 @@
           "coverage": 78.6
         },
         {
-          "package": "github.com/konflux-ci/release-service/syncer",
-          "coverage": 90.0
-        },
-        {
           "package": "github.com/konflux-ci/release-service/tekton/utils",
           "coverage": 94.6
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/syncer",
+          "coverage": 90.0
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release",
