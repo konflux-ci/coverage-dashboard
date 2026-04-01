@@ -244,11 +244,11 @@ jobs:
                 # Find packages in coverage.out
                 PACKAGES_WITH_COVERAGE=$(echo "$COVERAGE_STATS" | grep -v "^TOTAL:" | cut -d: -f1)
 
-                # Count statements in packages WITHOUT tests using AST-based method
+                # Count statements in packages WITHOUT tests
                 UNTESTED_STMTS=0
                 echo "    Counting statements in untested packages..."
                 for pkg in $INCLUDED_PACKAGES; do
-                  if ! echo "$PACKAGES_WITH_COVERAGE" | grep -q "^${pkg}$"; then
+                  if ! echo "$PACKAGES_WITH_COVERAGE" | grep -Fxq "$pkg"; then
                     echo "      Analyzing $pkg..."
 
                     # Get package directory and name
@@ -271,6 +271,8 @@ jobs:
                         PKG_STMTS=$(awk 'NR>1 && $1 !~ /zzz_coverage_test\.go/ {sum+=$2} END {print sum+0}' pkg_coverage.out)
                         UNTESTED_STMTS=$((UNTESTED_STMTS + PKG_STMTS))
                         echo "        → $PKG_STMTS statements (0% coverage)"
+                      else
+                        echo "        ⚠️  Failed to generate coverage for $pkg"
                       fi
 
                       # Cleanup
