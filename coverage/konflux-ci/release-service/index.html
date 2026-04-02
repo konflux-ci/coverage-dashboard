@@ -89,7 +89,7 @@
 				
 				<option value="file16">github.com/konflux-ci/release-service/git/references.go (81.2%)</option>
 				
-				<option value="file17">github.com/konflux-ci/release-service/loader/loader.go (30.1%)</option>
+				<option value="file17">github.com/konflux-ci/release-service/loader/loader.go (83.8%)</option>
 				
 				<option value="file18">github.com/konflux-ci/release-service/loader/loader_mock.go (63.0%)</option>
 				
@@ -4910,15 +4910,15 @@ func (l *loader) GetMatchingReleasePlanAdmission(ctx context.Context, cli client
                 if err != nil </span><span class="cov8" title="1">{
                         return nil, err
                 }</span>
-                <span class="cov8" title="1">if releasePlanAdmission.Spec.Origin != releasePlan.Namespace </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if releasePlanAdmission.Spec.Origin != releasePlan.Namespace </span><span class="cov8" title="1">{
                         return nil, fmt.Errorf("releasePlan (%+s) targets releasePlanAdmission (%+s) by label, but the Origin"+
                                 " of the releasePlanAdmission (%+s) does not match the namespace of the releasePlan (%+s)",
                                 releasePlan.Name, designatedReleasePlanAdmissionName, releasePlanAdmission.Spec.Origin, releasePlan.Namespace)
                 }</span>
-                <span class="cov8" title="1">return releasePlanAdmission, nil</span>
+                <span class="cov0" title="0">return releasePlanAdmission, nil</span>
         }
 
-        <span class="cov8" title="1">if releasePlan.Spec.Target == "" </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if releasePlan.Spec.Target == "" </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("releasePlan has no target, so no ReleasePlanAdmissions can be found")
         }</span>
 
@@ -4945,7 +4945,7 @@ func (l *loader) GetMatchingReleasePlanAdmission(ctx context.Context, cli client
                 <span class="cov8" title="1">foundReleasePlanAdmission = &amp;releasePlanAdmissions.Items[i]</span>
         }
 
-        <span class="cov8" title="1">if foundReleasePlanAdmission == nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if foundReleasePlanAdmission == nil </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("no ReleasePlanAdmission found in namespace (%+s) with the origin (%+s) for '%s'",
                         releasePlan.Spec.Target, releasePlan.Namespace, releasePlan.GetGroupName())
         }</span>
@@ -4957,12 +4957,12 @@ func (l *loader) GetMatchingReleasePlanAdmission(ctx context.Context, cli client
 // namespace, specify an application that is included in the ReleasePlanAdmission's application list, and
 // are in the namespace specified by the ReleasePlanAdmission's origin. optionally filter by the ReleasePlanAdmission
 // label (falling back to all). If the List operation fails, an error will be returned.
-func (l *loader) GetMatchingReleasePlans(ctx context.Context, cli client.Client, releasePlanAdmission *v1alpha1.ReleasePlanAdmission) (*v1alpha1.ReleasePlanList, error) <span class="cov0" title="0">{
-        if releasePlanAdmission.Spec.Origin == "" </span><span class="cov0" title="0">{
+func (l *loader) GetMatchingReleasePlans(ctx context.Context, cli client.Client, releasePlanAdmission *v1alpha1.ReleasePlanAdmission) (*v1alpha1.ReleasePlanList, error) <span class="cov8" title="1">{
+        if releasePlanAdmission.Spec.Origin == "" </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("releasePlanAdmission has no origin, so no ReleasePlans can be found")
         }</span>
 
-        <span class="cov0" title="0">releasePlans := &amp;v1alpha1.ReleasePlanList{}
+        <span class="cov8" title="1">releasePlans := &amp;v1alpha1.ReleasePlanList{}
         err := cli.List(ctx, releasePlans,
                 client.InNamespace(releasePlanAdmission.Spec.Origin),
                 client.MatchingFields{"spec.target": releasePlanAdmission.Namespace},
@@ -4972,7 +4972,7 @@ func (l *loader) GetMatchingReleasePlans(ctx context.Context, cli client.Client,
         }</span>
 
         // If no ReleasePlans have matching labels, fall back to all ReleasePlans
-        <span class="cov0" title="0">if len(releasePlans.Items) == 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if len(releasePlans.Items) == 0 </span><span class="cov8" title="1">{
                 err := cli.List(ctx, releasePlans,
                         client.InNamespace(releasePlanAdmission.Spec.Origin),
                         client.MatchingFields{"spec.target": releasePlanAdmission.Namespace})
@@ -4981,26 +4981,26 @@ func (l *loader) GetMatchingReleasePlans(ctx context.Context, cli client.Client,
                 }</span>
         }
 
-        <span class="cov0" title="0">for i := len(releasePlans.Items) - 1; i &gt;= 0; i-- </span><span class="cov0" title="0">{
-                if !releasePlanAdmission.MatchesReleasePlan(&amp;releasePlans.Items[i]) </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">for i := len(releasePlans.Items) - 1; i &gt;= 0; i-- </span><span class="cov8" title="1">{
+                if !releasePlanAdmission.MatchesReleasePlan(&amp;releasePlans.Items[i]) </span><span class="cov8" title="1">{
                         // Remove ReleasePlans that do not have matching applications or componentGroups from the list
                         releasePlans.Items = append(releasePlans.Items[:i], releasePlans.Items[i+1:]...)
                         continue</span>
                 }
 
-                <span class="cov0" title="0">labelValue, found := releasePlans.Items[i].GetLabels()[metadata.ReleasePlanAdmissionLabel]
-                if found &amp;&amp; labelValue != releasePlanAdmission.Name </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">labelValue, found := releasePlans.Items[i].GetLabels()[metadata.ReleasePlanAdmissionLabel]
+                if found &amp;&amp; labelValue != releasePlanAdmission.Name </span><span class="cov8" title="1">{
                         // Remove ReleasePlans whose label doesn't match the ReleasePlanAdmission name
                         releasePlans.Items = append(releasePlans.Items[:i], releasePlans.Items[i+1:]...)
                 }</span>
         }
 
-        <span class="cov0" title="0">return releasePlans, nil</span>
+        <span class="cov8" title="1">return releasePlans, nil</span>
 }
 
 // GetPreviousRelease returns the Release that was created just before the given Release.
 // If no previous Release is found, a NotFound error is returned.
-func (l *loader) GetPreviousRelease(ctx context.Context, cli client.Client, release *v1alpha1.Release) (*v1alpha1.Release, error) <span class="cov0" title="0">{
+func (l *loader) GetPreviousRelease(ctx context.Context, cli client.Client, release *v1alpha1.Release) (*v1alpha1.Release, error) <span class="cov8" title="1">{
         releases := &amp;v1alpha1.ReleaseList{}
         err := cli.List(ctx, releases,
                 client.InNamespace(release.Namespace),
@@ -5009,29 +5009,29 @@ func (l *loader) GetPreviousRelease(ctx context.Context, cli client.Client, rele
                 return nil, err
         }</span>
 
-        <span class="cov0" title="0">var previousRelease *v1alpha1.Release
+        <span class="cov8" title="1">var previousRelease *v1alpha1.Release
 
         // Find the previous release
-        for i, possiblePreviousRelease := range releases.Items </span><span class="cov0" title="0">{
+        for i, possiblePreviousRelease := range releases.Items </span><span class="cov8" title="1">{
                 // Ignore the release passed as argument and any release created after that one
                 if possiblePreviousRelease.Name == release.Name ||
-                        possiblePreviousRelease.CreationTimestamp.After(release.CreationTimestamp.Time) </span><span class="cov0" title="0">{
+                        possiblePreviousRelease.CreationTimestamp.After(release.CreationTimestamp.Time) </span><span class="cov8" title="1">{
                         continue</span>
                 }
                 // Ignore a release that failed previously
-                <span class="cov0" title="0">if possiblePreviousRelease.IsFailed() </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if possiblePreviousRelease.IsFailed() </span><span class="cov8" title="1">{
                         continue</span>
                 }
                 // Ignore a release that has the same snapshot as the current release
-                <span class="cov0" title="0">if possiblePreviousRelease.Spec.Snapshot == release.Spec.Snapshot </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if possiblePreviousRelease.Spec.Snapshot == release.Spec.Snapshot </span><span class="cov8" title="1">{
                         continue</span>
                 }
-                <span class="cov0" title="0">if previousRelease == nil || possiblePreviousRelease.CreationTimestamp.After(previousRelease.CreationTimestamp.Time) </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if previousRelease == nil || possiblePreviousRelease.CreationTimestamp.After(previousRelease.CreationTimestamp.Time) </span><span class="cov8" title="1">{
                         previousRelease = &amp;releases.Items[i]
                 }</span>
         }
 
-        <span class="cov0" title="0">if previousRelease == nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if previousRelease == nil </span><span class="cov8" title="1">{
                 return nil, apierrors.NewNotFound(
                         schema.GroupResource{
                                 Group:    v1alpha1.GroupVersion.Group,
@@ -5039,57 +5039,57 @@ func (l *loader) GetPreviousRelease(ctx context.Context, cli client.Client, rele
                         }, release.Name)
         }</span>
 
-        <span class="cov0" title="0">return previousRelease, nil</span>
+        <span class="cov8" title="1">return previousRelease, nil</span>
 }
 
 // GetRelease returns the Release with the given name and namespace. If the Release is not found or the Get operation
 // fails, an error will be returned.
-func (l *loader) GetRelease(ctx context.Context, cli client.Client, name, namespace string) (*v1alpha1.Release, error) <span class="cov0" title="0">{
+func (l *loader) GetRelease(ctx context.Context, cli client.Client, name, namespace string) (*v1alpha1.Release, error) <span class="cov8" title="1">{
         release := &amp;v1alpha1.Release{}
         return release, toolkit.GetObject(name, namespace, cli, ctx, release)
 }</span>
 
 // GetRoleBindingFromReleaseStatusPipelineInfo retrieves the RoleBinding associated with a PipelineInfo and role binding type..
 // The association is defined by the namespaced name stored in the RoleBindings field of the provided PipelineInfo.
-func (l *loader) GetRoleBindingFromReleaseStatusPipelineInfo(ctx context.Context, cli client.Client, pipelineInfo *v1alpha1.PipelineInfo, roleBindingType string) (*rbac.RoleBinding, error) <span class="cov0" title="0">{
+func (l *loader) GetRoleBindingFromReleaseStatusPipelineInfo(ctx context.Context, cli client.Client, pipelineInfo *v1alpha1.PipelineInfo, roleBindingType string) (*rbac.RoleBinding, error) <span class="cov8" title="1">{
         roleBinding := &amp;rbac.RoleBinding{}
 
         var namespacedName string
         switch roleBindingType </span>{
-        case "tenant":<span class="cov0" title="0">
+        case "tenant":<span class="cov8" title="1">
                 namespacedName = pipelineInfo.RoleBindings.TenantRoleBinding</span>
         case "managed":<span class="cov0" title="0">
                 namespacedName = pipelineInfo.RoleBindings.ManagedRoleBinding</span>
         case "secret":<span class="cov0" title="0">
                 namespacedName = pipelineInfo.RoleBindings.SecretRoleBinding</span>
-        default:<span class="cov0" title="0">
+        default:<span class="cov8" title="1">
                 return nil, fmt.Errorf("invalid role binding type ('%s')", roleBindingType)</span>
         }
 
-        <span class="cov0" title="0">roleBindingNamespacedName := strings.Split(namespacedName, string(types.Separator))
-        if len(roleBindingNamespacedName) != 2 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">roleBindingNamespacedName := strings.Split(namespacedName, string(types.Separator))
+        if len(roleBindingNamespacedName) != 2 </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("%w: %q", ErrInvalidRoleBindingRef, namespacedName)
         }</span>
-        <span class="cov0" title="0">err := cli.Get(ctx, types.NamespacedName{
+        <span class="cov8" title="1">err := cli.Get(ctx, types.NamespacedName{
                 Namespace: roleBindingNamespacedName[0],
                 Name:      roleBindingNamespacedName[1],
         }, roleBinding)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return nil, err
         }</span>
 
-        <span class="cov0" title="0">return roleBinding, nil</span>
+        <span class="cov8" title="1">return roleBinding, nil</span>
 }
 
 // GetReleasePipelineRun returns the Release PipelineRun of the specified type referenced by the given Release
 // or nil if it's not found. In the case the List operation fails, an error will be returned.
-func (l *loader) GetReleasePipelineRun(ctx context.Context, cli client.Client, release *v1alpha1.Release, pipelineType metadata.PipelineType) (*tektonv1.PipelineRun, error) <span class="cov0" title="0">{
+func (l *loader) GetReleasePipelineRun(ctx context.Context, cli client.Client, release *v1alpha1.Release, pipelineType metadata.PipelineType) (*tektonv1.PipelineRun, error) <span class="cov8" title="1">{
         if pipelineType != metadata.ManagedCollectorsPipelineType &amp;&amp; pipelineType != metadata.ManagedPipelineType &amp;&amp;
-                pipelineType != metadata.TenantCollectorsPipelineType &amp;&amp; pipelineType != metadata.TenantPipelineType &amp;&amp; pipelineType != metadata.FinalPipelineType </span><span class="cov0" title="0">{
+                pipelineType != metadata.TenantCollectorsPipelineType &amp;&amp; pipelineType != metadata.TenantPipelineType &amp;&amp; pipelineType != metadata.FinalPipelineType </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("cannot fetch Release PipelineRun with invalid type %s", pipelineType)
         }</span>
 
-        <span class="cov0" title="0">pipelineRuns := &amp;tektonv1.PipelineRunList{}
+        <span class="cov8" title="1">pipelineRuns := &amp;tektonv1.PipelineRunList{}
         err := cli.List(ctx, pipelineRuns,
                 client.Limit(1),
                 client.MatchingLabels{
@@ -5097,11 +5097,11 @@ func (l *loader) GetReleasePipelineRun(ctx context.Context, cli client.Client, r
                         metadata.ReleaseNamespaceLabel: release.Namespace,
                         metadata.PipelinesTypeLabel:    pipelineType.String(),
                 })
-        if err == nil &amp;&amp; len(pipelineRuns.Items) &gt; 0 </span><span class="cov0" title="0">{
+        if err == nil &amp;&amp; len(pipelineRuns.Items) &gt; 0 </span><span class="cov8" title="1">{
                 return &amp;pipelineRuns.Items[0], nil
         }</span>
 
-        <span class="cov0" title="0">return nil, err</span>
+        <span class="cov8" title="1">return nil, err</span>
 }
 
 // GetReleasePlan returns the ReleasePlan referenced by the given Release. If the ReleasePlan is not found or
@@ -5113,14 +5113,14 @@ func (l *loader) GetReleasePlan(ctx context.Context, cli client.Client, release 
 
 // GetReleaseServiceConfig returns the ReleaseServiceConfig with the given name and namespace. If the ReleaseServiceConfig is not
 // found or the Get operation fails, an error will be returned.
-func (l *loader) GetReleaseServiceConfig(ctx context.Context, cli client.Client, name, namespace string) (*v1alpha1.ReleaseServiceConfig, error) <span class="cov0" title="0">{
+func (l *loader) GetReleaseServiceConfig(ctx context.Context, cli client.Client, name, namespace string) (*v1alpha1.ReleaseServiceConfig, error) <span class="cov8" title="1">{
         releaseServiceConfig := &amp;v1alpha1.ReleaseServiceConfig{}
         return releaseServiceConfig, toolkit.GetObject(name, namespace, cli, ctx, releaseServiceConfig)
 }</span>
 
 // GetSnapshot returns the Snapshot referenced by the given Release. If the Snapshot is not found or the Get
 // operation fails, an error is returned.
-func (l *loader) GetSnapshot(ctx context.Context, cli client.Client, release *v1alpha1.Release) (*applicationapiv1alpha1.Snapshot, error) <span class="cov0" title="0">{
+func (l *loader) GetSnapshot(ctx context.Context, cli client.Client, release *v1alpha1.Release) (*applicationapiv1alpha1.Snapshot, error) <span class="cov8" title="1">{
         snapshot := &amp;applicationapiv1alpha1.Snapshot{}
         return snapshot, toolkit.GetObject(release.Spec.Snapshot, release.Namespace, cli, ctx, snapshot)
 }</span>
@@ -5136,7 +5136,7 @@ type ProcessingResources struct {
 
 // GetProcessingResources returns all the resources required to process the Release. If any of those resources cannot
 // be retrieved from the cluster, an error will be returned.
-func (l *loader) GetProcessingResources(ctx context.Context, cli client.Client, release *v1alpha1.Release) (*ProcessingResources, error) <span class="cov0" title="0">{
+func (l *loader) GetProcessingResources(ctx context.Context, cli client.Client, release *v1alpha1.Release) (*ProcessingResources, error) <span class="cov8" title="1">{
         var err error
         resources := &amp;ProcessingResources{}
 
@@ -5145,27 +5145,27 @@ func (l *loader) GetProcessingResources(ctx context.Context, cli client.Client, 
                 return resources, err
         }</span>
 
-        <span class="cov0" title="0">resources.ReleasePlanAdmission, err = l.GetActiveReleasePlanAdmissionFromRelease(ctx, cli, release)
+        <span class="cov8" title="1">resources.ReleasePlanAdmission, err = l.GetActiveReleasePlanAdmissionFromRelease(ctx, cli, release)
         if err != nil </span><span class="cov0" title="0">{
                 return resources, err
         }</span>
 
-        <span class="cov0" title="0">resources.EnterpriseContractConfigMap, err = l.GetEnterpriseContractConfigMap(ctx, cli)
+        <span class="cov8" title="1">resources.EnterpriseContractConfigMap, err = l.GetEnterpriseContractConfigMap(ctx, cli)
         if err != nil </span><span class="cov0" title="0">{
                 return resources, err
         }</span>
 
-        <span class="cov0" title="0">resources.EnterpriseContractPolicy, err = l.GetEnterpriseContractPolicy(ctx, cli, resources.ReleasePlanAdmission)
+        <span class="cov8" title="1">resources.EnterpriseContractPolicy, err = l.GetEnterpriseContractPolicy(ctx, cli, resources.ReleasePlanAdmission)
         if err != nil </span><span class="cov0" title="0">{
                 return resources, err
         }</span>
 
-        <span class="cov0" title="0">resources.Snapshot, err = l.GetSnapshot(ctx, cli, release)
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">resources.Snapshot, err = l.GetSnapshot(ctx, cli, release)
+        if err != nil </span><span class="cov8" title="1">{
                 return resources, err
         }</span>
 
-        <span class="cov0" title="0">return resources, nil</span>
+        <span class="cov8" title="1">return resources, nil</span>
 }
 
 // IsRetriable returns true if the error is transient, such as a

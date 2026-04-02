@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/23856382354",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/23883055766",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 60.0,
+      "coverage": 59.9,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 81.6
+          "coverage": 81.5
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/common",
@@ -99,12 +99,12 @@
           "coverage": 72.0
         },
         {
-          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
-          "coverage": 9.5
-        },
-        {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/pr",
           "coverage": 16.8
+        },
+        {
+          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
+          "coverage": 9.5
         },
         {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/config",
@@ -225,12 +225,12 @@
           "coverage": 84.0
         },
         {
-          "package": "github.com/konflux-ci/internal-services/tekton/utils",
-          "coverage": 0.0
-        },
-        {
           "package": "github.com/konflux-ci/internal-services/tekton",
           "coverage": 97.7
+        },
+        {
+          "package": "github.com/konflux-ci/internal-services/tekton/utils",
+          "coverage": 0.0
         },
         {
           "package": "github.com/konflux-ci/internal-services/api/v1alpha1",
@@ -388,12 +388,12 @@
           "coverage": 17.9
         },
         {
-          "package": "github.com/konflux-ci/operator-toolkit/utils",
-          "coverage": 100.0
-        },
-        {
           "package": "github.com/konflux-ci/operator-toolkit/predicates",
           "coverage": 4.8
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/utils",
+          "coverage": 100.0
         },
         {
           "package": "github.com/konflux-ci/operator-toolkit/conditions",
@@ -485,8 +485,8 @@
     },
     {
       "repo": "konflux-ci/release-service",
-      "coverage": 79.6,
-      "status": "failed",
+      "coverage": 83.5,
+      "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1",
@@ -509,12 +509,12 @@
           "coverage": 79.2
         },
         {
-          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
-          "coverage": 96.2
-        },
-        {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplan",
           "coverage": 90.0
+        },
+        {
+          "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission",
+          "coverage": 96.2
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/author",
@@ -529,16 +529,16 @@
           "coverage": 100.0
         },
         {
+          "package": "github.com/konflux-ci/release-service/loader",
+          "coverage": 78.6
+        },
+        {
           "package": "github.com/konflux-ci/release-service/syncer",
           "coverage": 90.0
         },
         {
           "package": "github.com/konflux-ci/release-service/tekton/utils",
           "coverage": 94.6
-        },
-        {
-          "package": "github.com/konflux-ci/release-service/loader",
-          "coverage": 38.5
         },
         {
           "package": "github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release",
