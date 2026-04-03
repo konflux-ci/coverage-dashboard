@@ -57,11 +57,11 @@
 				
 				<option value="file0">github.com/konflux-ci/image-controller/cmd/main.go (44.9%)</option>
 				
-				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/application_controller.go (81.2%)</option>
+				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/application_controller.go (79.6%)</option>
 				
 				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (74.2%)</option>
 				
-				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (70.0%)</option>
+				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (70.1%)</option>
 				
 				<option value="file4">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller_service_account.go (78.9%)</option>
 				
@@ -648,7 +648,7 @@ func (r *ApplicationPullSecretCreator) Reconcile(ctx context.Context, req ctrl.R
                 }</span>
         }
 
-        <span class="cov8" title="1">if err := r.updateIntegrationServiceAccountWithApplicationPullSecret(ctx, applicationPullSecretName, application.Namespace); err != nil </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if err := r.updateIntegrationServiceAccountWithApplicationPullSecret(ctx, applicationPullSecretName, application.Namespace); err != nil </span><span class="cov0" title="0">{
                 return ctrl.Result{}, err
         }</span>
 
@@ -843,7 +843,7 @@ func (r *ApplicationPullSecretCreator) updateIntegrationServiceAccountWithApplic
         }</span>
 
         <span class="cov8" title="1">if shouldUpdateServiceAccount </span><span class="cov8" title="1">{
-                if err := r.Client.Update(ctx, namespaceServiceAccount); err != nil </span><span class="cov8" title="1">{
+                if err := r.Client.Update(ctx, namespaceServiceAccount); err != nil </span><span class="cov0" title="0">{
                         log.Error(err, "failed to update Service Account with application pull secret", l.Action, l.ActionUpdate)
                         return err
                 }</span>
@@ -1392,7 +1392,7 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
                         <span class="cov8" title="1">r.CleanupImageRepository(ctx, imageRepository, imageName, imageRepositoryUrl, !(imageRepositoryFound || skipDeletion))
 
                         controllerutil.RemoveFinalizer(imageRepository, ImageRepositoryFinalizer)
-                        if err := r.Client.Update(ctx, imageRepository); err != nil </span><span class="cov0" title="0">{
+                        if err := r.Client.Update(ctx, imageRepository); err != nil </span><span class="cov8" title="1">{
                                 log.Error(err, "failed to remove image repository finalizer", l.Action, l.ActionUpdate)
                                 return ctrl.Result{}, err
                         }</span>
@@ -2448,6 +2448,12 @@ func (r *ImageRepositoryReconciler) removePullSecretFromApplicationPullSecret(ct
                         if otherIR.ObjectMeta.Name == imageRepository.ObjectMeta.Name </span><span class="cov8" title="1">{
                                 continue</span>
                         }
+
+                        // Skip IR which isn't in ready state
+                        <span class="cov0" title="0">if otherIR.Status.State != imagerepositoryv1alpha1.ImageRepositoryStateReady </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+
                         // Must match the same registry URL
                         <span class="cov0" title="0">if otherIR.Status.Image.URL != imageRepository.Status.Image.URL </span><span class="cov0" title="0">{
                                 continue</span>

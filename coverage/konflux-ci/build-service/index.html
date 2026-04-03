@@ -55,9 +55,9 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (75.2%)</option>
+				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (74.8%)</option>
 				
-				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.9%)</option>
+				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.3%)</option>
 				
 				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (80.8%)</option>
 				
@@ -638,7 +638,7 @@ func (r *ComponentBuildReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
         <span class="cov8" title="1">delete(component.Annotations, BuildRequestAnnotationName)
 
-        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
+        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, fmt.Sprintf("failed to update component after build request: %s", requestedAction), l.Action, l.ActionUpdate, l.Audit, "true")
                 return ctrl.Result{}, err
         }</span>
@@ -684,7 +684,7 @@ func (r *ComponentBuildReconciler) WaitForCacheUpdateOldModel(ctx context.Contex
                 }
                 <span class="cov8" title="1">time.Sleep(100 * time.Millisecond)</span>
         }
-        <span class="cov8" title="1">if !isComponentInCacheUpToDate </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if !isComponentInCacheUpToDate </span><span class="cov8" title="1">{
                 log.Info("failed to wait for updated cache. Requested action could be repeated.", l.Audit, "true")
         }</span>
 }
@@ -942,7 +942,7 @@ func (r *ComponentBuildReconciler) ProvisionPaCForComponentOldModel(ctx context.
         return mrUrl, nil</span>
 }
 
-func getHttpClient() *http.Client <span class="cov8" title="1">{ // #nosec G402 // dev instances need insecure, because they have self signed certificates
+func getHttpClient() *http.Client <span class="cov0" title="0">{ // #nosec G402 // dev instances need insecure, because they have self signed certificates
         tr := &amp;http.Transport{
                 TLSClientConfig: &amp;tls.Config{
                         InsecureSkipVerify: gp.IsInsecureSSL(),
