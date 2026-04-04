@@ -55,19 +55,19 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (74.8%)</option>
+				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (77.0%)</option>
 				
-				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.3%)</option>
+				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.9%)</option>
 				
 				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (80.8%)</option>
 				
-				<option value="file3">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pipeline.go (86.2%)</option>
+				<option value="file3">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pipeline.go (86.7%)</option>
 				
 				<option value="file4">github.com/konflux-ci/build-service/internal/controller/component_build_controller_secrets.go (74.4%)</option>
 				
 				<option value="file5">github.com/konflux-ci/build-service/internal/controller/component_build_controller_service_account.go (72.3%)</option>
 				
-				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2.go (85.3%)</option>
+				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2.go (86.1%)</option>
 				
 				<option value="file7">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2_validations.go (87.8%)</option>
 				
@@ -455,7 +455,7 @@ func (r *ComponentBuildReconciler) Reconcile(ctx context.Context, req ctrl.Reque
                 writeBuildStatus(&amp;component, buildStatus)
                 delete(component.Annotations, BuildRequestAnnotationName)
 
-                if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
+                if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
                         log.Error(err, fmt.Sprintf("failed to update component after wrong %s annotation", defaultBuildPipelineAnnotation))
                         return ctrl.Result{}, err
                 }</span>
@@ -674,8 +674,8 @@ func (r *ComponentBuildReconciler) WaitForCacheUpdateOldModel(ctx context.Contex
                                 break</span>
                         }
                         // Outdated version of the component, wait more.
-                } else<span class="cov0" title="0"> {
-                        if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                } else<span class="cov8" title="1"> {
+                        if errors.IsNotFound(err) </span><span class="cov8" title="1">{
                                 // The component was deleted
                                 isComponentInCacheUpToDate = true
                                 break</span>
@@ -942,7 +942,7 @@ func (r *ComponentBuildReconciler) ProvisionPaCForComponentOldModel(ctx context.
         return mrUrl, nil</span>
 }
 
-func getHttpClient() *http.Client <span class="cov0" title="0">{ // #nosec G402 // dev instances need insecure, because they have self signed certificates
+func getHttpClient() *http.Client <span class="cov8" title="1">{ // #nosec G402 // dev instances need insecure, because they have self signed certificates
         tr := &amp;http.Transport{
                 TLSClientConfig: &amp;tls.Config{
                         InsecureSkipVerify: gp.IsInsecureSSL(),
@@ -2883,8 +2883,8 @@ func (r *ComponentBuildReconciler) GetBuildPipelineFromComponentAnnotation(ctx c
         additionalParams := []string{}
 
         pipelinesConfigMap := &amp;corev1.ConfigMap{}
-        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineConfigMapResourceName, Namespace: common.BuildServiceNamespaceName}, pipelinesConfigMap); err != nil </span><span class="cov0" title="0">{
-                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineConfigMapResourceName, Namespace: common.BuildServiceNamespaceName}, pipelinesConfigMap); err != nil </span><span class="cov8" title="1">{
+                if errors.IsNotFound(err) </span><span class="cov8" title="1">{
                         return nil, nil, boerrors.NewBuildOpError(boerrors.EBuildPipelineConfigNotDefined, err)
                 }</span>
                 <span class="cov0" title="0">return nil, nil, err</span>
@@ -4414,7 +4414,7 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                 // Add finalizer so we can clean up PaC resources (webhooks, repository configurations) upon component removal
                 if !controllerutil.ContainsFinalizer(&amp;component, PaCProvisionFinalizer) </span><span class="cov8" title="1">{
                         controllerutil.AddFinalizer(&amp;component, PaCProvisionFinalizer)
-                        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
+                        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
                                 log.Error(err, "failed to add PaC finalizer to the Component", l.Action, l.ActionUpdate)
                                 return ctrl.Result{}, err
                         }</span>
@@ -4788,8 +4788,8 @@ func (r *ComponentBuildReconciler) waitForCacheUpdate(ctx context.Context, names
                                 break</span>
                         }
                         // Cache still has outdated value, continue waiting.
-                } else<span class="cov0" title="0"> {
-                        if k8serrors.IsNotFound(err) </span><span class="cov0" title="0">{
+                } else<span class="cov8" title="1"> {
+                        if k8serrors.IsNotFound(err) </span><span class="cov8" title="1">{
                                 // Component was deleted, no need to wait for cache update.
                                 isComponentInCacheUpToDate = true
                                 break</span>
@@ -4850,7 +4850,7 @@ func (r *ComponentBuildReconciler) handlePersistentError(ctx context.Context, co
                 errMsg := fmt.Sprintf("%s: %s", errorContext, boErr.ShortError())
                 log.Error(err, errorContext)
 
-                if err := r.setStatusMessage(ctx, component, errMsg); err != nil </span><span class="cov0" title="0">{
+                if err := r.setStatusMessage(ctx, component, errMsg); err != nil </span><span class="cov8" title="1">{
                         return err
                 }</span>
                 <span class="cov8" title="1">r.WaitForCacheUpdateRes(ctx, types.NamespacedName{Namespace: component.Namespace, Name: component.Name}, component)
@@ -5275,7 +5275,7 @@ func (r *ComponentBuildReconciler) setStatusMessage(ctx context.Context, compone
         }</span>
 
         <span class="cov8" title="1">component.Status.Message = msg
-        if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov0" title="0">{
+        if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov8" title="1">{
                 log.Error(err, "failed to update component status message", l.Action, l.ActionUpdate, l.Audit, "true")
                 return err
         }</span>
