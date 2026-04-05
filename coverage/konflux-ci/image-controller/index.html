@@ -61,9 +61,9 @@
 				
 				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (74.2%)</option>
 				
-				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (69.5%)</option>
+				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (70.1%)</option>
 				
-				<option value="file4">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller_service_account.go (78.9%)</option>
+				<option value="file4">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller_service_account.go (80.3%)</option>
 				
 				<option value="file5">github.com/konflux-ci/image-controller/internal/controller/imagerepository_notifications.go (76.2%)</option>
 				
@@ -1542,7 +1542,7 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
                 }</span>
 
                 // link namespace pull secret to component SA
-                <span class="cov8" title="1">if err := r.linkSecretToServiceAccount(ctx, componentSaName, namespacePullSecretName, imageRepository.Namespace, false, false); err != nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if err := r.linkSecretToServiceAccount(ctx, componentSaName, namespacePullSecretName, imageRepository.Namespace, false, false); err != nil </span><span class="cov8" title="1">{
                         log.Error(err, "failed to link namespace pull secret to component service account", "SaName", componentSaName, "SecretName", namespacePullSecretName, l.Action, l.ActionUpdate)
                         return ctrl.Result{}, err
                 }</span>
@@ -1659,7 +1659,7 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
                 return ctrl.Result{}, err
         }</span>
 
-        <span class="cov8" title="1">if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov8" title="1">{
                 log.Error(err, "failed to update imageRepository status", l.Action, l.ActionUpdate)
                 return ctrl.Result{}, err
         }</span>
@@ -2670,7 +2670,7 @@ func (r *ImageRepositoryReconciler) linkSecretToServiceAccount(ctx context.Conte
         }</span>
 
         <span class="cov8" title="1">if shouldUpdateServiceAccount </span><span class="cov8" title="1">{
-                if err := r.Client.Update(ctx, serviceAccount); err != nil </span><span class="cov0" title="0">{
+                if err := r.Client.Update(ctx, serviceAccount); err != nil </span><span class="cov8" title="1">{
                         log.Error(err, "failed to update service account", l.Action, l.ActionUpdate)
                         return err
                 }</span>

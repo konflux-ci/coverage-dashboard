@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/23970713799",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/23993871769",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 60.2,
+      "coverage": 60.1,
       "status": "ok",
       "packages": [
         {
@@ -22,15 +22,15 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 81.8
-        },
-        {
-          "package": "github.com/konflux-ci/build-service/pkg/git",
-          "coverage": 20.5
+          "coverage": 81.7
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/common",
           "coverage": 90.0
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git",
+          "coverage": 20.5
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git/gitproviderfactory",
@@ -99,12 +99,12 @@
           "coverage": 72.0
         },
         {
-          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
-          "coverage": 9.5
-        },
-        {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/pr",
           "coverage": 16.8
+        },
+        {
+          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
+          "coverage": 9.5
         },
         {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/config",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 72.3,
+      "coverage": 72.6,
       "status": "ok",
       "packages": [
         {
@@ -145,7 +145,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 73.2
+          "coverage": 73.7
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",

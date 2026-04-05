@@ -61,13 +61,13 @@
 				
 				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (80.8%)</option>
 				
-				<option value="file3">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pipeline.go (86.7%)</option>
+				<option value="file3">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pipeline.go (86.2%)</option>
 				
 				<option value="file4">github.com/konflux-ci/build-service/internal/controller/component_build_controller_secrets.go (74.4%)</option>
 				
 				<option value="file5">github.com/konflux-ci/build-service/internal/controller/component_build_controller_service_account.go (72.3%)</option>
 				
-				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2.go (86.1%)</option>
+				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2.go (85.9%)</option>
 				
 				<option value="file7">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2_validations.go (87.8%)</option>
 				
@@ -455,7 +455,7 @@ func (r *ComponentBuildReconciler) Reconcile(ctx context.Context, req ctrl.Reque
                 writeBuildStatus(&amp;component, buildStatus)
                 delete(component.Annotations, BuildRequestAnnotationName)
 
-                if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
+                if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
                         log.Error(err, fmt.Sprintf("failed to update component after wrong %s annotation", defaultBuildPipelineAnnotation))
                         return ctrl.Result{}, err
                 }</span>
@@ -638,7 +638,7 @@ func (r *ComponentBuildReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
         <span class="cov8" title="1">delete(component.Annotations, BuildRequestAnnotationName)
 
-        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
+        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
                 log.Error(err, fmt.Sprintf("failed to update component after build request: %s", requestedAction), l.Action, l.ActionUpdate, l.Audit, "true")
                 return ctrl.Result{}, err
         }</span>
@@ -2883,8 +2883,8 @@ func (r *ComponentBuildReconciler) GetBuildPipelineFromComponentAnnotation(ctx c
         additionalParams := []string{}
 
         pipelinesConfigMap := &amp;corev1.ConfigMap{}
-        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineConfigMapResourceName, Namespace: common.BuildServiceNamespaceName}, pipelinesConfigMap); err != nil </span><span class="cov8" title="1">{
-                if errors.IsNotFound(err) </span><span class="cov8" title="1">{
+        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineConfigMapResourceName, Namespace: common.BuildServiceNamespaceName}, pipelinesConfigMap); err != nil </span><span class="cov0" title="0">{
+                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
                         return nil, nil, boerrors.NewBuildOpError(boerrors.EBuildPipelineConfigNotDefined, err)
                 }</span>
                 <span class="cov0" title="0">return nil, nil, err</span>
@@ -4414,7 +4414,7 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                 // Add finalizer so we can clean up PaC resources (webhooks, repository configurations) upon component removal
                 if !controllerutil.ContainsFinalizer(&amp;component, PaCProvisionFinalizer) </span><span class="cov8" title="1">{
                         controllerutil.AddFinalizer(&amp;component, PaCProvisionFinalizer)
-                        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
+                        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
                                 log.Error(err, "failed to add PaC finalizer to the Component", l.Action, l.ActionUpdate)
                                 return ctrl.Result{}, err
                         }</span>
@@ -4431,7 +4431,7 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                 <span class="cov8" title="1">log.Info("Using PaC repository", "PaCRepositoryName", pacRepositoryName)
 
                 // Update component status with PaC repository information
-                if err := r.setStatusPacRepository(ctx, &amp;component, pacRepositoryName, &amp;component.Spec.RepositorySettings); err != nil </span><span class="cov8" title="1">{
+                if err := r.setStatusPacRepository(ctx, &amp;component, pacRepositoryName, &amp;component.Spec.RepositorySettings); err != nil </span><span class="cov0" title="0">{
                         return ctrl.Result{}, err
                 }</span>
         }
@@ -5294,7 +5294,7 @@ func (r *ComponentBuildReconciler) setStatusPacRepository(ctx context.Context, c
         <span class="cov8" title="1">component.Status.PacRepository = repositoryName
         component.Status.RepositorySettings = *repositorySettings
 
-        if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov8" title="1">{
+        if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "failed to update component status PaC repository", l.Action, l.ActionUpdate, l.Audit, "true")
                 return err
         }</span>
