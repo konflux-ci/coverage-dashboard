@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/24018179569",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/24063575877",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,9 +9,54 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": null,
-      "status": "no_tests",
-      "packages": []
+      "coverage": 59.9,
+      "status": "failed",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/k8s",
+          "coverage": 49.3
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/boerrors",
+          "coverage": 66.7
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/internal/controller",
+          "coverage": 81.5
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git",
+          "coverage": 20.5
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/common",
+          "coverage": 90.0
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git/gitproviderfactory",
+          "coverage": 80.4
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git/forgejo",
+          "coverage": 20.8
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/bometrics",
+          "coverage": 40.8
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/pacwebhook",
+          "coverage": 100.0
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git/gitlab",
+          "coverage": 5.6
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git/github",
+          "coverage": 0.0
+        }
+      ]
     },
     {
       "repo": "konflux-ci/build-trusted-artifacts",
@@ -87,9 +132,26 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": null,
-      "status": "no_tests",
-      "packages": []
+      "coverage": 72.4,
+      "status": "ok",
+      "packages": [
+        {
+          "package": "github.com/konflux-ci/image-controller/pkg/metrics",
+          "coverage": 52.8
+        },
+        {
+          "package": "github.com/konflux-ci/image-controller/cmd",
+          "coverage": 44.9
+        },
+        {
+          "package": "github.com/konflux-ci/image-controller/internal/controller",
+          "coverage": 73.4
+        },
+        {
+          "package": "github.com/konflux-ci/image-controller/pkg/quay",
+          "coverage": 96.4
+        }
+      ]
     },
     {
       "repo": "konflux-ci/image-rbac-proxy",
@@ -408,16 +470,16 @@
           "coverage": 32.3
         },
         {
+          "package": "github.com/konflux-ci/qe-tools/cmd",
+          "coverage": 72.2
+        },
+        {
           "package": "github.com/konflux-ci/qe-tools/cmd/analyzetestresults",
           "coverage": 41.7
         },
         {
           "package": "github.com/konflux-ci/qe-tools/cmd/coffeebreak",
           "coverage": 5.8
-        },
-        {
-          "package": "github.com/konflux-ci/qe-tools/cmd",
-          "coverage": 72.2
         }
       ]
     },
@@ -530,12 +592,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 57.1,
+      "coverage": 58.4,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 57.1
+          "coverage": 58.4
         }
       ]
     },
@@ -613,7 +675,7 @@
     {
       "repo": "konflux-ci/workspace-manager",
       "coverage": 53.3,
-      "status": "ok",
+      "status": "failed",
       "packages": [
         {
           "package": "github.com/konflux-ci/workspace-manager/cmd",
