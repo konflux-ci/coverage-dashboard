@@ -73,7 +73,7 @@
 				
 				<option value="file8">github.com/konflux-ci/integration-service/pkg/metrics/integration.go (55.2%)</option>
 				
-				<option value="file9">github.com/konflux-ci/integration-service/snapshot/create.go (62.7%)</option>
+				<option value="file9">github.com/konflux-ci/integration-service/snapshot/create.go (63.5%)</option>
 				
 				<option value="file10">github.com/konflux-ci/integration-service/snapshot/gcl.go (50.0%)</option>
 				
@@ -2404,6 +2404,11 @@ func PrepareSnapshotForPipelineRun(ctx context.Context, adapterClient client.Cli
         newSnapshotComponent, err := getSnapshotComponentFromBuildPLR(pipelineRun, componentName, log)
         if err != nil </span><span class="cov8" title="1">{
                 return nil, err
+        }</span>
+
+        <span class="cov8" title="1">var comp applicationapiv1alpha1.Component
+        if err := adapterClient.Get(ctx, client.ObjectKey{Namespace: componentGroup.Namespace, Name: componentName}, &amp;comp); err == nil </span><span class="cov8" title="1">{
+                gitops.EnrichBuiltComponentSourceGitContext(&amp;newSnapshotComponent.Source, &amp;comp, newSnapshotComponent.Version)
         }</span>
 
         <span class="cov8" title="1">snapshot, err := PrepareSnapshot(ctx, adapterClient, componentGroup, newSnapshotComponent, log)

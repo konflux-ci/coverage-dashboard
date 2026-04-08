@@ -65,7 +65,7 @@
 				
 				<option value="file4">github.com/konflux-ci/mintmaker/internal/controller/common.go (0.0%)</option>
 				
-				<option value="file5">github.com/konflux-ci/mintmaker/internal/controller/dependencyupdatecheck_controller.go (64.0%)</option>
+				<option value="file5">github.com/konflux-ci/mintmaker/internal/controller/dependencyupdatecheck_controller.go (65.9%)</option>
 				
 				<option value="file6">github.com/konflux-ci/mintmaker/internal/controller/event_controller.go (75.2%)</option>
 				
@@ -1273,6 +1273,47 @@ func (r *DependencyUpdateCheckReconciler) getMergedDockerConfigJson(ctx context.
         <span class="cov8" title="1">return mergedDockerConfigJson, nil</span>
 }
 
+// hasActivePipelineRun checks if there is an active (pending or running) PipelineRun
+// for the given host/repository/branch combination using the repo-branch-hash label.
+func (r *DependencyUpdateCheckReconciler) hasActivePipelineRun(ctx context.Context, host, repository, branch string) (bool, error) <span class="cov8" title="1">{
+        log := ctrllog.FromContext(ctx)
+
+        pipelineRuns := &amp;tektonv1.PipelineRunList{}
+        listOpts := []client.ListOption{
+                client.InNamespace(MintMakerNamespaceName),
+                client.MatchingLabels{
+                        MintMakerRepoBranchHashLabel: utils.RepoBranchHash(host, repository, branch),
+                },
+        }
+
+        if err := r.Client.List(ctx, pipelineRuns, listOpts...); err != nil </span><span class="cov0" title="0">{
+                return false, err
+        }</span>
+
+        <span class="cov8" title="1">for _, pr := range pipelineRuns.Items </span><span class="cov8" title="1">{
+                if !pipelineRunCompleted(&amp;pr) </span><span class="cov8" title="1">{
+                        log.Info("found active PipelineRun", "pipelineRun", pr.Name)
+                        return true, nil
+                }</span>
+        }
+
+        <span class="cov8" title="1">return false, nil</span>
+}
+
+// pipelineRunCompleted returns true if the PipelineRun has reached a terminal state
+// (succeeded, failed, or cancelled).
+func pipelineRunCompleted(pr *tektonv1.PipelineRun) bool <span class="cov8" title="1">{
+        for _, c := range pr.Status.Conditions </span><span class="cov8" title="1">{
+                if string(c.Type) == "Succeeded" </span><span class="cov8" title="1">{
+                        // Status "Unknown" means still in progress (including Pending)
+                        // Status "True" means succeeded, "False" means failed/cancelled
+                        return c.Status != corev1.ConditionUnknown
+                }</span>
+        }
+        // No Succeeded condition means the PipelineRun hasn't been processed yet
+        <span class="cov8" title="1">return false</span>
+}
+
 // createPipelineRun creates and returns a new PipelineRun
 func (r *DependencyUpdateCheckReconciler) createPipelineRun(ctx context.Context, name string, comp component.GitComponent, currentBranch string, kiteSecretName string) (*tektonv1.PipelineRun, error) <span class="cov8" title="1">{
 
@@ -1383,6 +1424,7 @@ func (r *DependencyUpdateCheckReconciler) createPipelineRun(ctx context.Context,
                         "mintmaker.appstudio.redhat.com/git-host":     comp.GetHost(),     // github.com, gitlab.com, gitlab.other.com
                         "mintmaker.appstudio.redhat.com/repository":   utils.NormalizeLabelValue(comp.GetRepository()),
                         "mintmaker.appstudio.redhat.com/branch":       utils.NormalizeLabelValue(currentBranch),
+                        MintMakerRepoBranchHashLabel:                  utils.RepoBranchHash(comp.GetHost(), comp.GetRepository(), currentBranch),
                 }).
                 WithTimeouts(nil)
         builder.WithServiceAccount("mintmaker-controller-manager")
@@ -1665,6 +1707,17 @@ func (r *DependencyUpdateCheckReconciler) Reconcile(ctx context.Context, req ctr
                         } else<span class="cov8" title="1"> {
                                 processedComponents = append(processedComponents, key)
                         }</span>
+
+                        // Skip if there is already an active (pending/running) PipelineRun for this repo+branch
+                        <span class="cov8" title="1">active, err := r.hasActivePipelineRun(ctx, host, repository, branchName)
+                        if err != nil </span><span class="cov0" title="0">{
+                                branchLog.Error(err, "failed to check for active PipelineRuns")
+                                continue</span>
+                        }
+                        <span class="cov8" title="1">if active </span><span class="cov8" title="1">{
+                                branchLog.Info("skipping PipelineRun creation, active PipelineRun already exists", "component-key", key)
+                                continue</span>
+                        }
 
                         <span class="cov8" title="1">plrName := fmt.Sprintf("renovate-%s-%s", timestamp, utils.RandomString(8))
                         pipelinerun, err := r.createPipelineRun(ctx, plrName, comp, branchName, kiteSecretName)
@@ -2869,9 +2922,19 @@ func RandomString(length int) string <span class="cov8" title="1">{
 package utils
 
 import (
+        "crypto/sha256"
+        "fmt"
         "regexp"
         "strings"
 )
+
+// RepoBranchHash returns a truncated SHA256 hex digest of the given key.
+// The result is safe for use as a Kubernetes label value (63 chars max, alphanumeric).
+func RepoBranchHash(host, repository, branch string) string <span class="cov8" title="1">{
+        key := fmt.Sprintf("%s/%s@%s", host, repository, branch)
+        sum := sha256.Sum256([]byte(key))
+        return fmt.Sprintf("%x", sum)[:12]
+}</span>
 
 // SanitizeLabelValue sanitizes a string to be valid for Kubernetes label values.
 // It handles common restrictions like maximum length (63 chars) and disallowed characters.

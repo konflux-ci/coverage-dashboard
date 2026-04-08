@@ -59,7 +59,7 @@
 				
 				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/application_controller.go (81.2%)</option>
 				
-				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (74.2%)</option>
+				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (72.1%)</option>
 				
 				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (69.8%)</option>
 				
@@ -67,7 +67,7 @@
 				
 				<option value="file5">github.com/konflux-ci/image-controller/internal/controller/imagerepository_notifications.go (76.2%)</option>
 				
-				<option value="file6">github.com/konflux-ci/image-controller/pkg/metrics/metrics.go (39.1%)</option>
+				<option value="file6">github.com/konflux-ci/image-controller/pkg/metrics/metrics.go (95.7%)</option>
 				
 				<option value="file7">github.com/konflux-ci/image-controller/pkg/metrics/quay.go (76.9%)</option>
 				
@@ -343,7 +343,7 @@ func main() <span class="cov0" title="0">{
                 setupLog.Error(err, "unable to initialize metrics")
                 os.Exit(1)
         }</span>
-        <span class="cov0" title="0">imageControllerMetrics.StartMetrics(ctx)
+        <span class="cov0" title="0">imageControllerMetrics.StartMetrics(ctx, time.Minute)
 
         setupLog.Info("starting manager")
         if err := mgr.Start(ctx); err != nil </span><span class="cov0" title="0">{
@@ -1056,14 +1056,15 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
         }</span>
 
         // Search if imageRepository for the component exists already
-        <span class="cov8" title="1">imageRepositoriesList := &amp;imagerepositoryv1alpha1.ImageRepositoryList{}
+        <span class="cov8" title="1">imageRepositoryFound := ""
+
+        // Check image repositories owned by the Component
+        imageRepositoriesList := &amp;imagerepositoryv1alpha1.ImageRepositoryList{}
         if err := r.Client.List(ctx, imageRepositoriesList, &amp;client.ListOptions{Namespace: component.Namespace}); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "failed to list image repositories")
                 return ctrl.Result{}, err
         }</span>
-
-        <span class="cov8" title="1">imageRepositoryFound := ""
-        for _, imageRepository := range imageRepositoriesList.Items </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">for _, imageRepository := range imageRepositoriesList.Items </span><span class="cov8" title="1">{
                 for _, owner := range imageRepository.ObjectMeta.OwnerReferences </span><span class="cov8" title="1">{
                         if owner.UID == component.UID </span><span class="cov8" title="1">{
                                 imageRepositoryFound = imageRepository.Name
@@ -1072,15 +1073,39 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
                 }
         }
 
-        <span class="cov8" title="1">if imageRepositoryFound == "" </span><span class="cov8" title="1">{
-                imageRepositoryName := ""
-                if component.Spec.Application != "" </span><span class="cov8" title="1">{
-                        imageRepositoryName = fmt.Sprintf("imagerepository-for-%s-%s", component.Spec.Application, component.Name)
-                }</span> else<span class="cov8" title="1"> {
-                        imageRepositoryName = fmt.Sprintf("imagerepository-for-%s", component.Name)
-                }</span>
-                <span class="cov8" title="1">log.Info("Will create image repository", "ImageRepositoryName", imageRepositoryName, "ComponentName", component.Name)
+        <span class="cov8" title="1">imageRepositoryName := ""
+        if component.Spec.Application != "" </span><span class="cov8" title="1">{
+                imageRepositoryName = fmt.Sprintf("imagerepository-for-%s-%s", component.Spec.Application, component.Name)
+        }</span> else<span class="cov8" title="1"> {
+                imageRepositoryName = fmt.Sprintf("imagerepository-for-%s", component.Name)
+        }</span>
 
+        // Check image repository with expected name
+        <span class="cov8" title="1">if imageRepositoryFound == "" </span><span class="cov8" title="1">{
+                imageRepository := &amp;imagerepositoryv1alpha1.ImageRepository{}
+                imageRepositoryKey := types.NamespacedName{Name: imageRepositoryName, Namespace: component.Namespace}
+                if err := r.Client.Get(ctx, imageRepositoryKey, imageRepository); err != nil </span><span class="cov8" title="1">{
+                        if !errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                                log.Error(err, "failed to get image repository", l.Action, l.ActionView)
+                                return ctrl.Result{}, err
+                        }</span>
+                } else<span class="cov8" title="1"> {
+                        // Image Repository with such name exists, but doesn't have owner reference
+                        imageRepositoryFound = imageRepositoryName
+                        if err := controllerutil.SetOwnerReference(component, imageRepository, r.Scheme); err != nil </span><span class="cov0" title="0">{
+                                log.Error(err, "failed to set component as owner of image repository", "ImageRepositoryName", imageRepositoryName)
+                                return ctrl.Result{}, err
+                        }</span>
+                        <span class="cov8" title="1">if err := r.Client.Update(ctx, imageRepository); err != nil </span><span class="cov0" title="0">{
+                                log.Error(err, "failed to update image repository owner reference", "ImageRepositoryName", imageRepositoryName, l.Action, l.ActionUpdate)
+                                return ctrl.Result{}, err
+                        }</span>
+                        <span class="cov8" title="1">log.Info("Image repository owner reference is fixed", "ImageRepositoryName", imageRepositoryName, l.Action, l.ActionUpdate)</span>
+                }
+        }
+
+        <span class="cov8" title="1">if imageRepositoryFound == "" </span><span class="cov8" title="1">{
+                log.Info("Will create image repository", "ImageRepositoryName", imageRepositoryName, "ComponentName", component.Name)
                 imageRepository := &amp;imagerepositoryv1alpha1.ImageRepository{
                         TypeMeta: metav1.TypeMeta{
                                 Kind:       "ImageRepository",
@@ -1116,6 +1141,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
                 log.Info("Image repository already exists", "ImageRepositoryName", imageRepositoryFound, "ComponentName", component.Name)
         }</span>
 
+        // Update the Component by deleting the image.redhat.com/generate annotation
         <span class="cov8" title="1">err = r.Client.Get(ctx, req.NamespacedName, component)
         if err != nil </span><span class="cov0" title="0">{
                 return ctrl.Result{}, fmt.Errorf("error reading component: %w", err)
@@ -1555,7 +1581,6 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
                 <span class="cov8" title="1">updateComponentAnnotation, updateComponentAnnotationExists := imageRepository.Annotations[updateComponentAnnotationName]
                 if updateComponentAnnotationExists &amp;&amp; updateComponentAnnotation == "true" </span><span class="cov8" title="1">{
-
                         componentName := imageRepository.Labels[ComponentNameLabelName]
                         component := &amp;compapiv1alpha1.Component{}
                         componentKey := types.NamespacedName{Namespace: imageRepository.Namespace, Name: componentName}
@@ -1582,7 +1607,7 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
                                 log.Error(err, "failed to update imageRepository annotation", l.Action, l.ActionUpdate)
                                 return ctrl.Result{}, err
                         }</span>
-                        <span class="cov8" title="1">log.Info("Updated image repository annotation")</span>
+                        <span class="cov8" title="1">log.Info("Deleted update-component-image image repository annotation")</span>
                 }
         }
 
@@ -3094,9 +3119,10 @@ func (r *ImageRepositoryReconciler) handleError(ctx context.Context, imageReposi
 import (
         "context"
         "fmt"
+        "time"
+
         "github.com/prometheus/client_golang/prometheus"
         ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
-        "time"
 )
 
 const (
@@ -3147,18 +3173,18 @@ func NewImageControllerMetrics(probes []AvailabilityProbe) *ImageControllerMetri
         return &amp;ImageControllerMetrics{probes: probes}
 }</span>
 
-func (m *ImageControllerMetrics) StartMetrics(ctx context.Context) <span class="cov0" title="0">{
-        ticker := time.NewTicker(time.Minute)
+func (m *ImageControllerMetrics) StartMetrics(ctx context.Context, frequency time.Duration) <span class="cov8" title="1">{
+        ticker := time.NewTicker(frequency)
         log := ctrllog.FromContext(ctx)
         log.Info("Starting image controller metrics")
-        go func() </span><span class="cov0" title="0">{
-                for </span><span class="cov0" title="0">{
+        go func() </span><span class="cov8" title="1">{
+                for </span><span class="cov8" title="1">{
                         select </span>{
-                        case &lt;-ctx.Done():<span class="cov0" title="0"> // Shutdown if context is canceled
+                        case &lt;-ctx.Done():<span class="cov8" title="1"> // Shutdown if context is canceled
                                 log.Info("Shutting down metrics")
                                 ticker.Stop()
                                 return</span>
-                        case &lt;-ticker.C:<span class="cov0" title="0">
+                        case &lt;-ticker.C:<span class="cov8" title="1">
                                 m.checkProbes(ctx)</span>
                         }
                 }
@@ -3168,7 +3194,7 @@ func (m *ImageControllerMetrics) StartMetrics(ctx context.Context) <span class="
 func (m *ImageControllerMetrics) checkProbes(ctx context.Context) <span class="cov8" title="1">{
         for _, probe := range m.probes </span><span class="cov8" title="1">{
                 pingErr := probe.CheckAvailability(ctx)
-                if pingErr != nil </span><span class="cov0" title="0">{
+                if pingErr != nil </span><span class="cov8" title="1">{
                         log := ctrllog.FromContext(ctx)
                         log.Error(pingErr, "Error checking availability probe", "probe", probe)
                         probe.AvailabilityGauge().Set(0)
