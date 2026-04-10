@@ -57,7 +57,7 @@
 				
 				<option value="file0">github.com/konflux-ci/multi-platform-controller/cmd/otp/main.go (0.0%)</option>
 				
-				<option value="file1">github.com/konflux-ci/multi-platform-controller/cmd/otp/otp.go (68.9%)</option>
+				<option value="file1">github.com/konflux-ci/multi-platform-controller/cmd/otp/otp.go (74.5%)</option>
 				
 				<option value="file2">github.com/konflux-ci/multi-platform-controller/pkg/aws/ec2.go (15.4%)</option>
 				
@@ -189,6 +189,7 @@ func main() <span class="cov0" title="0">{
 
 import (
         "crypto/rand"
+        "errors"
         "io"
         "math/big"
         "net/http"
@@ -200,8 +201,6 @@ import (
 var mutex = sync.Mutex{}
 var globalMap = map[string][]byte{}
 
-// otp service example implementation.
-// The example methods log the requests and return zero values.
 type storekey struct {
         logger *logr.Logger
 }
@@ -224,15 +223,15 @@ func (s *storekey) ServeHTTP(writer http.ResponseWriter, request *http.Request) 
         }</span>
         <span class="cov8" title="1">globalMap[otp] = body
         _, err = writer.Write([]byte(otp))
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 s.logger.Error(err, "failed to write http response", "address", request.RemoteAddr)
-                writer.WriteHeader(500)
-        }</span> else<span class="cov8" title="1"> {
-                s.logger.Info("stored SSH key in OTP map", "address", request.RemoteAddr)
+                delete(globalMap, otp)
+                return
         }</span>
+        <span class="cov8" title="1">s.logger.Info("stored SSH key in OTP map", "address", request.RemoteAddr, "mapSize", len(globalMap))</span>
 }
 
-// NewOtp returns the otp service implementation.
+// NewStoreKey returns the store-key service implementation.
 func NewStoreKey(logger *logr.Logger) *storekey <span class="cov8" title="1">{
         return &amp;storekey{logger}
 }</span>
@@ -249,26 +248,27 @@ func NewOtp(logger *logr.Logger) *otp <span class="cov8" title="1">{
 func (s *otp) ServeHTTP(writer http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
         body, err := io.ReadAll(request.Body)
         if err != nil </span><span class="cov0" title="0">{
-                s.logger.Error(err, "failed to read request body")
+                s.logger.Error(err, "failed to read request body", "address", request.RemoteAddr)
                 writer.WriteHeader(500)
                 return
         }</span>
         <span class="cov8" title="1">mutex.Lock()
         defer mutex.Unlock()
 
-        res, loaded := globalMap[string(body)]
-        delete(globalMap, string(body))
+        token := string(body)
+
+        res, loaded := globalMap[token]
+        delete(globalMap, token)
         if !loaded </span><span class="cov8" title="1">{
-                s.logger.Error(err, "no OTP found for provided SSH key", "address", request.RemoteAddr)
+                s.logger.Error(errors.New("token not found in OTP map"), "no OTP found for provided token", "address", request.RemoteAddr, "mapSize", len(globalMap))
                 writer.WriteHeader(400)
         }</span> else<span class="cov8" title="1"> {
                 _, err := writer.Write(res)
                 if err != nil </span><span class="cov0" title="0">{
                         s.logger.Error(err, "failed to write http response", "address", request.RemoteAddr)
-                        writer.WriteHeader(500)
-                }</span> else<span class="cov8" title="1"> {
-                        s.logger.Info("served one time password", "address", request.RemoteAddr)
+                        return
                 }</span>
+                <span class="cov8" title="1">s.logger.Info("served one time password", "address", request.RemoteAddr, "mapSize", len(globalMap))</span>
         }
 }
 
