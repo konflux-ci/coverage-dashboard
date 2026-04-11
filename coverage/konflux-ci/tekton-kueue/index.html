@@ -67,9 +67,9 @@
 				
 				<option value="file5">github.com/konflux-ci/tekton-kueue/internal/cel/types.go (94.7%)</option>
 				
-				<option value="file6">github.com/konflux-ci/tekton-kueue/internal/controller/configmap_controller.go (0.0%)</option>
+				<option value="file6">github.com/konflux-ci/tekton-kueue/internal/controller/configmap_controller.go (76.2%)</option>
 				
-				<option value="file7">github.com/konflux-ci/tekton-kueue/internal/controller/pipelinerun_controller.go (0.0%)</option>
+				<option value="file7">github.com/konflux-ci/tekton-kueue/internal/controller/pipelinerun_controller.go (85.5%)</option>
 				
 				<option value="file8">github.com/konflux-ci/tekton-kueue/internal/webhook/v1/config_store.go (100.0%)</option>
 				
@@ -77,7 +77,9 @@
 				
 				<option value="file10">github.com/konflux-ci/tekton-kueue/internal/webhook/v1/pipelinerun_webhook.go (70.6%)</option>
 				
-				<option value="file11">github.com/konflux-ci/tekton-kueue/pkg/mutate/mutate.go (90.9%)</option>
+				<option value="file11">github.com/konflux-ci/tekton-kueue/pkg/common/common_utils.go (80.0%)</option>
+				
+				<option value="file12">github.com/konflux-ci/tekton-kueue/pkg/mutate/mutate.go (90.9%)</option>
 				
 				</select>
 			</div>
@@ -1510,27 +1512,27 @@ func (r *ConfigMapReconciler) SetupWithManager(mgr ctrl.Manager) error <span cla
                 Complete(r)
 }
 
-func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) <span class="cov0" title="0">{
+func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) <span class="cov8" title="1">{
         logger := log.FromContext(ctx)
         var cm corev1.ConfigMap
         logger.Info("Reconciling ConfigMap")
-        if err := r.Client.Get(ctx, req.NamespacedName, &amp;cm); err != nil </span><span class="cov0" title="0">{
+        if err := r.Client.Get(ctx, req.NamespacedName, &amp;cm); err != nil </span><span class="cov8" title="1">{
                 logger.Error(err, "unable to fetch ConfigMap", "ConfigMap", req.NamespacedName)
-                if apierrors.IsNotFound(err) </span><span class="cov0" title="0">{
+                if apierrors.IsNotFound(err) </span><span class="cov8" title="1">{
                         return ctrl.Result{}, nil
                 }</span>
-                <span class="cov0" title="0">return ctrl.Result{}, err</span>
+                <span class="cov8" title="1">return ctrl.Result{}, err</span>
         }
-        <span class="cov0" title="0">raw, ok := cm.Data[common.ConfigKey]
-        if !ok </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">raw, ok := cm.Data[common.ConfigKey]
+        if !ok </span><span class="cov8" title="1">{
                 logger.Info("Key is not present in configmap", "ConfigKey", common.ConfigKey, "ConfigMap", req.NamespacedName)
                 return ctrl.Result{}, nil
         }</span>
-        <span class="cov0" title="0">if err := r.Store.Update([]byte(raw)); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := r.Store.Update([]byte(raw)); err != nil </span><span class="cov8" title="1">{
                 logger.Error(err, "unable to update config")
                 return ctrl.Result{RequeueAfter: 10 * time.Second}, err
         }</span>
-        <span class="cov0" title="0">return ctrl.Result{}, nil</span>
+        <span class="cov8" title="1">return ctrl.Result{}, nil</span>
 }
 </pre>
 		
@@ -1538,6 +1540,7 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 import (
         "context"
+        "fmt"
         "strings"
 
         "k8s.io/apimachinery/pkg/runtime/schema"
@@ -1554,6 +1557,7 @@ import (
         corev1 "k8s.io/api/core/v1"
 
         "k8s.io/apimachinery/pkg/api/resource"
+        "k8s.io/utils/ptr"
         kapi "knative.dev/pkg/apis"
 
         kueueconfig "sigs.k8s.io/kueue/apis/config/v1beta1"
@@ -1620,36 +1624,36 @@ func SetupIndexer(ctx context.Context, fieldIndexer client.FieldIndexer) error <
 }</span>
 
 // Stop implements jobframework.JobWithCustomStop.
-func (p *PipelineRun) Stop(ctx context.Context, c client.Client, _ []podset.PodSetInfo, stopReason jobframework.StopReason, eventMsg string) (bool, error) <span class="cov0" title="0">{
+func (p *PipelineRun) Stop(ctx context.Context, c client.Client, _ []podset.PodSetInfo, stopReason jobframework.StopReason, eventMsg string) (bool, error) <span class="cov8" title="1">{
         plr := (*tekv1.PipelineRun)(p)
         plrPendingOrRunning := (plr.Spec.Status == "") || (plr.Spec.Status == tekv1.PipelineRunSpecStatusPending)
 
-        if plr.IsDone() || !plrPendingOrRunning </span><span class="cov0" title="0">{
+        if plr.IsDone() || !plrPendingOrRunning </span><span class="cov8" title="1">{
                 return false, nil
         }</span>
 
-        <span class="cov0" title="0">plrCopy := plr.DeepCopy()
+        <span class="cov8" title="1">plrCopy := plr.DeepCopy()
         plrCopy.SetManagedFields(nil)
         // should we wait for the pipeline to stop?
         plrCopy.Spec.Status = tekv1.PipelineRunSpecStatusStoppedRunFinally
         err := c.Patch(ctx, plrCopy, client.Apply, client.FieldOwner(ControllerName), client.ForceOwnership)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return false, err
         }</span>
 
-        <span class="cov0" title="0">return true, nil</span>
+        <span class="cov8" title="1">return true, nil</span>
 }
 
 // Finished implements jobframework.GenericJob.
-func (p *PipelineRun) Finished() (message string, success bool, finished bool) <span class="cov0" title="0">{
+func (p *PipelineRun) Finished() (message string, success bool, finished bool) <span class="cov8" title="1">{
         plr := (*tekv1.PipelineRun)(p)
         condition := plr.Status.GetCondition(kapi.ConditionSucceeded)
 
-        if condition == nil </span><span class="cov0" title="0">{
+        if condition == nil </span><span class="cov8" title="1">{
                 return "", false, false
         }</span>
 
-        <span class="cov0" title="0">message = condition.Message
+        <span class="cov8" title="1">message = condition.Message
         success = (condition.Reason == tekv1.PipelineRunReasonSuccessful.String()) ||
                 (condition.Reason == tekv1.PipelineRunReasonCompleted.String())
         finished = plr.IsDone()
@@ -1658,30 +1662,33 @@ func (p *PipelineRun) Finished() (message string, success bool, finished bool) <
 }
 
 // GVK implements jobframework.GenericJob.
-func (p *PipelineRun) GVK() schema.GroupVersionKind <span class="cov0" title="0">{
+func (p *PipelineRun) GVK() schema.GroupVersionKind <span class="cov8" title="1">{
         return PLRGVK
 }</span>
 
 // IsActive implements jobframework.GenericJob.
-func (p *PipelineRun) IsActive() bool <span class="cov0" title="0">{
+func (p *PipelineRun) IsActive() bool <span class="cov8" title="1">{
         return (*tekv1.PipelineRun)(p).HasStarted()
 }</span>
 
 // IsSuspended implements jobframework.GenericJob.
-func (p *PipelineRun) IsSuspended() bool <span class="cov0" title="0">{
+func (p *PipelineRun) IsSuspended() bool <span class="cov8" title="1">{
         return p.Spec.Status == tekv1.PipelineRunSpecStatusPending
 }</span>
 
 // Object implements jobframework.GenericJob.
-func (p *PipelineRun) Object() client.Object <span class="cov0" title="0">{
+func (p *PipelineRun) Object() client.Object <span class="cov8" title="1">{
         return (*tekv1.PipelineRun)(p)
 }</span>
 
 // PodSets implements jobframework.GenericJob.
-func (p *PipelineRun) PodSets() ([]kueue.PodSet, error) <span class="cov0" title="0">{
-        requests := p.resourcesRequests()
+func (p *PipelineRun) PodSets() ([]kueue.PodSet, error) <span class="cov8" title="1">{
+        requests, err := p.resourcesRequests()
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
 
-        return []kueue.PodSet{
+        <span class="cov8" title="1">return []kueue.PodSet{
                 {
                         Name: "pod-set-1",
                         Template: corev1.PodTemplateSpec{
@@ -1699,8 +1706,8 @@ func (p *PipelineRun) PodSets() ([]kueue.PodSet, error) <span class="cov0" title
                         },
                         Count: 1,
                 },
-        }, nil
-}</span>
+        }, nil</span>
+}
 
 // resourcesRequests will match all annotations starting with
 // `kueue.konflux-ci.dev/requests-`. Valid annotations to set
@@ -1713,42 +1720,68 @@ func (p *PipelineRun) PodSets() ([]kueue.PodSet, error) <span class="cov0" title
 // By default, a resource which indicates that the workload requires 1
 // PipelineRun will be added. This is useful for controlling the number
 // of PipelineRuns that can be executed concurrently.
-//
-// WARNING: Annotations are not validated and a panic will
-// happen if they can not be parsed as `resource.Quantity`.
-func (p *PipelineRun) resourcesRequests() corev1.ResourceList <span class="cov0" title="0">{
+func (p *PipelineRun) resourcesRequests() (corev1.ResourceList, error) <span class="cov8" title="1">{
         requests := corev1.ResourceList{
                 ResourcePipelineRunCount: resource.MustParse("1"),
         }
 
-        for k, v := range p.GetAnnotations() </span><span class="cov0" title="0">{
-                if t := strings.TrimPrefix(k, annotationResourcesRequests); t != k </span><span class="cov0" title="0">{
-                        // TODO(@filariow): how to properly validate this?
-                        requests[corev1.ResourceName(t)] = resource.MustParse(v)
-                }</span>
+        for k, v := range p.GetAnnotations() </span><span class="cov8" title="1">{
+                n, q, err := p.parseResourcesRequestsAnnotation(k, v)
+                switch </span>{
+                case err != nil:<span class="cov8" title="1">
+                        return nil, err</span>
+                case n != nil &amp;&amp; q != nil:<span class="cov8" title="1">
+                        requests[*n] = *q</span>
+                }
         }
 
-        <span class="cov0" title="0">return requests</span>
+        <span class="cov8" title="1">return requests, nil</span>
+}
+
+// parseResourcesRequestsAnnotation checks if an annotation is a ResourcesRequests one.
+// It validates the extracted key and value. If the annotation is invalid the PipelineRun can not
+// be correctly processed and it needs to be fixed. To avoid a reconciliation loop an
+// UnretryableError is returned. This will tell Kueue's reconciler to avoid reconciling the
+// PipelineRun at current state again. If a new event on the PipelineRun occurs, a new
+// reconciliation will start.
+func (p *PipelineRun) parseResourcesRequestsAnnotation(k, v string) (*corev1.ResourceName, *resource.Quantity, error) <span class="cov8" title="1">{
+        t, ok := strings.CutPrefix(k, annotationResourcesRequests)
+        if !ok </span><span class="cov8" title="1">{
+                return nil, nil, nil
+        }</span>
+
+        <span class="cov8" title="1">if t == "" </span><span class="cov8" title="1">{
+                return nil, nil, jobframework.UnretryableError(
+                        fmt.Sprintf("empty resource name in annotation %s", k))
+        }</span>
+
+        <span class="cov8" title="1">q, err := resource.ParseQuantity(v)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, nil, jobframework.UnretryableError(
+                        fmt.Sprintf("invalid resource quantity in annotation %s=%q: %v", k, v, err))
+        }</span>
+
+        <span class="cov8" title="1">return ptr.To(corev1.ResourceName(t)), &amp;q, nil</span>
 }
 
 // PodsReady implements jobframework.GenericJob.
-func (p *PipelineRun) PodsReady() bool <span class="cov0" title="0">{
+func (p *PipelineRun) PodsReady() bool <span class="cov8" title="1">{
         panic("pods ready shouldn't be called")</span>
 }
 
 // RestorePodSetsInfo implements jobframework.GenericJob.
-func (p *PipelineRun) RestorePodSetsInfo(podSetsInfo []podset.PodSetInfo) bool <span class="cov0" title="0">{
+func (p *PipelineRun) RestorePodSetsInfo(podSetsInfo []podset.PodSetInfo) bool <span class="cov8" title="1">{
         return false
 }</span>
 
 // RunWithPodSetsInfo implements jobframework.GenericJob.
-func (p *PipelineRun) RunWithPodSetsInfo(podSetsInfo []podset.PodSetInfo) error <span class="cov0" title="0">{
+func (p *PipelineRun) RunWithPodSetsInfo(podSetsInfo []podset.PodSetInfo) error <span class="cov8" title="1">{
         p.Spec.Status = ""
         return nil
 }</span>
 
 // Suspend implements jobframework.GenericJob.
-func (p *PipelineRun) Suspend() {<span class="cov0" title="0">
+func (p *PipelineRun) Suspend() {<span class="cov8" title="1">
         // Not implemented because this is not called when JobWithCustomStop is implemented.
 }</span>
 </pre>
@@ -2061,7 +2094,30 @@ func (d *pipelineRunCustomDefaulter) Default(ctx context.Context, obj runtime.Ob
 }
 </pre>
 		
-		<pre class="file" id="file11" style="display: none">/*
+		<pre class="file" id="file11" style="display: none">package common
+
+import (
+        "fmt"
+        "os"
+        "strings"
+)
+
+const namespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+
+func GetCurrentNamespace() (string, error) <span class="cov0" title="0">{
+        return readNamespace(namespaceFile)
+}</span>
+
+func readNamespace(path string) (string, error) <span class="cov8" title="1">{
+        bytes, err := os.ReadFile(path)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("not able to read namespace file %s: %w", path, err)
+        }</span>
+        <span class="cov8" title="1">return strings.TrimSpace(string(bytes)), nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">/*
 Copyright 2025.
 
 Licensed under the Apache License, Version 2.0 (the "License");
