@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/24274055383",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/24298305924",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -22,15 +22,15 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 81.4
-        },
-        {
-          "package": "github.com/konflux-ci/build-service/pkg/common",
-          "coverage": 90.0
+          "coverage": 81.5
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
           "coverage": 20.5
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/common",
+          "coverage": 90.0
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git/gitproviderfactory",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 73.3,
+      "coverage": 73.4,
       "status": "ok",
       "packages": [
         {
@@ -145,7 +145,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 73.8
+          "coverage": 73.9
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -470,16 +470,16 @@
           "coverage": 32.3
         },
         {
+          "package": "github.com/konflux-ci/qe-tools/cmd",
+          "coverage": 72.2
+        },
+        {
           "package": "github.com/konflux-ci/qe-tools/cmd/coffeebreak",
           "coverage": 5.8
         },
         {
           "package": "github.com/konflux-ci/qe-tools/cmd/analyzetestresults",
           "coverage": 41.7
-        },
-        {
-          "package": "github.com/konflux-ci/qe-tools/cmd",
-          "coverage": 72.2
         }
       ]
     },
@@ -622,7 +622,7 @@
     },
     {
       "repo": "konflux-ci/tekton-kueue",
-      "coverage": 63.8,
+      "coverage": 64.0,
       "status": "ok",
       "packages": [
         {
@@ -635,7 +635,7 @@
         },
         {
           "package": "github.com/konflux-ci/tekton-kueue/internal/webhook/v1",
-          "coverage": 83.1
+          "coverage": 84.4
         },
         {
           "package": "github.com/konflux-ci/tekton-kueue/internal/cel",

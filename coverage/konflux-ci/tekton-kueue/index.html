@@ -75,7 +75,7 @@
 				
 				<option value="file9">github.com/konflux-ci/tekton-kueue/internal/webhook/v1/metrics.go (100.0%)</option>
 				
-				<option value="file10">github.com/konflux-ci/tekton-kueue/internal/webhook/v1/pipelinerun_webhook.go (70.6%)</option>
+				<option value="file10">github.com/konflux-ci/tekton-kueue/internal/webhook/v1/pipelinerun_webhook.go (73.1%)</option>
 				
 				<option value="file11">github.com/konflux-ci/tekton-kueue/pkg/common/common_utils.go (80.0%)</option>
 				
@@ -1996,8 +1996,9 @@ func (w *patchFilteringWebhook) Handle(ctx context.Context, req admission.Reques
                 }</span>
         }
         <span class="cov8" title="1">resp.Patches = resp.Patches[:n]
-        if n == 0 </span><span class="cov0" title="0">{
+        if n == 0 </span><span class="cov8" title="1">{
                 resp.PatchType = nil
+                resp.Patch = nil
         }</span>
         <span class="cov8" title="1">return resp</span>
 }
