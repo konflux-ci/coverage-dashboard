@@ -59,9 +59,9 @@
 				
 				<option value="file1">github.com/konflux-ci/multi-platform-controller/cmd/otp/otp.go (74.5%)</option>
 				
-				<option value="file2">github.com/konflux-ci/multi-platform-controller/pkg/aws/ec2.go (15.4%)</option>
+				<option value="file2">github.com/konflux-ci/multi-platform-controller/pkg/aws/ec2.go (17.5%)</option>
 				
-				<option value="file3">github.com/konflux-ci/multi-platform-controller/pkg/aws/ec2_helpers.go (72.3%)</option>
+				<option value="file3">github.com/konflux-ci/multi-platform-controller/pkg/aws/ec2_helpers.go (63.4%)</option>
 				
 				<option value="file4">github.com/konflux-ci/multi-platform-controller/pkg/cloud/cloud.go (100.0%)</option>
 				
@@ -69,13 +69,13 @@
 				
 				<option value="file6">github.com/konflux-ci/multi-platform-controller/pkg/config/validation.go (96.3%)</option>
 				
-				<option value="file7">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmp.go (10.2%)</option>
+				<option value="file7">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmp.go (12.2%)</option>
 				
-				<option value="file8">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmp_helpers.go (18.9%)</option>
+				<option value="file8">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmp_helpers.go (14.2%)</option>
 				
-				<option value="file9">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmz.go (3.6%)</option>
+				<option value="file9">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmz.go (4.2%)</option>
 				
-				<option value="file10">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmz_helpers.go (7.2%)</option>
+				<option value="file10">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmz_helpers.go (7.6%)</option>
 				
 				<option value="file11">github.com/konflux-ci/multi-platform-controller/pkg/metrics/platform.go (77.1%)</option>
 				
@@ -85,7 +85,7 @@
 				
 				<option value="file14">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/dynamic.go (51.4%)</option>
 				
-				<option value="file15">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/dynamicpool.go (63.7%)</option>
+				<option value="file15">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/dynamicpool.go (64.6%)</option>
 				
 				<option value="file16">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/hostpool.go (77.4%)</option>
 				
@@ -607,45 +607,6 @@ func (ec AWSEc2DynamicConfig) GetState(kubeClient client.Client, ctx context.Con
         <span class="cov0" title="0">return cloud.FailedState, nil</span>
 }
 
-// CleanUpVms deletes any VMs in the ec cloud that are not associated with an existing Tekton TaskRun.
-func (ec AWSEc2DynamicConfig) CleanUpVms(ctx context.Context, kubeClient client.Client, existingTaskRuns map[string][]string) error <span class="cov0" title="0">{
-        log := logr.FromContextOrDiscard(ctx)
-        log.Info("Attempting to clean up orphaned AWS EC2 instances")
-
-        // Create an EC2 client
-        ec2Client, err := ec.createClient(kubeClient, ctx)
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to create an EC2 client: %w", err)
-        }</span>
-
-        // Retrieve instances
-        <span class="cov0" title="0">instancesOutput, err := ec2Client.DescribeInstances(
-                ctx,
-                &amp;ec2.DescribeInstancesInput{
-                        Filters: []types.Filter{
-                                {Name: aws.String("tag:" + MultiPlatformManaged), Values: []string{"true"}},
-                        },
-                },
-        )
-        if err != nil </span><span class="cov0" title="0">{
-                log.Error(err, "failed to retrieve EC2 instances")
-                return fmt.Errorf("failed to retrieve EC2 instances: %w", err)
-        }</span>
-
-        <span class="cov0" title="0">errs := []error{}
-        // Retrieve and delete VM instances whose TaskRun does not exist.
-        vmsWithoutTaskRuns := ec.findInstancesWithoutTaskRuns(log, instancesOutput.Reservations, existingTaskRuns)
-        for _, vmName := range vmsWithoutTaskRuns </span><span class="cov0" title="0">{
-                err := ec.TerminateInstance(kubeClient, ctx, cloud.InstanceIdentifier(vmName))
-                if err != nil </span><span class="cov0" title="0">{
-                        log.Error(err, "failed to terminate instance", "instanceID", vmName)
-                        errs = append(errs, err)
-                }</span>
-        }
-
-        <span class="cov0" title="0">return errors.Join(errs...)</span>
-}
-
 // An AWSEc2DynamicConfig represents a configuration for an AWS EC2 instance.
 // The zero value (where each field will be assigned its type's zero value) is not a
 // valid AWSEc2DynamicConfig.
@@ -735,8 +696,6 @@ import (
         "fmt"
         "net"
         "os"
-        "slices"
-        "strings"
         "time"
 
         "github.com/aws/aws-sdk-go-v2/aws"
@@ -912,50 +871,6 @@ func (ec AWSEc2DynamicConfig) configureInstance(taskRunName string, instanceTag 
         }, nil</span>
 }
 
-// findInstancesWithoutTaskRuns iterates over instances retrieved from the ec cloud and returns a list of those that
-// are associated with a non-existing Tekton TaskRun. Each instance should have a tag with the associated TaskRun's
-// namespace and name. This is compared to existingTaskRuns, which is a map of namespaces to a list of TaskRuns in
-// that namespace, to determine if this instance's TaskRun still exists.
-func (ec AWSEc2DynamicConfig) findInstancesWithoutTaskRuns(log logr.Logger, reservations []types.Reservation, existingTaskRuns map[string][]string) []string <span class="cov8" title="1">{
-        var instancesWithoutTaskRuns []string
-
-        // Iterate over all VM instances
-        for _, reservation := range reservations </span><span class="cov8" title="1">{
-                for _, instance := range reservation.Instances </span><span class="cov8" title="1">{
-                        // Try to get this instance's TaskRun ID
-                        // **Assumes the Key &amp; Value of the tag are non-nil
-                        tagIndex := slices.IndexFunc(instance.Tags, func(tag types.Tag) bool </span><span class="cov8" title="1">{
-                                return *tag.Key == cloud.TaskRunTagKey
-                        }</span>)
-                        <span class="cov8" title="1">if tagIndex == -1 </span><span class="cov8" title="1">{
-                                msg := "WARN: no taskRun ID tag found; appending to no TaskRun list anyway..."
-                                log.Info(msg, "instanceID", *instance.InstanceId)
-                                instancesWithoutTaskRuns = append(instancesWithoutTaskRuns, *instance.InstanceId)
-                                continue</span>
-                        }
-
-                        <span class="cov8" title="1">taskRunID := *instance.Tags[tagIndex].Value
-                        err := cloud.ValidateTaskRunID(taskRunID)
-                        if err != nil </span><span class="cov8" title="1">{
-                                msg := fmt.Sprintf("WARN: invalid TaskRun ID - %s; appending to no TaskRun list anyway...", err.Error())
-                                log.Info(msg, "instanceID", *instance.InstanceId)
-                                instancesWithoutTaskRuns = append(instancesWithoutTaskRuns, *instance.InstanceId)
-                                continue</span>
-                        }
-
-                        // Try to find this instance's TaskRun
-                        <span class="cov8" title="1">taskRunInfo := strings.Split(taskRunID, ":")
-                        taskRunNamespace, taskRunName := taskRunInfo[0], taskRunInfo[1]
-                        taskRuns, ok := existingTaskRuns[taskRunNamespace]
-                        // Add the VM instance to the no TaskRun list if the TaskRun namespace or TaskRun does not exist
-                        if !ok || !slices.Contains(taskRuns, taskRunName) </span><span class="cov8" title="1">{
-                                instancesWithoutTaskRuns = append(instancesWithoutTaskRuns, *instance.InstanceId)
-                        }</span>
-                }
-        }
-        <span class="cov8" title="1">return instancesWithoutTaskRuns</span>
-}
-
 // A SecretCredentialsProvider is a collection of information needed to generate
 // AWS credentials. It implements the AWS CredentialsProvider interface.
 type SecretCredentialsProvider struct {
@@ -1037,7 +952,6 @@ type CloudProvider interface {
         CountInstances(kubeClient client.Client, ctx context.Context, instanceTag string) (int, error)
         ListInstances(kubeClient client.Client, ctx context.Context, instanceTag string) ([]CloudVMInstance, error)
         GetState(kubeClient client.Client, ctx context.Context, instanceId InstanceIdentifier) (VMState, error)
-        CleanUpVms(ctx context.Context, kubeClient client.Client, existingTaskRuns map[string][]string) error
         SshUser() string
 }
 
@@ -1878,7 +1792,6 @@ package ibm
 import (
         "context"
         "encoding/base64"
-        "errors"
         "fmt"
         "strconv"
         "strings"
@@ -2119,46 +2032,6 @@ func (pw IBMPowerDynamicConfig) GetState(kubeClient client.Client, ctx context.C
         <span class="cov0" title="0">return cloud.OKState, nil</span>
 }
 
-// CleanUpVms deletes any VMs in the pw cloud instance that are associated with a non-existing Tekton TaskRun.
-// Each VM instance should have a tag with the associated TaskRun's namespace and name. This is compared to
-// existingTaskRuns, which is a map of namespaces to a list of TaskRuns in that namespace, to determine if this
-// VM's TaskRun still exists.
-func (pw IBMPowerDynamicConfig) CleanUpVms(ctx context.Context, kubeClient client.Client, existingTaskRuns map[string][]string) error <span class="cov0" title="0">{
-        // Get all VM instances
-        log := logr.FromContextOrDiscard(ctx)
-        log.Info("Attempting to clean up orphaned IBM Power Systems instances")
-        service, err := pw.createAuthenticatedBaseService(ctx, kubeClient)
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to create an authenticated base service: %w", err)
-        }</span>
-        <span class="cov0" title="0">pvmInstancesCollection, err := pw.listInstances(ctx, service)
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to fetch Power Systems instances: %w", err)
-        }</span>
-
-        // Iterate over all VM instances
-        <span class="cov0" title="0">errs := []error{}
-        for _, instanceRef := range pvmInstancesCollection.PvmInstances </span><span class="cov0" title="0">{
-                pvmInstance, err := pw.getInstance(ctx, service, *instanceRef.PvmInstanceID)
-                if err != nil </span><span class="cov0" title="0">{
-                        msg := fmt.Sprintf("WARN: failed to get instance - %s; skipping this instance...", err.Error())
-                        log.Info(msg, "instanceID", *pvmInstance.PvmInstanceID)
-                        continue</span>
-                }
-                // Delete the VM instance if the TaskRun namespace or TaskRun does not exist
-                <span class="cov0" title="0">taskRunExists := pw.doesInstanceHaveTaskRun(log, pvmInstance, existingTaskRuns)
-                if !taskRunExists </span><span class="cov0" title="0">{
-                        err := pw.TerminateInstance(kubeClient, ctx, cloud.InstanceIdentifier(*pvmInstance.PvmInstanceID))
-                        if err != nil </span><span class="cov0" title="0">{
-                                log.Error(err, "failed to terminate instance", "instanceID", *pvmInstance.PvmInstanceID)
-                                errs = append(errs, err)
-                        }</span>
-                }
-        }
-
-        <span class="cov0" title="0">return errors.Join(errs...)</span>
-}
-
 func (pw IBMPowerDynamicConfig) SshUser() string <span class="cov0" title="0">{
         return "root"
 }</span>
@@ -2220,7 +2093,6 @@ import (
         "errors"
         "fmt"
         "os"
-        "slices"
         "strings"
         "time"
 
@@ -2610,37 +2482,12 @@ func (pw IBMPowerDynamicConfig) updateVolume(ctx context.Context, service *core.
         <span class="cov0" title="0">log.Info("Volume size updated", "volumeID", vRef.VolumeID, "size", vRef.Size)
         return nil</span>
 }
-
-// doesInstanceHaveTaskRun returns whether or not an instance on the pw cloud is associated with an existing
-// TaskRun. Each instance should have a tag with the associated TaskRun's namespace and name. This is compared
-// to existingTaskRuns, which is a map of namespaces to a list of TaskRuns in that namespace, to determine if
-// this instance's TaskRun still exists.
-func (pw IBMPowerDynamicConfig) doesInstanceHaveTaskRun(log logr.Logger, instance *models.PVMInstance, existingTaskRuns map[string][]string) bool <span class="cov8" title="1">{
-        // Try to find the instance's TaskRun ID tag
-        instanceTagIndex := slices.IndexFunc(instance.UserTags, func(tag string) bool </span><span class="cov8" title="1">{
-                return cloud.ValidateTaskRunID(tag) == nil
-        }</span>)
-        <span class="cov8" title="1">if instanceTagIndex == -1 </span><span class="cov8" title="1">{
-                msg := "WARN: failed to find a valid TaskRun ID; counting as having no TaskRun anyway..."
-                log.Info(msg, "instanceID", *instance.PvmInstanceID)
-                return false
-        }</span>
-        <span class="cov8" title="1">tag := instance.UserTags[instanceTagIndex]
-
-        // Try to find this instance's TaskRun
-        taskRunInfo := strings.Split(tag, ":")
-        taskRunNamespace, taskRunName := taskRunInfo[0], taskRunInfo[1]
-        taskRuns, ok := existingTaskRuns[taskRunNamespace]
-        // Return true if the associated TaskRun exists in a TaskRun namespace
-        return ok &amp;&amp; slices.Contains(taskRuns, taskRunName)</span>
-}
 </pre>
 		
 		<pre class="file" id="file9" style="display: none">package ibm
 
 import (
         "context"
-        "errors"
         "fmt"
         "net/http"
         "slices"
@@ -2932,41 +2779,6 @@ func (iz IBMZDynamicConfig) GetState(kubeClient client.Client, ctx context.Conte
         <span class="cov0" title="0">return cloud.FailedState, nil</span>
 }
 
-// CleanUpVms deletes any VMs in the iz cloud instance that are associated with a non-existing Tekton TaskRun.
-// Each VM instance should have a tag with the associated TaskRun's namespace and name. This is compared to
-// existingTaskRuns, which is a map of namespaces to a list of TaskRuns in that namespace, to determine if this
-// VM's TaskRun still exists.
-func (iz IBMZDynamicConfig) CleanUpVms(ctx context.Context, kubeClient client.Client, existingTaskRuns map[string][]string) error <span class="cov0" title="0">{
-        // Get all VM instances
-        log := logr.FromContextOrDiscard(ctx)
-        log.Info("Attempting to clean up orphaned IBM System Z instances")
-        vpcService, err := iz.createAuthenticatedVpcService(ctx, kubeClient)
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to create an authenticated VPC service: %w", err)
-        }</span>
-        <span class="cov0" title="0">vpc, err := iz.lookUpVpc(vpcService)
-        if err != nil </span><span class="cov0" title="0">{
-                return err
-        }</span>
-        <span class="cov0" title="0">vpcInstances, _, err := vpcService.ListInstances(&amp;vpcv1.ListInstancesOptions{ResourceGroupID: vpc.ResourceGroup.ID, VPCName: &amp;iz.Vpc})
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to list VPC instances in the VPC network %s: %w", *vpc.ID, err)
-        }</span>
-
-        <span class="cov0" title="0">errs := []error{}
-        // Retrieve and delete VM instances whose TaskRun does not exist.
-        vmsWithoutTaskRuns := iz.findInstancesWithoutTaskRuns(log, vpcService, vpcInstances.Instances, existingTaskRuns)
-        for _, vmName := range vmsWithoutTaskRuns </span><span class="cov0" title="0">{
-                err := iz.TerminateInstance(kubeClient, ctx, cloud.InstanceIdentifier(vmName))
-                if err != nil </span><span class="cov0" title="0">{
-                        log.Error(err, "failed to terminate instance", "instanceID", vmName)
-                        errs = append(errs, err)
-                }</span>
-        }
-
-        <span class="cov0" title="0">return errors.Join(errs...)</span>
-}
-
 func (iz IBMZDynamicConfig) SshUser() string <span class="cov0" title="0">{
         return "root"
 }</span>
@@ -3023,7 +2835,6 @@ type IBMZDynamicConfig struct {
 
 import (
         "context"
-        "slices"
 
         // #nosec is added to bypass the golang security scan since the cryptographic
         // strength doesn't matter here
@@ -3040,7 +2851,6 @@ import (
         "github.com/IBM/go-sdk-core/v5/core"
         "github.com/IBM/vpc-go-sdk/vpcv1"
         "github.com/go-logr/logr"
-        "github.com/konflux-ci/multi-platform-controller/pkg/cloud"
         v1 "k8s.io/api/core/v1"
         types2 "k8s.io/apimachinery/pkg/types"
         "sigs.k8s.io/controller-runtime/pkg/client"
@@ -3118,7 +2928,7 @@ func checkIfIpIsLive(ctx context.Context, ip string) error <span class="cov0" ti
         <span class="cov0" title="0">return nil</span>
 }
 
-func ptr[V any](s V) *V <span class="cov8" title="1">{
+func ptr[V any](s V) *V <span class="cov0" title="0">{
         return &amp;s
 }</span>
 
@@ -3343,47 +3153,6 @@ func (iz IBMZDynamicConfig) assignIPToInstance(instance *vpcv1.Instance, vpcServ
         // we are charged for the full month TODO: clarify this portion of comment -&gt; (60c)
         <span class="cov0" title="0">ip, err = assignNewlyAllocatedIP(instance, vpcService)
         return ip, err</span>
-}
-
-// findInstancesWithoutTaskRuns iterates over instances retrieved from the iz cloud and returns a list of those that
-// are associated with a non-existing Tekton TaskRun. Each instance's volume should have a tag with the associated
-// TaskRun's namespace and name. This is compared to existingTaskRuns, which is a map of namespaces to a list of
-// TaskRuns in that namespace, to determine if this instance's TaskRun still exists.
-func (iz IBMZDynamicConfig) findInstancesWithoutTaskRuns(log logr.Logger, vpcService *vpcv1.VpcV1, instances []vpcv1.Instance, existingTaskRuns map[string][]string) []string <span class="cov0" title="0">{
-        var instancesWithoutTaskRuns []string
-
-        // Iterate over all VM instances
-        for _, instance := range instances </span><span class="cov0" title="0">{
-                volumeId := instance.VolumeAttachments[0].ID
-                // Get instance's volume; assumes only one volume per instance
-                volume, _, err := vpcService.GetVolume(&amp;vpcv1.GetVolumeOptions{ID: volumeId})
-                if err != nil </span><span class="cov0" title="0">{
-                        msg := "WARN failed to get instance's volume; skipping this instance..."
-                        log.Info(msg, "instanceID", *instance.ID)
-                        continue</span>
-                }
-
-                // Try to find the volume's TaskRun ID tag
-                <span class="cov0" title="0">volumeTagIndex := slices.IndexFunc(volume.UserTags, func(tag string) bool </span><span class="cov0" title="0">{
-                        return cloud.ValidateTaskRunID(tag) == nil
-                }</span>)
-                <span class="cov0" title="0">if volumeTagIndex == -1 </span><span class="cov0" title="0">{
-                        log.Info("WARN: failed to find a valid TaskRun ID; appending to no TaskRun list anyway...", "instanceID", *instance.ID)
-                        instancesWithoutTaskRuns = append(instancesWithoutTaskRuns, *instance.ID)
-                        continue</span>
-                }
-                <span class="cov0" title="0">volumeTag := volume.UserTags[volumeTagIndex]
-
-                // Try to find this instance's TaskRun
-                taskRunInfo := strings.Split(volumeTag, ":")
-                taskRunNamespace, taskRunName := taskRunInfo[0], taskRunInfo[1]
-                taskRuns, ok := existingTaskRuns[taskRunNamespace]
-                // Add the VM instance to the no TaskRun list if the TaskRun namespace or TaskRun does not exist
-                if !ok || !slices.Contains(taskRuns, taskRunName) </span><span class="cov0" title="0">{
-                        instancesWithoutTaskRuns = append(instancesWithoutTaskRuns, *instance.ID)
-                }</span>
-        }
-        <span class="cov0" title="0">return instancesWithoutTaskRuns</span>
 }
 </pre>
 		
@@ -3944,10 +3713,6 @@ type DynamicHostPool struct {
         instanceTag            string
         additionalInstanceTags map[string]string
 }
-
-func (a DynamicHostPool) InstanceTag() string <span class="cov0" title="0">{
-        return a.instanceTag
-}</span>
 
 func (a DynamicHostPool) buildHostPool(r *ReconcileTaskRun, ctx context.Context, instanceTag string) (*HostPool, int, error) <span class="cov8" title="1">{
         log := logr.FromContextOrDiscard(ctx)
