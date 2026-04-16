@@ -55,9 +55,9 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (75.7%)</option>
+				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (77.0%)</option>
 				
-				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.5%)</option>
+				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.3%)</option>
 				
 				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (80.8%)</option>
 				
@@ -674,8 +674,8 @@ func (r *ComponentBuildReconciler) WaitForCacheUpdateOldModel(ctx context.Contex
                                 break</span>
                         }
                         // Outdated version of the component, wait more.
-                } else<span class="cov0" title="0"> {
-                        if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                } else<span class="cov8" title="1"> {
+                        if errors.IsNotFound(err) </span><span class="cov8" title="1">{
                                 // The component was deleted
                                 isComponentInCacheUpToDate = true
                                 break</span>
@@ -854,7 +854,7 @@ func (r *ComponentBuildReconciler) GetWebhookDataAndPacSecret(ctx context.Contex
 
         // Obtain Pipelines as Code callback URL (needed for both webhook mode and app mode for incoming triggers)
         <span class="cov8" title="1">webhookTargetUrl, err := r.getPaCWebhookTargetUrl(ctx, repoUrl, true)
-        if err != nil </span><span class="cov8" title="1">{
+        if err != nil </span><span class="cov0" title="0">{
                 return "", "", nil, err
         }</span>
 
