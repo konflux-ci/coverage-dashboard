@@ -1,0 +1,15 @@
+name: konflux-ci/konflux-build-cli
+exclude_dirs:
+    - .github/
+    - .tekton/
+    - cmd/ # command headers only
+    - docs/
+    - integration_tests/
+    - testutil/
+    - test/
+    - tests/
+    - vendor/
+exclude_files:
+    - main.go # one line entrypoint
+    - mock_*.go
+    - '*_mock.go'
