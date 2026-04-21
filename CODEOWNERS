@@ -49,3 +49,5 @@
 /repos/segment-bridge.yaml @Omeramsc
 
 /repos/may.yaml @konflux-ci/infrastructure
+
+/repos/loadtest.yaml @jhutar
