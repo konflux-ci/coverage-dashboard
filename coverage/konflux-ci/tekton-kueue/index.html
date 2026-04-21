@@ -1493,6 +1493,10 @@ import (
         "sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
+// ConfigMapReconciler watches the tekton-kueue-config ConfigMap and propagates
+// configuration changes to the webhook's ConfigStore. This allows queue names,
+// multiKueue settings, and CEL mutation expressions to be updated at runtime
+// without restarting the webhook pod.
 type ConfigMapReconciler struct {
         Client client.Client
         Store  *v1.ConfigStore
@@ -1536,7 +1540,18 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 }
 </pre>
 		
-		<pre class="file" id="file7" style="display: none">package controller
+		<pre class="file" id="file7" style="display: none">// Package controller implements the Kueue integration for Tekton PipelineRuns.
+//
+// It bridges Tekton and Kueue by wrapping PipelineRun as a Kueue GenericJob,
+// allowing Kueue to manage PipelineRun scheduling, quota, and preemption.
+// PipelineRuns are suspended (set to Pending) by the webhook on creation and
+// only released by Kueue when cluster resources are available.
+//
+// Resource requirements for quota accounting are declared via annotations
+// on the PipelineRun (e.g. kueue.konflux-ci.dev/requests-cpu). A synthetic
+// "tekton.dev/pipelineruns" resource is always included to enable concurrency
+// limits independent of actual compute resources.
+package controller
 
 import (
         "context"
@@ -1574,6 +1589,9 @@ import (
 // +kubebuilder:rbac:groups="tekton.dev",resources=pipelineruns/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=list;watch
 
+// PipelineRun wraps tekv1.PipelineRun to implement Kueue's GenericJob and
+// JobWithCustomStop interfaces. This is a type definition (not an alias) so
+// we can attach methods without modifying the upstream Tekton type.
 type PipelineRun tekv1.PipelineRun
 
 const (
@@ -1581,7 +1599,12 @@ const (
 )
 
 const (
-        ControllerName           = "KueuePipelineRunController"
+        ControllerName = "KueuePipelineRunController"
+
+        // ResourcePipelineRunCount is a synthetic resource name used in Kueue
+        // workloads to track the number of concurrent PipelineRuns. Every
+        // PipelineRun requests exactly 1 unit of this resource, enabling
+        // ClusterQueue quotas to limit concurrency (e.g. "max 10 PipelineRuns").
         ResourcePipelineRunCount = "tekton.dev/pipelineruns"
 )
 
@@ -1597,6 +1620,10 @@ var (
         PLRLog                                = ctrl.Log.WithName(ControllerName)
 )
 
+// SetupWithManager registers the PipelineRun reconciler with the manager using
+// Kueue's generic reconciler factory. The factory handles Workload lifecycle
+// (create, admit, suspend, evict) so this controller only needs to implement
+// the GenericJob interface methods that map PipelineRun semantics to Kueue.
 func SetupWithManager(ctx context.Context, mgr ctrl.Manager) error <span class="cov0" title="0">{
         reconcilerFactory := jobframework.NewGenericReconcilerFactory(
                 func() jobframework.GenericJob </span><span class="cov0" title="0">{ return &amp;PipelineRun{} }</span>,
@@ -1619,11 +1646,16 @@ func SetupWithManager(ctx context.Context, mgr ctrl.Manager) error <span class="
         <span class="cov0" title="0">return reconciler.SetupWithManager(mgr)</span>
 }
 
+// SetupIndexer creates the field index that Kueue uses to look up Workloads
+// by their owner PipelineRun. This must be called before the reconciler starts.
 func SetupIndexer(ctx context.Context, fieldIndexer client.FieldIndexer) error <span class="cov0" title="0">{
         return jobframework.SetupWorkloadOwnerIndex(ctx, fieldIndexer, tekv1.SchemeGroupVersion.WithKind("PipelineRun"))
 }</span>
 
 // Stop implements jobframework.JobWithCustomStop.
+// It gracefully stops a PipelineRun by setting its status to StoppedRunFinally,
+// which tells Tekton to finish currently running tasks but not start new ones.
+// Returns false if the PipelineRun is already done or in a terminal state.
 func (p *PipelineRun) Stop(ctx context.Context, c client.Client, _ []podset.PodSetInfo, stopReason jobframework.StopReason, eventMsg string) (bool, error) <span class="cov8" title="1">{
         plr := (*tekv1.PipelineRun)(p)
         plrPendingOrRunning := (plr.Spec.Status == "") || (plr.Spec.Status == tekv1.PipelineRunSpecStatusPending)
@@ -1634,7 +1666,6 @@ func (p *PipelineRun) Stop(ctx context.Context, c client.Client, _ []podset.PodS
 
         <span class="cov8" title="1">plrCopy := plr.DeepCopy()
         plrCopy.SetManagedFields(nil)
-        // should we wait for the pipeline to stop?
         plrCopy.Spec.Status = tekv1.PipelineRunSpecStatusStoppedRunFinally
         err := c.Patch(ctx, plrCopy, client.Apply, client.FieldOwner(ControllerName), client.ForceOwnership)
         if err != nil </span><span class="cov8" title="1">{
@@ -1682,6 +1713,11 @@ func (p *PipelineRun) Object() client.Object <span class="cov8" title="1">{
 }</span>
 
 // PodSets implements jobframework.GenericJob.
+// Returns a single synthetic PodSet representing the PipelineRun's resource
+// needs. Unlike batch Jobs, PipelineRuns don't declare their pods upfront,
+// so we use a dummy container whose resource requests are derived from
+// annotations on the PipelineRun. This allows Kueue to account for resources
+// without needing to know the actual task pod specifications.
 func (p *PipelineRun) PodSets() ([]kueue.PodSet, error) <span class="cov8" title="1">{
         requests, err := p.resourcesRequests()
         if err != nil </span><span class="cov8" title="1">{
@@ -1765,6 +1801,9 @@ func (p *PipelineRun) parseResourcesRequestsAnnotation(k, v string) (*corev1.Res
 }
 
 // PodsReady implements jobframework.GenericJob.
+// This method is never called because the WaitForPodsReady configuration is
+// not enabled for PipelineRuns. Kueue tracks pod readiness for batch Jobs,
+// but PipelineRuns manage their own pod lifecycle through Tekton.
 func (p *PipelineRun) PodsReady() bool <span class="cov8" title="1">{
         panic("pods ready shouldn't be called")</span>
 }
@@ -1786,7 +1825,17 @@ func (p *PipelineRun) Suspend() {<span class="cov8" title="1">
 }</span>
 </pre>
 		
-		<pre class="file" id="file8" style="display: none">package v1
+		<pre class="file" id="file8" style="display: none">// Package v1 implements the mutating admission webhook for Tekton PipelineRuns.
+//
+// When a PipelineRun is created, the webhook intercepts it and:
+//  1. Sets it to Pending so Kueue can control when it starts
+//  2. Assigns it to a Kueue LocalQueue via a label
+//  3. Optionally sets the managedBy field for multiKueue
+//  4. Applies CEL-based mutations (labels, annotations, resource requests)
+//
+// Configuration is loaded from a ConfigMap and can be updated at runtime
+// via the ConfigMapReconciler in the controller package.
+package v1
 
 import (
         "errors"
@@ -1803,12 +1852,18 @@ var (
         logger = ctrl.Log.WithName("config-store")
 )
 
+// ConfigStore holds the current webhook configuration and compiled CEL mutators.
+// It is safe for concurrent use — the ConfigMapReconciler writes to it while
+// the webhook reads from it on every admission request.
 type ConfigStore struct {
         mu       sync.RWMutex
         config   *config.Config
         mutators []PipelineRunMutator
 }
 
+// PipelineRunMutator applies a mutation to a PipelineRun during webhook admission.
+// The primary implementation is cel.CELMutator, which evaluates user-defined
+// CEL expressions to dynamically set labels, annotations, or resource requests.
 type PipelineRunMutator interface {
         Mutate(*tekv1.PipelineRun) error
 }
@@ -1819,6 +1874,9 @@ func (s *ConfigStore) GetConfigAndMutators() (*config.Config, []PipelineRunMutat
         return s.config, s.mutators
 }</span>
 
+// Update parses and validates the raw YAML configuration, compiles any CEL
+// expressions, and atomically swaps the config and mutators. If any step fails,
+// the previous configuration is preserved (last-known-good behavior).
 func (s *ConfigStore) Update(rawConfig []byte) error <span class="cov8" title="1">{
         s.mu.Lock()
         defer s.mu.Unlock()
@@ -1876,22 +1934,25 @@ import (
 )
 
 var (
-        // celReloadsTotal tracks the total number of CEL Reloads
+        // configReloadTotal tracks the total number of webhook configuration reloads,
+        // labeled by result ("success" or "failure"). Incremented each time the
+        // ConfigMapReconciler triggers a config update.
         configReloadTotal = prometheus.NewCounterVec(
                 prometheus.CounterOpts{
                         Name: "tekton_kueue_config_reload_total",
                         Help: "Total number of Config reloads",
                 },
-                []string{"result"}, // result can be "success" or "failure"
+                []string{"result"},
         )
 
-        // celMutationsTotal tracks the total number of CEL mutation operations
+        // configReloadFailureTotal is currently unused but registered for
+        // backwards compatibility with existing dashboards.
         configReloadFailureTotal = prometheus.NewCounterVec(
                 prometheus.CounterOpts{
                         Name: "tekton_kueue_config_reload_failure_total",
                         Help: "Total number of Config reload failures",
                 },
-                []string{"result"}, // result: "success" or "failure"
+                []string{"result"},
         )
 )
 
@@ -1901,12 +1962,12 @@ func init() <span class="cov8" title="1">{
         metrics.Registry.MustRegister(configReloadFailureTotal)
 }</span>
 
-// RecordReloadFailure increments the counter for CEL Reload failures
+// RecordReloadFailure increments the counter for config reload failures.
 func RecordReloadFailure() <span class="cov8" title="1">{
         configReloadTotal.WithLabelValues("failure").Inc()
 }</span>
 
-// RecordReloadSuccess increments the counter for successful CEL Reloads
+// RecordReloadSuccess increments the counter for successful config reloads.
 func RecordReloadSuccess() <span class="cov8" title="1">{
         configReloadTotal.WithLabelValues("success").Inc()
 }</span>
@@ -2042,11 +2103,11 @@ func logConstructor(base logr.Logger, req *admission.Request) logr.Logger <span 
 
 // +kubebuilder:webhook:path=/mutate-tekton-dev-v1-pipelinerun,mutating=true,failurePolicy=fail,sideEffects=None,groups=tekton.dev,resources=pipelineruns,verbs=create,versions=v1,name=pipelinerun-kueue-defaulter.tekton-kueue.io,admissionReviewVersions=v1
 
-// PipelineRunCustomDefaulter struct is responsible for setting default values on the custom resource of the
-// Kind PipelineRun when those are created or updated.
-//
-// NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
-// as it is used only for temporary operations and does not need to be deeply copied.
+// pipelineRunCustomDefaulter is the webhook handler that intercepts PipelineRun
+// creation requests. It suspends each PipelineRun (Pending), assigns it to a
+// Kueue queue, and applies any configured CEL mutations before the PipelineRun
+// is persisted. The webhook uses failurePolicy=fail to prevent unqueued
+// PipelineRuns from bypassing Kueue.
 type pipelineRunCustomDefaulter struct {
         configStore *ConfigStore
 }
@@ -2103,8 +2164,11 @@ import (
         "strings"
 )
 
+// namespaceFile is the path to the Kubernetes service account namespace file.
 const namespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
+// GetCurrentNamespace reads the namespace from the mounted service account token.
+// This is used by the ConfigMapReconciler to scope its watch to the deployment namespace.
 func GetCurrentNamespace() (string, error) <span class="cov0" title="0">{
         return readNamespace(namespaceFile)
 }</span>

@@ -89,25 +89,27 @@
 				
 				<option value="file16">github.com/konflux-ci/release-service/git/references.go (81.2%)</option>
 				
-				<option value="file17">github.com/konflux-ci/release-service/loader/loader.go (83.8%)</option>
+				<option value="file17">github.com/konflux-ci/release-service/kubearchive/client.go (82.8%)</option>
 				
-				<option value="file18">github.com/konflux-ci/release-service/loader/loader_mock.go (63.0%)</option>
+				<option value="file18">github.com/konflux-ci/release-service/loader/loader.go (84.5%)</option>
 				
-				<option value="file19">github.com/konflux-ci/release-service/metadata/labels.go (100.0%)</option>
+				<option value="file19">github.com/konflux-ci/release-service/loader/loader_mock.go (63.0%)</option>
 				
-				<option value="file20">github.com/konflux-ci/release-service/metadata/metadata.go (100.0%)</option>
+				<option value="file20">github.com/konflux-ci/release-service/metadata/labels.go (100.0%)</option>
 				
-				<option value="file21">github.com/konflux-ci/release-service/metrics/release.go (100.0%)</option>
+				<option value="file21">github.com/konflux-ci/release-service/metadata/metadata.go (100.0%)</option>
 				
-				<option value="file22">github.com/konflux-ci/release-service/syncer/syncer.go (90.0%)</option>
+				<option value="file22">github.com/konflux-ci/release-service/metrics/release.go (100.0%)</option>
 				
-				<option value="file23">github.com/konflux-ci/release-service/tekton/predicates.go (100.0%)</option>
+				<option value="file23">github.com/konflux-ci/release-service/syncer/syncer.go (90.0%)</option>
 				
-				<option value="file24">github.com/konflux-ci/release-service/tekton/utils.go (90.5%)</option>
+				<option value="file24">github.com/konflux-ci/release-service/tekton/predicates.go (100.0%)</option>
 				
-				<option value="file25">github.com/konflux-ci/release-service/tekton/utils/pipeline.go (98.8%)</option>
+				<option value="file25">github.com/konflux-ci/release-service/tekton/utils.go (90.5%)</option>
 				
-				<option value="file26">github.com/konflux-ci/release-service/tekton/utils/pipeline_run_builder.go (90.7%)</option>
+				<option value="file26">github.com/konflux-ci/release-service/tekton/utils/pipeline.go (98.8%)</option>
+				
+				<option value="file27">github.com/konflux-ci/release-service/tekton/utils/pipeline_run_builder.go (90.7%)</option>
 				
 				</select>
 			</div>
@@ -4786,7 +4788,273 @@ func ResolveBranchToSHA(repoURL, revision string) (string, error) <span class="c
 }
 </pre>
 		
-		<pre class="file" id="file17" style="display: none">package loader
+		<pre class="file" id="file17" style="display: none">package kubearchive
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "io"
+        "net/http"
+        "net/url"
+        "strconv"
+        "strings"
+        "sync"
+
+        corev1 "k8s.io/api/core/v1"
+        apierrors "k8s.io/apimachinery/pkg/api/errors"
+        "k8s.io/apimachinery/pkg/runtime/schema"
+        "k8s.io/apimachinery/pkg/types"
+        "k8s.io/client-go/rest"
+        ctrl "sigs.k8s.io/controller-runtime"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+        apiURLConfigMapName = "kubearchive-api-url"
+        apiURLConfigMapKey  = "URL"
+)
+
+const kaNamespace = "product-kubearchive"
+
+// Client provides access to the KubeArchive API for retrieving archived Kubernetes resources.
+// It lazily discovers the KubeArchive API URL on first use and caches it for subsequent calls.
+// Authentication and TLS are derived from the in-cluster REST configuration.
+type Client struct {
+        mu         sync.Mutex
+        apiURL     string
+        resolved   bool
+        httpClient *http.Client
+}
+
+// NewClient creates a new KubeArchive client. The API URL is discovered lazily on the first
+// Get call using the Kubernetes client to locate the KubeArchive service.
+func NewClient() *Client <span class="cov8" title="1">{
+        return &amp;Client{}
+}</span>
+
+// Get retrieves an archived resource from KubeArchive by its GroupVersionResource, namespace,
+// and name. The Kubernetes client is used for one-time API URL discovery and is not needed for
+// subsequent calls. The result is unmarshaled into obj, which should be a pointer to the
+// expected resource type.
+//
+// When multiple archived versions of the same resource exist, the KubeArchive single-resource
+// endpoint returns HTTP 500. In that case, Get falls back to the list endpoint and selects the
+// item with the highest resourceVersion (the most recently persisted version).
+func (c *Client) Get(ctx context.Context, cli client.Client, gvr schema.GroupVersionResource,
+        namespace, name string, obj client.Object) error <span class="cov8" title="1">{
+
+        apiURL, httpClient, err := c.resolve(ctx, cli)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">logger := ctrl.LoggerFrom(ctx)
+        body, statusCode, err := c.doGet(ctx, httpClient, apiURL+buildAPIPath(gvr, namespace, name))
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if statusCode == http.StatusOK </span><span class="cov8" title="1">{
+                logger.Info("Retrieved resource from KubeArchive",
+                        "gvr", gvr.String(), "namespace", namespace, "name", name,
+                        "responseBytes", len(body))
+                return json.Unmarshal(body, obj)
+        }</span>
+
+        <span class="cov8" title="1">if statusCode == http.StatusNotFound </span><span class="cov8" title="1">{
+                logger.Info("Resource not found in KubeArchive",
+                        "gvr", gvr.String(), "namespace", namespace, "name", name)
+                return apierrors.NewNotFound(gvr.GroupResource(), name)
+        }</span>
+
+        <span class="cov8" title="1">if statusCode == http.StatusInternalServerError &amp;&amp; strings.Contains(string(body), "more than one resource found") </span><span class="cov8" title="1">{
+                logger.Info("Multiple archived versions found, falling back to list endpoint",
+                        "gvr", gvr.String(), "namespace", namespace, "name", name)
+                return c.getFromList(ctx, httpClient, apiURL, gvr, namespace, name, obj)
+        }</span>
+
+        <span class="cov8" title="1">return fmt.Errorf("kubearchive returned HTTP %d for %s/%s: %s",
+                statusCode, namespace, name, truncate(string(body), 200))</span>
+}
+
+// doGet performs an HTTP GET and returns the body, status code, and any transport error.
+func (c *Client) doGet(ctx context.Context, httpClient *http.Client, url string) ([]byte, int, error) <span class="cov8" title="1">{
+        logger := ctrl.LoggerFrom(ctx)
+        logger.Info("Fetching resource from KubeArchive", "url", url)
+
+        req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, 0, fmt.Errorf("building kubearchive request: %w", err)
+        }</span>
+        <span class="cov8" title="1">resp, err := httpClient.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, 0, fmt.Errorf("kubearchive request to %s failed: %w", url, err)
+        }</span>
+        <span class="cov8" title="1">defer resp.Body.Close()
+
+        body, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, 0, fmt.Errorf("reading kubearchive response: %w", err)
+        }</span>
+        <span class="cov8" title="1">return body, resp.StatusCode, nil</span>
+}
+
+// getFromList queries the list endpoint with a fieldSelector to retrieve only archived
+// versions matching the given name, then picks the one with the highest resourceVersion.
+func (c *Client) getFromList(ctx context.Context, httpClient *http.Client,
+        apiURL string, gvr schema.GroupVersionResource,
+        namespace, name string, obj client.Object) error <span class="cov8" title="1">{
+
+        listURL := apiURL + buildListAPIPath(gvr, namespace) +
+                "?fieldSelector=" + url.QueryEscape("metadata.name="+name)
+        body, statusCode, err := c.doGet(ctx, httpClient, listURL)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if statusCode != http.StatusOK </span><span class="cov8" title="1">{
+                return fmt.Errorf("kubearchive list returned HTTP %d for %s: %s",
+                        statusCode, listURL, truncate(string(body), 200))
+        }</span>
+
+        <span class="cov8" title="1">var raw struct {
+                Items []json.RawMessage `json:"items"`
+        }
+        if err := json.Unmarshal(body, &amp;raw); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("parsing kubearchive list response: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">logger := ctrl.LoggerFrom(ctx)
+        var bestRaw json.RawMessage
+        bestRV := int64(-1)
+        for _, item := range raw.Items </span><span class="cov8" title="1">{
+                var meta struct {
+                        Metadata struct {
+                                Name            string `json:"name"`
+                                ResourceVersion string `json:"resourceVersion"`
+                        } `json:"metadata"`
+                }
+                if err := json.Unmarshal(item, &amp;meta); err != nil </span><span class="cov0" title="0">{
+                        logger.Info("Skipping unparseable item in KubeArchive list response", "error", err)
+                        continue</span>
+                }
+                <span class="cov8" title="1">if meta.Metadata.Name != name </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+                <span class="cov8" title="1">rv, _ := strconv.ParseInt(meta.Metadata.ResourceVersion, 10, 64)
+                if rv &gt; bestRV </span><span class="cov8" title="1">{
+                        bestRV = rv
+                        bestRaw = item
+                }</span>
+        }
+
+        <span class="cov8" title="1">if bestRaw == nil </span><span class="cov8" title="1">{
+                logger.Info("Resource not found in KubeArchive list",
+                        "gvr", gvr.String(), "namespace", namespace, "name", name)
+                return apierrors.NewNotFound(gvr.GroupResource(), name)
+        }</span>
+
+        <span class="cov8" title="1">logger.Info("Selected most recent archived version from list",
+                "gvr", gvr.String(), "namespace", namespace, "name", name,
+                "resourceVersion", bestRV)
+        return json.Unmarshal(bestRaw, obj)</span>
+}
+
+// resolve lazily discovers the KubeArchive API URL and builds an authenticated HTTP client
+// on first call, caching both for subsequent use. If discovery has already been attempted
+// and failed, it returns the cached error without retrying.
+func (c *Client) resolve(ctx context.Context, cli client.Client) (string, *http.Client, error) <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        if c.resolved </span><span class="cov8" title="1">{
+                if c.apiURL == "" </span><span class="cov8" title="1">{
+                        return "", nil, fmt.Errorf("kubearchive is not available on this cluster")
+                }</span>
+                <span class="cov8" title="1">return c.apiURL, c.httpClient, nil</span>
+        }
+
+        <span class="cov8" title="1">logger := ctrl.LoggerFrom(ctx)
+        apiURL, err := discoverAPIURL(ctx, cli)
+        c.resolved = true
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Info("KubeArchive not available on this cluster", "error", err)
+                return "", nil, fmt.Errorf("kubearchive discovery failed: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">c.apiURL = apiURL
+        if c.httpClient == nil </span><span class="cov0" title="0">{
+                c.httpClient, err = newHTTPClient()
+                if err != nil </span><span class="cov0" title="0">{
+                        return "", nil, fmt.Errorf("creating kubearchive HTTP client: %w", err)
+                }</span>
+        }
+        <span class="cov8" title="1">logger.Info("Discovered KubeArchive API", "url", apiURL)
+        return c.apiURL, c.httpClient, nil</span>
+}
+
+// discoverAPIURL finds the KubeArchive API server URL by reading the well-known
+// ConfigMap "kubearchive-api-url" from the product-kubearchive namespace. The
+// ConfigMap is deployed by infra-deployments and contains a single key "URL"
+// with the route URL.
+func discoverAPIURL(ctx context.Context, cli client.Client) (string, error) <span class="cov8" title="1">{
+        cm := &amp;corev1.ConfigMap{}
+        if err := cli.Get(ctx, types.NamespacedName{Namespace: kaNamespace, Name: apiURLConfigMapName}, cm); err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("ConfigMap %q not found in namespace %q: %w", apiURLConfigMapName, kaNamespace, err)
+        }</span>
+        <span class="cov8" title="1">if u, ok := cm.Data[apiURLConfigMapKey]; ok &amp;&amp;
+                (strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://")) </span><span class="cov8" title="1">{
+                return strings.TrimRight(u, "/"), nil
+        }</span>
+        <span class="cov8" title="1">return "", fmt.Errorf("ConfigMap %q in namespace %q has no valid URL", apiURLConfigMapName, kaNamespace)</span>
+}
+
+// newHTTPClient builds an HTTP client that carries the in-cluster service account
+// bearer token for KubeArchive authentication. The cluster CA is cleared so that
+// Go falls back to the system CA bundle, which can verify the external route TLS
+// certificate (signed by a public CA, not the cluster CA).
+func newHTTPClient() (*http.Client, error) <span class="cov0" title="0">{
+        cfg, err := rest.InClusterConfig()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("loading in-cluster config: %w", err)
+        }</span>
+        <span class="cov0" title="0">cfg.TLSClientConfig.CAFile = ""
+        cfg.TLSClientConfig.CAData = nil
+        return rest.HTTPClientFor(cfg)</span>
+}
+
+// buildAPIPath constructs the REST API path for a named resource, mirroring the
+// Kubernetes API URL structure that the KubeArchive API server exposes.
+func buildAPIPath(gvr schema.GroupVersionResource, namespace, name string) string <span class="cov8" title="1">{
+        if gvr.Group == "" </span><span class="cov8" title="1">{
+                return fmt.Sprintf("/api/%s/namespaces/%s/%s/%s",
+                        gvr.Version, namespace, gvr.Resource, name)
+        }</span>
+        <span class="cov8" title="1">return fmt.Sprintf("/apis/%s/%s/namespaces/%s/%s/%s",
+                gvr.Group, gvr.Version, namespace, gvr.Resource, name)</span>
+}
+
+// buildListAPIPath constructs the REST API path for listing all resources of a type
+// in a namespace, without a specific resource name.
+func buildListAPIPath(gvr schema.GroupVersionResource, namespace string) string <span class="cov8" title="1">{
+        if gvr.Group == "" </span><span class="cov8" title="1">{
+                return fmt.Sprintf("/api/%s/namespaces/%s/%s",
+                        gvr.Version, namespace, gvr.Resource)
+        }</span>
+        <span class="cov8" title="1">return fmt.Sprintf("/apis/%s/%s/namespaces/%s/%s",
+                gvr.Group, gvr.Version, namespace, gvr.Resource)</span>
+}
+
+// truncate shortens s to maxLen characters, appending "..." if truncation occurs.
+func truncate(s string, maxLen int) string <span class="cov8" title="1">{
+        if len(s) &lt;= maxLen </span><span class="cov8" title="1">{
+                return s
+        }</span>
+        <span class="cov8" title="1">return s[:maxLen] + "..."</span>
+}
+</pre>
+		
+		<pre class="file" id="file18" style="display: none">package loader
 
 import (
         "context"
@@ -4808,6 +5076,7 @@ import (
         "sigs.k8s.io/controller-runtime/pkg/client"
 
         "github.com/konflux-ci/release-service/api/v1alpha1"
+        "github.com/konflux-ci/release-service/kubearchive"
         "github.com/konflux-ci/release-service/metadata"
 )
 
@@ -4832,10 +5101,25 @@ type ObjectLoader interface {
         GetProcessingResources(ctx context.Context, cli client.Client, release *v1alpha1.Release) (*ProcessingResources, error)
 }
 
-type loader struct{}
+// KubeArchiveClient is the subset of kubearchive.Client used by the loader,
+// extracted as an interface to allow substitution in tests.
+type KubeArchiveClient interface {
+        Get(ctx context.Context, cli client.Client, gvr schema.GroupVersionResource,
+                namespace, name string, obj client.Object) error
+}
+
+type loader struct {
+        kaClient KubeArchiveClient
+}
 
 func NewLoader() ObjectLoader <span class="cov8" title="1">{
-        return &amp;loader{}
+        return &amp;loader{
+                kaClient: kubearchive.NewClient(),
+        }
+}</span>
+
+func newLoader(kaClient KubeArchiveClient) ObjectLoader <span class="cov8" title="1">{
+        return &amp;loader{kaClient: kaClient}
 }</span>
 
 // GetActiveReleasePlanAdmission returns the ReleasePlanAdmission targeted by the given ReleasePlan.
@@ -5118,12 +5402,26 @@ func (l *loader) GetReleaseServiceConfig(ctx context.Context, cli client.Client,
         return releaseServiceConfig, toolkit.GetObject(name, namespace, cli, ctx, releaseServiceConfig)
 }</span>
 
-// GetSnapshot returns the Snapshot referenced by the given Release. If the Snapshot is not found or the Get
-// operation fails, an error is returned.
+// GetSnapshot returns the Snapshot referenced by the given Release. If the Snapshot is not found
+// in the cluster, it falls back to KubeArchive to retrieve the archived resource. If both
+// lookups fail, the original cluster error is returned.
 func (l *loader) GetSnapshot(ctx context.Context, cli client.Client, release *v1alpha1.Release) (*applicationapiv1alpha1.Snapshot, error) <span class="cov8" title="1">{
         snapshot := &amp;applicationapiv1alpha1.Snapshot{}
-        return snapshot, toolkit.GetObject(release.Spec.Snapshot, release.Namespace, cli, ctx, snapshot)
-}</span>
+        err := toolkit.GetObject(release.Spec.Snapshot, release.Namespace, cli, ctx, snapshot)
+        if err != nil &amp;&amp; apierrors.IsNotFound(err) </span><span class="cov8" title="1">{
+                kaErr := l.kaClient.Get(ctx, cli,
+                        schema.GroupVersionResource{
+                                Group:    "appstudio.redhat.com",
+                                Version:  "v1alpha1",
+                                Resource: "snapshots",
+                        },
+                        release.Namespace, release.Spec.Snapshot, snapshot)
+                if kaErr == nil </span><span class="cov8" title="1">{
+                        return snapshot, nil
+                }</span>
+        }
+        <span class="cov8" title="1">return snapshot, err</span>
+}
 
 // ProcessingResources contains the required resources to process the Release.
 type ProcessingResources struct {
@@ -5194,7 +5492,7 @@ func IsRetriable(err error) bool <span class="cov0" title="0">{
 }
 </pre>
 		
-		<pre class="file" id="file18" style="display: none">package loader
+		<pre class="file" id="file19" style="display: none">package loader
 
 import (
         "context"
@@ -5362,7 +5660,7 @@ func (l *mockLoader) GetProcessingResources(ctx context.Context, cli client.Clie
 }
 </pre>
 		
-		<pre class="file" id="file19" style="display: none">/*
+		<pre class="file" id="file20" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -5484,7 +5782,7 @@ var (
 )
 </pre>
 		
-		<pre class="file" id="file20" style="display: none">/*
+		<pre class="file" id="file21" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -5572,7 +5870,7 @@ func safeCopy(dst map[string]string, key, val string) <span class="cov8" title="
 }
 </pre>
 		
-		<pre class="file" id="file21" style="display: none">/*
+		<pre class="file" id="file22" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -5802,7 +6100,7 @@ func init() <span class="cov8" title="1">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file22" style="display: none">/*
+		<pre class="file" id="file23" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -5875,7 +6173,7 @@ func (s *Syncer) SyncSnapshot(snapshot *applicationapiv1alpha1.Snapshot, namespa
 }
 </pre>
 		
-		<pre class="file" id="file23" style="display: none">/*
+		<pre class="file" id="file24" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -5925,7 +6223,7 @@ func ReleasePipelineRunLifecyclePredicate() predicate.Predicate <span class="cov
 }
 </pre>
 		
-		<pre class="file" id="file24" style="display: none">/*
+		<pre class="file" id="file25" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -6013,7 +6311,7 @@ func IsPipelineRunDone(pipelineRun *tektonv1.PipelineRun) bool <span class="cov8
 }
 </pre>
 		
-		<pre class="file" id="file25" style="display: none">/*
+		<pre class="file" id="file26" style="display: none">/*
 Copyright 2023.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -6349,7 +6647,7 @@ func AdjustTimeouts(timeouts *tektonv1.TimeoutFields, logger logr.Logger) *tekto
 }
 </pre>
 		
-		<pre class="file" id="file26" style="display: none">/*
+		<pre class="file" id="file27" style="display: none">/*
 Copyright 2023.
 
 Licensed under the Apache License, Version 2.0 (the "License");
