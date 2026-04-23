@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/24759559874",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/24816107639",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 60.2,
+      "coverage": 59.8,
       "status": "ok",
       "packages": [
         {
@@ -22,15 +22,15 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 81.8
-        },
-        {
-          "package": "github.com/konflux-ci/build-service/pkg/git",
-          "coverage": 20.5
+          "coverage": 81.4
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/common",
           "coverage": 90.0
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/git",
+          "coverage": 20.5
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git/gitproviderfactory",
@@ -99,12 +99,12 @@
           "coverage": 72.0
         },
         {
-          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
-          "coverage": 9.5
-        },
-        {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/pr",
           "coverage": 16.8
+        },
+        {
+          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
+          "coverage": 9.5
         },
         {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/config",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 73.2,
+      "coverage": 73.6,
       "status": "failed",
       "packages": [
         {
@@ -145,7 +145,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 73.7
+          "coverage": 74.2
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -174,12 +174,12 @@
     },
     {
       "repo": "konflux-ci/integration-service",
-      "coverage": 61.8,
+      "coverage": 61.7,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/integration-service/snapshot",
-          "coverage": 69.8
+          "coverage": 68.9
         },
         {
           "package": "github.com/konflux-ci/integration-service/status",
@@ -388,12 +388,12 @@
           "coverage": 17.9
         },
         {
-          "package": "github.com/konflux-ci/operator-toolkit/predicates",
-          "coverage": 4.8
-        },
-        {
           "package": "github.com/konflux-ci/operator-toolkit/utils",
           "coverage": 100.0
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/predicates",
+          "coverage": 4.8
         },
         {
           "package": "github.com/konflux-ci/operator-toolkit/conditions",
@@ -596,12 +596,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 57.1,
+      "coverage": 58.4,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 57.1
+          "coverage": 58.4
         }
       ]
     },
