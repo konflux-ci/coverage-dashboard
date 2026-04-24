@@ -55,7 +55,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/release-service/api/v1alpha1/release_types.go (99.4%)</option>
+				<option value="file0">github.com/konflux-ci/release-service/api/v1alpha1/release_types.go (98.5%)</option>
 				
 				<option value="file1">github.com/konflux-ci/release-service/api/v1alpha1/releaseplan_types.go (100.0%)</option>
 				
@@ -71,7 +71,7 @@
 				
 				<option value="file7">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission/webhook.go (96.2%)</option>
 				
-				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (84.1%)</option>
+				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (83.9%)</option>
 				
 				<option value="file9">github.com/konflux-ci/release-service/controllers/release/controller.go (70.6%)</option>
 				
@@ -105,7 +105,7 @@
 				
 				<option value="file24">github.com/konflux-ci/release-service/tekton/predicates.go (100.0%)</option>
 				
-				<option value="file25">github.com/konflux-ci/release-service/tekton/utils.go (90.5%)</option>
+				<option value="file25">github.com/konflux-ci/release-service/tekton/utils.go (91.4%)</option>
 				
 				<option value="file26">github.com/konflux-ci/release-service/tekton/utils/pipeline.go (98.8%)</option>
 				
@@ -385,6 +385,14 @@ func (r *Release) HasManagedPipelineProcessingFinished() bool <span class="cov8"
         return r.hasPhaseFinished(managedProcessedConditionType)
 }</span>
 
+// GetCurrentManagedPipelineAttempt returns a pointer to the last ManagedPipelineAttempt or nil if none exist.
+func (r *Release) GetCurrentManagedPipelineAttempt() *ManagedPipelineAttempt <span class="cov8" title="1">{
+        if len(r.Status.ManagedPipelineAttempts) &lt;= 0 </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">return &amp;r.Status.ManagedPipelineAttempts[len(r.Status.ManagedPipelineAttempts)-1]</span>
+}
+
 // HasTenantCollectorsPipelineProcessingFinished checks whether the Release Tenant Collectors Pipeline processing has finished, regardless of the result.
 func (r *Release) HasTenantCollectorsPipelineProcessingFinished() bool <span class="cov8" title="1">{
         return r.hasPhaseFinished(tenantCollectorsProcessedConditionType)
@@ -554,18 +562,28 @@ func (r *Release) MarkManagedCollectorsPipelineProcessed() <span class="cov8" ti
         )</span>
 }
 
-// MarkManagedPipelineProcessed marks the Release Managed Pipeline as processed.
-func (r *Release) MarkManagedPipelineProcessed() <span class="cov8" title="1">{
+// MarkCurrentManagedPipelineAttemptProcessed marks the current managed pipeline attempt as succeeded.
+func (r *Release) MarkCurrentManagedPipelineAttemptProcessed() <span class="cov8" title="1">{
         if !r.IsManagedPipelineProcessing() || r.HasManagedPipelineProcessingFinished() </span><span class="cov8" title="1">{
                 return
         }</span>
 
-        <span class="cov8" title="1">r.Status.ManagedProcessing.CompletionTime = &amp;metav1.Time{Time: time.Now()}
+        <span class="cov8" title="1">attempt := r.GetCurrentManagedPipelineAttempt()
+        if attempt == nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">attempt.Status = AttemptSucceededReason
+        attempt.CompletionTime = &amp;metav1.Time{Time: time.Now()}
+
+        // Deprecated: mirror to ManagedProcessing for backward compatibility
+        r.Status.ManagedProcessing.CompletionTime = attempt.CompletionTime
+
         conditions.SetCondition(&amp;r.Status.Conditions, managedProcessedConditionType, metav1.ConditionTrue, SucceededReason)
 
         go metrics.RegisterCompletedReleasePipelineProcessing(
-                r.Status.ManagedProcessing.StartTime,
-                r.Status.ManagedProcessing.CompletionTime,
+                attempt.StartTime,
+                attempt.CompletionTime,
                 SucceededReason.String(),
                 r.Status.Target,
                 metadata.ManagedPipelineType.String(),
@@ -650,21 +668,31 @@ func (r *Release) MarkManagedCollectorsPipelineProcessing() <span class="cov8" t
         )</span>
 }
 
-// MarkManagedPipelineProcessing marks the Release Managed Pipeline as processing.
-func (r *Release) MarkManagedPipelineProcessing() <span class="cov8" title="1">{
-        if r.HasManagedPipelineProcessingFinished() </span><span class="cov8" title="1">{
+// MarkCurrentManagedPipelineAttemptProcessing marks the current managed pipeline attempt as processing.
+func (r *Release) MarkCurrentManagedPipelineAttemptProcessing() <span class="cov8" title="1">{
+        // only block after success or skip, failed attempts can be retried
+        if r.IsManagedPipelineProcessedSuccessfully() || r.IsManagedPipelineSkipped() </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">attempt := r.GetCurrentManagedPipelineAttempt()
+        if attempt == nil </span><span class="cov8" title="1">{
                 return
         }</span>
 
         <span class="cov8" title="1">if !r.IsManagedPipelineProcessing() </span><span class="cov8" title="1">{
-                r.Status.ManagedProcessing.StartTime = &amp;metav1.Time{Time: time.Now()}
+                attempt.StartTime = &amp;metav1.Time{Time: time.Now()}
+                // Deprecated: mirror to ManagedProcessing for backward compatibility
+                r.Status.ManagedProcessing.StartTime = attempt.StartTime
         }</span>
 
-        <span class="cov8" title="1">conditions.SetCondition(&amp;r.Status.Conditions, managedProcessedConditionType, metav1.ConditionFalse, ProgressingReason)
+        <span class="cov8" title="1">attempt.Status = AttemptProgressingReason
+
+        conditions.SetCondition(&amp;r.Status.Conditions, managedProcessedConditionType, metav1.ConditionFalse, ProgressingReason)
 
         go metrics.RegisterNewReleasePipelineProcessing(
                 r.Status.StartTime,
-                r.Status.ManagedProcessing.StartTime,
+                attempt.StartTime,
                 ProgressingReason.String(),
                 r.Status.Target,
                 metadata.ManagedPipelineType.String(),
@@ -749,18 +777,33 @@ func (r *Release) MarkManagedCollectorsPipelineProcessingFailed(message string) 
         )</span>
 }
 
-// MarkManagedPipelineProcessingFailed marks the Release Managed Pipeline processing as failed.
-func (r *Release) MarkManagedPipelineProcessingFailed(message string) <span class="cov8" title="1">{
+// MarkCurrentManagedPipelineAttemptFailed marks the current managed pipeline attempt as failed
+// with the given failure details.
+func (r *Release) MarkCurrentManagedPipelineAttemptFailed(message, failureReason, lastTask, lastStep string, successfulTasks int) <span class="cov8" title="1">{
         if !r.IsManagedPipelineProcessing() || r.HasManagedPipelineProcessingFinished() </span><span class="cov8" title="1">{
                 return
         }</span>
 
-        <span class="cov8" title="1">r.Status.ManagedProcessing.CompletionTime = &amp;metav1.Time{Time: time.Now()}
+        <span class="cov8" title="1">attempt := r.GetCurrentManagedPipelineAttempt()
+        if attempt == nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">attempt.Status = AttemptFailedReason
+        attempt.CompletionTime = &amp;metav1.Time{Time: time.Now()}
+        attempt.FailureReason = failureReason
+        attempt.LastTask = lastTask
+        attempt.LastStep = lastStep
+        attempt.SuccessfulTasks = successfulTasks
+
+        // Deprecated: mirror to ManagedProcessing for backward compatibility
+        r.Status.ManagedProcessing.CompletionTime = attempt.CompletionTime
+
         conditions.SetConditionWithMessage(&amp;r.Status.Conditions, managedProcessedConditionType, metav1.ConditionFalse, FailedReason, message)
 
         go metrics.RegisterCompletedReleasePipelineProcessing(
-                r.Status.ManagedProcessing.StartTime,
-                r.Status.ManagedProcessing.CompletionTime,
+                attempt.StartTime,
+                attempt.CompletionTime,
                 FailedReason.String(),
                 r.Status.Target,
                 metadata.ManagedPipelineType.String(),
@@ -3530,14 +3573,26 @@ func (a *adapter) registerManagedProcessingData(releasePipelineRun *tektonv1.Pip
 
         <span class="cov8" title="1">patch := client.MergeFrom(a.release.DeepCopy())
 
-        a.release.Status.ManagedProcessing.PipelineRun = fmt.Sprintf("%s%c%s",
+        pipelineRunName := fmt.Sprintf("%s%c%s",
                 releasePipelineRun.Namespace, types.Separator, releasePipelineRun.Name)
+
+        var tenantRoleBindingName string
         if tenantRoleBinding != nil </span><span class="cov8" title="1">{
-                a.release.Status.ManagedProcessing.RoleBindings.TenantRoleBinding = fmt.Sprintf("%s%c%s",
+                tenantRoleBindingName = fmt.Sprintf("%s%c%s",
                         tenantRoleBinding.Namespace, types.Separator, tenantRoleBinding.Name)
         }</span>
 
-        <span class="cov8" title="1">a.release.MarkManagedPipelineProcessing()
+        // Deprecated: populate ManagedProcessing for backward compatibility
+        <span class="cov8" title="1">a.release.Status.ManagedProcessing.PipelineRun = pipelineRunName
+        a.release.Status.ManagedProcessing.RoleBindings.TenantRoleBinding = tenantRoleBindingName
+
+        a.release.Status.ManagedPipelineAttempts = append(a.release.Status.ManagedPipelineAttempts, v1alpha1.ManagedPipelineAttempt{
+                PipelineRun: pipelineRunName,
+                RoleBindings: v1alpha1.RoleBindingType{
+                        TenantRoleBinding: tenantRoleBindingName,
+                },
+        })
+        a.release.MarkCurrentManagedPipelineAttemptProcessing()
 
         return a.client.Status().Patch(a.ctx, a.release, patch)</span>
 }
@@ -3656,14 +3711,19 @@ func (a *adapter) registerManagedProcessingStatus(pipelineRun *tektonv1.Pipeline
 
         condition := pipelineRun.Status.GetCondition(apis.ConditionSucceeded)
         if condition.IsTrue() </span><span class="cov8" title="1">{
-                a.release.MarkManagedPipelineProcessed()
+                a.release.MarkCurrentManagedPipelineAttemptProcessed()
         }</span> else<span class="cov8" title="1"> {
-                var message string
+                taskRuns, listErr := a.listTaskRunsForPipelineRun(pipelineRun)
+                if listErr != nil </span><span class="cov0" title="0">{
+                        a.logger.Error(listErr, "failed to list TaskRuns for managed pipeline")
+                }</span>
+
+                <span class="cov8" title="1">var message string
                 if pipelineRun.GetDeletionTimestamp() != nil &amp;&amp; condition.IsUnknown() </span><span class="cov8" title="1">{
                         message = "PipelineRun was deleted while still running"
                 }</span> else<span class="cov8" title="1"> {
                         var err error
-                        message, err = a.getFailedTaskRunLogs(pipelineRun)
+                        message, err = a.getFailedTaskRunLogsFromList(pipelineRun, taskRuns)
                         if err != nil </span><span class="cov0" title="0">{
                                 a.logger.Error(err, "failed to get TaskRun logs for managed pipeline")
                         }</span>
@@ -3671,7 +3731,22 @@ func (a *adapter) registerManagedProcessingStatus(pipelineRun *tektonv1.Pipeline
                                 message = condition.Message
                         }</span>
                 }
-                <span class="cov8" title="1">a.release.MarkManagedPipelineProcessingFailed(message)
+
+                <span class="cov8" title="1">failureInfo := tekton.GetPipelineRunFailureInfo(pipelineRun, taskRuns)
+
+                var failureReason string
+                switch </span>{
+                case failureInfo.IsOOMKill:<span class="cov0" title="0">
+                        failureReason = v1alpha1.AttemptFailureOOMKillReason</span>
+                case failureInfo.IsTaskRunTimeout:<span class="cov0" title="0">
+                        failureReason = v1alpha1.AttemptFailureTaskRunTimeoutReason</span>
+                case failureInfo.IsPipelineRunTimeout:<span class="cov0" title="0">
+                        failureReason = v1alpha1.AttemptFailurePipelineRunTimeoutReason</span>
+                default:<span class="cov8" title="1">
+                        failureReason = v1alpha1.AttemptFailureErrorReason</span>
+                }
+
+                <span class="cov8" title="1">a.release.MarkCurrentManagedPipelineAttemptFailed(message, failureReason, failureInfo.TaskName, failureInfo.StepName, failureInfo.SuccessfulTasks)
                 a.release.MarkReleaseFailed("Release processing failed on managed pipelineRun")</span>
         }
 
@@ -3883,12 +3958,10 @@ func (a *adapter) validationError(err error) *controller.ValidationResult <span 
 // This limit is enforced by the API server validation (MaxLength=32768).
 const maxConditionMessageLength = 31000
 
-// getFailedTaskRunLogs returns the logs from the first failed TaskRun in the PipelineRun.
-// If no failed TaskRun is found, it returns an empty string and nil error.
-// If logs cannot be retrieved, an error is returned along with the condition message as fallback.
-func (a *adapter) getFailedTaskRunLogs(pipelineRun *tektonv1.PipelineRun) (string, error) <span class="cov8" title="1">{
+// listTaskRunsForPipelineRun returns the TaskRuns associated with the given PipelineRun.
+func (a *adapter) listTaskRunsForPipelineRun(pipelineRun *tektonv1.PipelineRun) ([]tektonv1.TaskRun, error) <span class="cov8" title="1">{
         if pipelineRun == nil </span><span class="cov8" title="1">{
-                return "", nil
+                return []tektonv1.TaskRun{}, nil
         }</span>
 
         <span class="cov8" title="1">taskRunList := &amp;tektonv1.TaskRunList{}
@@ -3899,13 +3972,35 @@ func (a *adapter) getFailedTaskRunLogs(pipelineRun *tektonv1.PipelineRun) (strin
                 },
         )
         if err != nil </span><span class="cov0" title="0">{
-                return "", fmt.Errorf("failed to list TaskRuns: %w", err)
+                return nil, fmt.Errorf("failed to list TaskRuns: %w", err)
         }</span>
 
-        // Build a map for quick lookup by name
-        <span class="cov8" title="1">taskRunMap := make(map[string]*tektonv1.TaskRun, len(taskRunList.Items))
-        for i := range taskRunList.Items </span><span class="cov8" title="1">{
-                taskRunMap[taskRunList.Items[i].Name] = &amp;taskRunList.Items[i]
+        <span class="cov8" title="1">return taskRunList.Items, nil</span>
+}
+
+// getFailedTaskRunLogs returns the logs from the first failed TaskRun in the PipelineRun.
+// If no failed TaskRun is found, it returns an empty string and nil error.
+// If logs cannot be retrieved, an error is returned along with the condition message as fallback.
+func (a *adapter) getFailedTaskRunLogs(pipelineRun *tektonv1.PipelineRun) (string, error) <span class="cov8" title="1">{
+        taskRuns, err := a.listTaskRunsForPipelineRun(pipelineRun)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">return a.getFailedTaskRunLogsFromList(pipelineRun, taskRuns)</span>
+}
+
+// getFailedTaskRunLogsFromList returns the logs from the first failed TaskRun in the PipelineRun
+// using a pre-fetched list of TaskRuns.
+func (a *adapter) getFailedTaskRunLogsFromList(pipelineRun *tektonv1.PipelineRun, taskRuns []tektonv1.TaskRun) (string, error) <span class="cov8" title="1">{
+        if pipelineRun == nil </span><span class="cov8" title="1">{
+                return "", nil
+        }</span>
+
+        // Build a map for look up by name
+        <span class="cov8" title="1">taskRunMap := make(map[string]*tektonv1.TaskRun, len(taskRuns))
+        for i := range taskRuns </span><span class="cov8" title="1">{
+                taskRunMap[taskRuns[i].Name] = &amp;taskRuns[i]
         }</span>
 
         // Iterate in the same order as ChildReferences to maintain consistent behavior
@@ -6308,6 +6403,98 @@ func IsPipelineRunDone(pipelineRun *tektonv1.PipelineRun) bool <span class="cov8
                 return false
         }</span>
         <span class="cov8" title="1">return pipelineRun.IsDone() || pipelineRun.GetDeletionTimestamp() != nil</span>
+}
+
+// PipelineRunFailureInfo defines the failure details extracted from a PipelineRun.
+type PipelineRunFailureInfo struct {
+        TaskName             string
+        StepName             string
+        SuccessfulTasks      int
+        IsPipelineRunTimeout bool
+        IsTaskRunTimeout     bool
+        IsOOMKill            bool
+}
+
+// GetPipelineRunFailureInfo returns the failure details from a failed PipelineRun and its child TaskRuns.
+func GetPipelineRunFailureInfo(pipelineRun *tektonv1.PipelineRun, taskRuns []tektonv1.TaskRun) *PipelineRunFailureInfo <span class="cov8" title="1">{
+        if pipelineRun == nil </span><span class="cov8" title="1">{
+                return &amp;PipelineRunFailureInfo{}
+        }</span>
+
+        <span class="cov8" title="1">info := &amp;PipelineRunFailureInfo{
+                IsPipelineRunTimeout: isPipelineRunTimedOut(pipelineRun),
+        }
+
+        taskName, taskRun, successfulTasks := getFailedTaskRun(pipelineRun, taskRuns)
+        info.TaskName = taskName
+        info.SuccessfulTasks = successfulTasks
+
+        if taskRun == nil </span><span class="cov8" title="1">{
+                return info
+        }</span>
+
+        <span class="cov8" title="1">info.IsTaskRunTimeout = isTaskRunTimedOut(taskRun)
+
+        for _, step := range taskRun.Status.Steps </span><span class="cov8" title="1">{
+                if step.Terminated != nil &amp;&amp; step.Terminated.ExitCode != 0 </span><span class="cov8" title="1">{
+                        info.StepName = step.Name
+                        info.IsOOMKill = step.Terminated.Reason == "OOMKilled"
+                        break</span>
+                }
+        }
+
+        <span class="cov8" title="1">return info</span>
+}
+
+// isPipelineRunTimedOut checks whether the PipelineRun failed due to PipelineRun timeout.
+func isPipelineRunTimedOut(pipelineRun *tektonv1.PipelineRun) bool <span class="cov8" title="1">{
+        condition := pipelineRun.Status.GetCondition(apis.ConditionSucceeded)
+        return condition != nil &amp;&amp; condition.IsFalse() &amp;&amp;
+                condition.Reason == tektonv1.PipelineRunReasonTimedOut.String()
+}</span>
+
+// isTaskRunTimedOut checks whether the TaskRun failed due to TaskRun timeout.
+func isTaskRunTimedOut(taskRun *tektonv1.TaskRun) bool <span class="cov8" title="1">{
+        condition := taskRun.Status.GetCondition(apis.ConditionSucceeded)
+        return condition != nil &amp;&amp; condition.IsFalse() &amp;&amp;
+                condition.Reason == tektonv1.TaskRunReasonTimedOut.String()
+}</span>
+
+// getFailedTaskRun returns the first failed TaskRun from the PipelineRun's child references,
+// its pipeline task name, and the count of successful tasks.
+func getFailedTaskRun(pipelineRun *tektonv1.PipelineRun, taskRuns []tektonv1.TaskRun) (taskName string, failedTaskRun *tektonv1.TaskRun, successfulTasks int) <span class="cov8" title="1">{
+        taskRunMap := make(map[string]*tektonv1.TaskRun, len(taskRuns))
+        for i := range taskRuns </span><span class="cov8" title="1">{
+                taskRunMap[taskRuns[i].Name] = &amp;taskRuns[i]
+        }</span>
+
+        <span class="cov8" title="1">for _, childRef := range pipelineRun.Status.ChildReferences </span><span class="cov8" title="1">{
+                // Skip non TaskRun children. Kind may be empty when unset so treat that as a TaskRun.
+                if childRef.Kind != "" &amp;&amp; childRef.Kind != "TaskRun" </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">taskRun, exists := taskRunMap[childRef.Name]
+                if !exists </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">condition := taskRun.Status.GetCondition(apis.ConditionSucceeded)
+                if condition == nil </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">if condition.IsTrue() </span><span class="cov8" title="1">{
+                        successfulTasks++
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">if condition.IsFalse() </span><span class="cov8" title="1">{
+                        return childRef.PipelineTaskName, taskRun, successfulTasks
+                }</span>
+        }
+
+        <span class="cov8" title="1">return "", nil, successfulTasks</span>
 }
 </pre>
 		
