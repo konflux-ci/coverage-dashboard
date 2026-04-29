@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/25033667285",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/25090623965",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 60.2,
+      "coverage": 60.0,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 81.9
+          "coverage": 81.7
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
@@ -99,12 +99,12 @@
           "coverage": 72.0
         },
         {
-          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
-          "coverage": 9.5
-        },
-        {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/pr",
           "coverage": 16.8
+        },
+        {
+          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
+          "coverage": 9.5
         },
         {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/config",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 73.4,
+      "coverage": 73.6,
       "status": "ok",
       "packages": [
         {
@@ -145,7 +145,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 73.9
+          "coverage": 74.2
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -225,12 +225,12 @@
           "coverage": 84.0
         },
         {
-          "package": "github.com/konflux-ci/internal-services/tekton",
-          "coverage": 97.7
-        },
-        {
           "package": "github.com/konflux-ci/internal-services/tekton/utils",
           "coverage": 0.0
+        },
+        {
+          "package": "github.com/konflux-ci/internal-services/tekton",
+          "coverage": 97.7
         },
         {
           "package": "github.com/konflux-ci/internal-services/api/v1alpha1",
@@ -316,12 +316,12 @@
     },
     {
       "repo": "konflux-ci/multi-platform-controller",
-      "coverage": 46.6,
+      "coverage": 49.2,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun",
-          "coverage": 74.3
+          "coverage": 81.4
         },
         {
           "package": "github.com/konflux-ci/multi-platform-controller/cmd/otp",
@@ -470,22 +470,22 @@
           "coverage": 32.3
         },
         {
-          "package": "github.com/konflux-ci/qe-tools/cmd/coffeebreak",
-          "coverage": 5.8
+          "package": "github.com/konflux-ci/qe-tools/cmd",
+          "coverage": 72.2
         },
         {
           "package": "github.com/konflux-ci/qe-tools/cmd/analyzetestresults",
           "coverage": 41.7
         },
         {
-          "package": "github.com/konflux-ci/qe-tools/cmd",
-          "coverage": 72.2
+          "package": "github.com/konflux-ci/qe-tools/cmd/coffeebreak",
+          "coverage": 5.8
         }
       ]
     },
     {
       "repo": "konflux-ci/release-service",
-      "coverage": 65.4,
+      "coverage": 61.9,
       "status": "failed",
       "packages": [
         {

@@ -83,15 +83,15 @@
 				
 				<option value="file13">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/controller.go (0.0%)</option>
 				
-				<option value="file14">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/dynamic.go (51.4%)</option>
+				<option value="file14">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/dynamic.go (75.4%)</option>
 				
-				<option value="file15">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/dynamicpool.go (64.6%)</option>
+				<option value="file15">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/dynamicpool.go (91.1%)</option>
 				
-				<option value="file16">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/hostpool.go (77.4%)</option>
+				<option value="file16">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/hostpool.go (78.5%)</option>
 				
-				<option value="file17">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/local.go (72.2%)</option>
+				<option value="file17">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/local.go (100.0%)</option>
 				
-				<option value="file18">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/taskrun.go (80.1%)</option>
+				<option value="file18">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/taskrun.go (80.3%)</option>
 				
 				<option value="file19">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/updates.go (96.2%)</option>
 				
@@ -3569,14 +3569,14 @@ func (r DynamicResolver) Allocate(taskRun *ReconcileTaskRun, ctx context.Context
                 } else<span class="cov8" title="1"> { // A transient error (that wasn't returned) occurred when fetching the IP address for the VM
                         state, err := r.GetState(taskRun.client, ctx, cloud.InstanceIdentifier(tr.Annotations[CloudInstanceId]))
                         requeueTime := time.Duration(r.checkInterval) * time.Second
-                        if err != nil </span><span class="cov0" title="0">{ //An error occurred while getting the VM state; re-queue quickly since random API errors are prominent
+                        if err != nil </span><span class="cov8" title="1">{ //An error occurred while getting the VM state; re-queue quickly since random API errors are prominent
                                 log.Error(
                                         err,
                                         "failed to get the state for instance",
                                         "instanceId", cloud.InstanceIdentifier(tr.Annotations[CloudInstanceId]),
                                 )
                                 requeueTime = time.Second * 10
-                        }</span> else<span class="cov8" title="1"> if state == cloud.FailedState </span><span class="cov0" title="0">{ //VM is in a failed state; try to delete the instance and unassign it from the TaskRun
+                        }</span> else<span class="cov8" title="1"> if state == cloud.FailedState </span><span class="cov8" title="1">{ //VM is in a failed state; try to delete the instance and unassign it from the TaskRun
                                 log.Info("VM instance is in a failed state; will attempt to terminate, unassign from task")
                                 terr := r.TerminateInstance(taskRun.client, ctx, cloud.InstanceIdentifier(tr.Annotations[CloudInstanceId]))
                                 if terr != nil </span><span class="cov0" title="0">{
@@ -3584,7 +3584,7 @@ func (r DynamicResolver) Allocate(taskRun *ReconcileTaskRun, ctx context.Context
                                         r.eventRecorder.Event(tr, "Normal", "TerminateFailed", message)
                                         log.Error(terr, message)
                                 }</span>
-                                <span class="cov0" title="0">unassignErr := r.removeInstanceFromTask(taskRun, ctx, tr)
+                                <span class="cov8" title="1">unassignErr := r.removeInstanceFromTask(taskRun, ctx, tr)
                                 if unassignErr != nil </span><span class="cov0" title="0">{
                                         msg := fmt.Sprintf("failed to unassign instance %s from task after instance termination", r.instanceTag)
                                         log.Error(unassignErr, msg)
@@ -3596,26 +3596,26 @@ func (r DynamicResolver) Allocate(taskRun *ReconcileTaskRun, ctx context.Context
         }
         // First check that creating this VM would not exceed the maximum VM platforms configured
         <span class="cov8" title="1">instanceCount, err := r.CountInstances(taskRun.client, ctx, r.instanceTag)
-        if instanceCount &gt;= r.maxInstances || err != nil </span><span class="cov0" title="0">{
-                if err != nil </span><span class="cov0" title="0">{
+        if instanceCount &gt;= r.maxInstances || err != nil </span><span class="cov8" title="1">{
+                if err != nil </span><span class="cov8" title="1">{
                         log.Error(err, "unable to count running instances, not launching a new instance out of an abundance of caution")
                         log.Error(err, "Failed to count existing cloud instances")
                         return reconcile.Result{}, err
                 }</span>
-                <span class="cov0" title="0">message := fmt.Sprintf("%d of %d maxInstances running for %s, waiting for existing tasks to finish before provisioning for ", instanceCount, r.maxInstances, r.instanceTag)
+                <span class="cov8" title="1">message := fmt.Sprintf("%d of %d maxInstances running for %s, waiting for existing tasks to finish before provisioning for ", instanceCount, r.maxInstances, r.instanceTag)
                 r.eventRecorder.Event(tr, "Warning", "Pending", message)
                 log.Info(message)
-                if tr.Labels[constant.WaitingForPlatformLabel] == platformLabel(r.platform) </span><span class="cov0" title="0">{
+                if tr.Labels[constant.WaitingForPlatformLabel] == platformLabel(r.platform) </span><span class="cov8" title="1">{
                         //we are already in a waiting state
                         return reconcile.Result{RequeueAfter: time.Minute}, nil
                 }</span>
                 //no host available
                 //add the waiting label
-                <span class="cov0" title="0">tr.Labels[constant.WaitingForPlatformLabel] = platformLabel(r.platform)
+                <span class="cov8" title="1">tr.Labels[constant.WaitingForPlatformLabel] = platformLabel(r.platform)
                 if err := UpdateTaskRunWithRetry(ctx, taskRun.client, taskRun.apiReader, tr); err != nil </span><span class="cov0" title="0">{
                         log.Error(err, "Failed to update task with waiting label. Will retry.")
                 }</span>
-                <span class="cov0" title="0">return reconcile.Result{RequeueAfter: time.Minute}, nil</span>
+                <span class="cov8" title="1">return reconcile.Result{RequeueAfter: time.Minute}, nil</span>
         }
         <span class="cov8" title="1">delete(tr.Labels, constant.WaitingForPlatformLabel)
         startTime := time.Now().Unix()
@@ -3626,24 +3626,24 @@ func (r DynamicResolver) Allocate(taskRun *ReconcileTaskRun, ctx context.Context
         taskRunID := fmt.Sprintf("%s:%s", tr.Namespace, tr.Name)
         instance, err := r.LaunchInstance(taskRun.client, ctx, taskRunID, r.instanceTag, r.additionalInstanceTags)
 
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 launchErr := err
                 //launch failed
                 log.Error(err, "Failed to create cloud host")
                 failureCount := 0
                 existingFailureString := tr.Annotations[CloudFailures]
-                if existingFailureString != "" </span><span class="cov0" title="0">{
+                if existingFailureString != "" </span><span class="cov8" title="1">{
                         failureCount, err = strconv.Atoi(existingFailureString)
                         if err != nil </span><span class="cov0" title="0">{
                                 log.Error(err, "failed to parse failure count")
                                 return reconcile.Result{}, err
                         }</span>
                 }
-                <span class="cov0" title="0">if failureCount == 2 </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if failureCount == 2 </span><span class="cov8" title="1">{
                         log.Error(err, "failed to create cloud host, retries exceeded ")
                         return reconcile.Result{}, launchErr
                 }</span>
-                <span class="cov0" title="0">failureCount++
+                <span class="cov8" title="1">failureCount++
                 tr.Annotations[CloudFailures] = strconv.Itoa(failureCount)
                 err = UpdateTaskRunWithRetry(ctx, taskRun.client, taskRun.apiReader, tr)
                 if err != nil </span><span class="cov0" title="0">{
@@ -3651,7 +3651,7 @@ func (r DynamicResolver) Allocate(taskRun *ReconcileTaskRun, ctx context.Context
                         log.Error(err, "failed to update failure count")
                 }</span>
 
-                <span class="cov0" title="0">return reconcile.Result{RequeueAfter: time.Second * 20}, nil</span>
+                <span class="cov8" title="1">return reconcile.Result{RequeueAfter: time.Second * 20}, nil</span>
         }
         <span class="cov8" title="1">message = fmt.Sprintf("launched %s instance for %s", r.instanceTag, tr.Name)
         r.eventRecorder.Event(tr, "Normal", "Launched", message)
@@ -3718,22 +3718,22 @@ func (a DynamicHostPool) buildHostPool(r *ReconcileTaskRun, ctx context.Context,
         log := logr.FromContextOrDiscard(ctx)
         ret := map[string]*Host{}
         instances, err := a.cloudProvider.ListInstances(r.client, ctx, instanceTag)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return nil, 0, err
         }</span>
         <span class="cov8" title="1">oldInstanceCount := 0
         for _, instTmp := range instances </span><span class="cov8" title="1">{
                 inst := instTmp
-                if inst.StartTime.Add(a.maxAge).Before(time.Now()) </span><span class="cov0" title="0">{
+                if inst.StartTime.Add(a.maxAge).Before(time.Now()) </span><span class="cov8" title="1">{
                         // These are shut down on deallocation
                         oldInstanceCount++
 
                         idle, err := a.isHostIdle(r, ctx, string(inst.InstanceId))
-                        if err == nil </span><span class="cov0" title="0">{
-                                if idle </span><span class="cov0" title="0">{
+                        if err == nil </span><span class="cov8" title="1">{
+                                if idle </span><span class="cov8" title="1">{
                                         log.Info("deallocating old instance", "instance", inst.InstanceId)
                                         err = a.cloudProvider.TerminateInstance(r.client, ctx, inst.InstanceId)
-                                        if err != nil </span><span class="cov0" title="0">{
+                                        if err != nil </span><span class="cov8" title="1">{
                                                 log.Error(err, "unable to shut down instance", "instance", inst.InstanceId)
                                         }</span>
                                 }
@@ -3748,26 +3748,26 @@ func (a DynamicHostPool) buildHostPool(r *ReconcileTaskRun, ctx context.Context,
 
 func (a DynamicHostPool) Deallocate(r *ReconcileTaskRun, ctx context.Context, tr *v1.TaskRun, secretName string, selectedHost string) error <span class="cov8" title="1">{
         hostPool, oldInstanceCount, err := a.buildHostPool(r, ctx, a.instanceTag)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return err
         }</span>
         <span class="cov8" title="1">err = hostPool.Deallocate(r, ctx, tr, secretName, selectedHost)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return err
         }</span>
-        <span class="cov8" title="1">if oldInstanceCount &gt; 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if oldInstanceCount &gt; 0 </span><span class="cov8" title="1">{
                 // Maybe this is an old instance
-                if hostPool.hosts[selectedHost] == nil </span><span class="cov0" title="0">{
+                if hostPool.hosts[selectedHost] == nil </span><span class="cov8" title="1">{
                         // Old host, check if other tasks are using it
                         idle, err := a.isHostIdle(r, ctx, selectedHost)
-                        if err != nil </span><span class="cov0" title="0">{
+                        if err != nil </span><span class="cov8" title="1">{
                                 return err
                         }</span>
-                        <span class="cov0" title="0">if idle </span><span class="cov0" title="0">{
+                        <span class="cov8" title="1">if idle </span><span class="cov8" title="1">{
                                 log := logr.FromContextOrDiscard(ctx)
                                 log.Info("deallocating old instance", "instance", selectedHost)
                                 err = a.cloudProvider.TerminateInstance(r.client, ctx, cloud.InstanceIdentifier(selectedHost))
-                                if err != nil </span><span class="cov0" title="0">{
+                                if err != nil </span><span class="cov8" title="1">{
                                         return err
                                 }</span>
                         }
@@ -4054,7 +4054,7 @@ func (hp HostPool) Deallocate(r *ReconcileTaskRun, ctx context.Context, tr *v1.T
                 err = r.client.Create(ctx, &amp;cleanup)
                 return err</span>
         }
-        <span class="cov0" title="0">return nil</span>
+        <span class="cov8" title="1">return nil</span>
 }
 </pre>
 		
@@ -4082,7 +4082,7 @@ func (l Local) Allocate(r *ReconcileTaskRun, ctx context.Context, tr *pipelinev1
         log.Info("Task set to run locally in the cluster")
         tr.Labels[constant.AssignedHost] = "localhost"
         controllerutil.AddFinalizer(tr, PipelineFinalizer)
-        if err = r.client.Update(ctx, tr); err != nil </span><span class="cov0" title="0">{
+        if err = r.client.Update(ctx, tr); err != nil </span><span class="cov8" title="1">{
                 return reconcile.Result{}, err
         }</span>
 
@@ -4105,14 +4105,14 @@ func createUserTaskSecret(r *ReconcileTaskRun, ctx context.Context, tr *pipeline
                 },
                 Data: secretData,
         }
-        if err := controllerutil.SetOwnerReference(tr, &amp;secret, r.scheme); err != nil </span><span class="cov0" title="0">{
+        if err := controllerutil.SetOwnerReference(tr, &amp;secret, r.scheme); err != nil </span><span class="cov8" title="1">{
                 return err
         }</span>
-        <span class="cov8" title="1">if err := r.client.Create(ctx, &amp;secret); err != nil </span><span class="cov0" title="0">{
-                if errors.IsAlreadyExists(err) </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := r.client.Create(ctx, &amp;secret); err != nil </span><span class="cov8" title="1">{
+                if errors.IsAlreadyExists(err) </span><span class="cov8" title="1">{
                         return nil
                 }</span>
-                <span class="cov0" title="0">return err</span>
+                <span class="cov8" title="1">return err</span>
         }
         <span class="cov8" title="1">return nil</span>
 }
@@ -4663,7 +4663,7 @@ func (r *ReconcileTaskRun) handleHostAllocation(ctx context.Context, tr *tektona
                 }</span>)
         } else<span class="cov8" title="1"> if !wasWaiting &amp;&amp; isWaiting </span><span class="cov8" title="1">{
                 log.Info("task now waiting for host")
-        }</span> else<span class="cov8" title="1"> if wasWaiting &amp;&amp; isWaiting </span><span class="cov0" title="0">{
+        }</span> else<span class="cov8" title="1"> if wasWaiting &amp;&amp; isWaiting </span><span class="cov8" title="1">{
                 log.V(1).Info("task still waiting for host")
         }</span>
 
