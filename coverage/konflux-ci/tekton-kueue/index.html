@@ -55,7 +55,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/tekton-kueue/cmd/main.go (12.9%)</option>
+				<option value="file0">github.com/konflux-ci/tekton-kueue/cmd/main.go (14.4%)</option>
 				
 				<option value="file1">github.com/konflux-ci/tekton-kueue/internal/cel/compiler.go (88.3%)</option>
 				
@@ -115,6 +115,7 @@ import (
         "crypto/tls"
         "flag"
         "fmt"
+        "math"
         "os"
         "path/filepath"
         "reflect"
@@ -172,6 +173,8 @@ type SharedFlags struct {
         ProbeAddr       string
         EnableHTTP2     bool
         ZapOptions      *zap.Options
+        QPS             float64
+        Burst           int
 }
 
 func (s *SharedFlags) AddFlags(fs *flag.FlagSet) <span class="cov8" title="1">{
@@ -188,6 +191,8 @@ func (s *SharedFlags) AddFlags(fs *flag.FlagSet) <span class="cov8" title="1">{
         fs.StringVar(&amp;s.ProbeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
         fs.BoolVar(&amp;s.EnableHTTP2, "enable-http2", false,
                 "If set, HTTP/2 will be enabled for the metrics and webhook servers")
+        fs.Float64Var(&amp;s.QPS, "qps", 0, "The Kubernetes API Client's QPS value")
+        fs.IntVar(&amp;s.Burst, "burst", 0, "The Kubernetes API Client's Burst value")
 
         s.ZapOptions = &amp;zap.Options{
                 Development: true,
@@ -299,7 +304,20 @@ func runController(args []string) <span class="cov0" title="0">{
                 setupLog.Info("Leader election disabled")
         }</span>
 
-        <span class="cov0" title="0">mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+        <span class="cov0" title="0">cfg := ctrl.GetConfigOrDie()
+        // if Burst is set to 0, controller-runtime Client's default is used
+        cfg.Burst = controllerFlags.Burst
+        // ensure the provided value is a safe float32. If it's not, we set 0 and the
+        // controller-runtime's Client will use its default value.
+        qps, ok := safeFloat64ToFloat32OrZero(controllerFlags.QPS)
+        if !ok </span><span class="cov0" title="0">{
+                setupLog.
+                        WithValues("provided-qps", controllerFlags.QPS, "used-qps", qps).
+                        Info("provided QPS value is not a valid float32, using default")
+        }</span>
+        <span class="cov0" title="0">cfg.QPS = qps
+
+        mgr, err := ctrl.NewManager(cfg, ctrl.Options{
                 Scheme:                 scheme,
                 Metrics:                metricsServerOptions,
                 HealthProbeBindAddress: controllerFlags.ProbeAddr,
@@ -366,7 +384,20 @@ func runWebhook(args []string) <span class="cov0" title="0">{
                 setupLog.Error(err, "Exiting")
                 os.Exit(1)
         }</span>
-        <span class="cov0" title="0">mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+        <span class="cov0" title="0">cfg := ctrl.GetConfigOrDie()
+        // if Burst is set to 0, controller-runtime Client's default is used
+        cfg.Burst = webhookFlags.Burst
+        // ensure the provided value is a safe float32. If it's not, we set 0 and the
+        // controller-runtime's Client will use its default value.
+        qps, ok := safeFloat64ToFloat32OrZero(webhookFlags.QPS)
+        if !ok </span><span class="cov0" title="0">{
+                setupLog.
+                        WithValues("provided-qps", webhookFlags.QPS, "used-qps", qps).
+                        Info("provided QPS value is not a valid float32, using default")
+        }</span>
+        <span class="cov0" title="0">cfg.QPS = qps
+
+        mgr, err := ctrl.NewManager(cfg, ctrl.Options{
                 Scheme:                 scheme,
                 Metrics:                metricsServerOptions,
                 HealthProbeBindAddress: webhookFlags.ProbeAddr,
@@ -412,6 +443,13 @@ func runWebhook(args []string) <span class="cov0" title="0">{
                 setupLog.Error(err, "problem running manager")
                 os.Exit(1)
         }</span>
+}
+
+func safeFloat64ToFloat32OrZero(v float64) (float32, bool) <span class="cov8" title="1">{
+        if math.IsNaN(v) || math.IsInf(v, 0) || v &lt; -math.MaxFloat32 || v &gt; math.MaxFloat32 </span><span class="cov8" title="1">{
+                return 0, false
+        }</span>
+        <span class="cov8" title="1">return float32(v), true</span>
 }
 
 func runMutate(args []string) <span class="cov0" title="0">{

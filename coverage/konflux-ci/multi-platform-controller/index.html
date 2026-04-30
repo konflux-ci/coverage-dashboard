@@ -59,9 +59,9 @@
 				
 				<option value="file1">github.com/konflux-ci/multi-platform-controller/cmd/otp/otp.go (74.5%)</option>
 				
-				<option value="file2">github.com/konflux-ci/multi-platform-controller/pkg/aws/ec2.go (17.5%)</option>
+				<option value="file2">github.com/konflux-ci/multi-platform-controller/pkg/aws/ec2.go (87.4%)</option>
 				
-				<option value="file3">github.com/konflux-ci/multi-platform-controller/pkg/aws/ec2_helpers.go (63.4%)</option>
+				<option value="file3">github.com/konflux-ci/multi-platform-controller/pkg/aws/ec2_helpers.go (87.7%)</option>
 				
 				<option value="file4">github.com/konflux-ci/multi-platform-controller/pkg/cloud/cloud.go (100.0%)</option>
 				
@@ -357,7 +357,6 @@ func CreateEc2CloudConfig(platformName string, config map[string]string, systemN
                 SecurityGroup:           config["dynamic."+platformName+".security-group"],
                 SecurityGroupId:         config["dynamic."+platformName+".security-group-id"],
                 SubnetId:                config["dynamic."+platformName+".subnet-id"],
-                MaxSpotInstancePrice:    config["dynamic."+platformName+".spot-price"],
                 InstanceProfileName:     config["dynamic."+platformName+".instance-profile-name"],
                 InstanceProfileArn:      config["dynamic."+platformName+".instance-profile-arn"],
                 StrictPublicAddress:     config["dynamic."+platformName+".strict-public-address"] == "true",
@@ -373,12 +372,12 @@ func CreateEc2CloudConfig(platformName string, config map[string]string, systemN
 }
 
 // LaunchInstance creates an EC2 instance and returns its identifier.
-func (ec AWSEc2DynamicConfig) LaunchInstance(kubeClient client.Client, ctx context.Context, taskRunID string, instanceTag string, additionalInstanceTags map[string]string) (cloud.InstanceIdentifier, error) <span class="cov0" title="0">{
+func (ec AWSEc2DynamicConfig) LaunchInstance(kubeClient client.Client, ctx context.Context, taskRunID string, instanceTag string, additionalInstanceTags map[string]string) (cloud.InstanceIdentifier, error) <span class="cov8" title="1">{
         err := cloud.ValidateTaskRunID(taskRunID)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return "", fmt.Errorf("invalid TaskRun ID: %w", err)
         }</span>
-        <span class="cov0" title="0">taskRunName := strings.Split(taskRunID, ":")[1]
+        <span class="cov8" title="1">taskRunName := strings.Split(taskRunID, ":")[1]
         // Add TaskRun ID to additional tags
         additionalInstanceTags[cloud.TaskRunTagKey] = taskRunID
 
@@ -386,56 +385,44 @@ func (ec AWSEc2DynamicConfig) LaunchInstance(kubeClient client.Client, ctx conte
         log.Info("Attempting to launch AWS EC2 instance", "taskRunName", taskRunName)
 
         // Use AWS credentials and configuration to create an EC2 client
-        ec2Client, err := ec.createClient(kubeClient, ctx)
+        ec2Client, err := ec.getEC2Client(kubeClient, ctx)
         if err != nil </span><span class="cov0" title="0">{
                 return "", fmt.Errorf("failed to create an EC2 client: %w", err)
         }</span>
 
         // Launch the new EC2 instance
-        <span class="cov0" title="0">launchInput, err := ec.configureInstance(taskRunName, instanceTag, additionalInstanceTags)
+        <span class="cov8" title="1">launchInput, err := ec.configureInstance(taskRunName, instanceTag, additionalInstanceTags)
         if err != nil </span><span class="cov0" title="0">{
                 if strings.Contains(err.Error(), "MacOS") </span><span class="cov0" title="0">{
                         return "", fmt.Errorf("missing configuration fields mandatory for MacOS instances: %w", err)
                 }</span>
                 <span class="cov0" title="0">return "", fmt.Errorf("failed to configure EC2 instance for %s: %w", taskRunName, err)</span>
         }
-        <span class="cov0" title="0">runInstancesOutput, err := ec2Client.RunInstances(ctx, launchInput)
-        if err != nil </span><span class="cov0" title="0">{
-                // Check to see if there were market options for spot instances.
-                // Launching can often fail if there are market options and no spot instances.
-                if launchInput.InstanceMarketOptions == nil </span><span class="cov0" title="0">{
-                        return "", fmt.Errorf("failed to launch EC2 instance for %s: %w", taskRunName, err)
-                }</span>
-                // If market options were specified, try launching again without any market options.
-                <span class="cov0" title="0">msg := fmt.Sprintf("WARN: failed to launch spot instance - %s; attempting to launch normal EC2 instance...", err.Error())
-                log.Info(msg, "taskRunName", taskRunName)
-                launchInput.InstanceMarketOptions = nil
-                runInstancesOutput, err = ec2Client.RunInstances(ctx, launchInput)
-                if err != nil </span><span class="cov0" title="0">{
-                        return "", fmt.Errorf("failed to launch EC2 instance for %s: %w", taskRunName, err)
-                }</span>
-        }
+        <span class="cov8" title="1">runInstancesOutput, err := ec2Client.RunInstances(ctx, launchInput)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to launch EC2 instance for %s: %w", taskRunName, err)
+        }</span>
 
-        <span class="cov0" title="0">if len(runInstancesOutput.Instances) &gt; 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if len(runInstancesOutput.Instances) &gt; 0 </span><span class="cov8" title="1">{
                 //TODO: clarify comment -&gt; hard coded 10m timeout
                 return cloud.InstanceIdentifier(*runInstancesOutput.Instances[0].InstanceId), nil
         }</span>
-        <span class="cov0" title="0">return "", errors.New("no EC2 instances were created")</span>
+        <span class="cov8" title="1">return "", errors.New("no EC2 instances were created")</span>
 }
 
 // CountInstances returns the number of EC2 instances whose names start with instanceTag.
-func (ec AWSEc2DynamicConfig) CountInstances(kubeClient client.Client, ctx context.Context, instanceTag string) (int, error) <span class="cov0" title="0">{
+func (ec AWSEc2DynamicConfig) CountInstances(kubeClient client.Client, ctx context.Context, instanceTag string) (int, error) <span class="cov8" title="1">{
         log := logr.FromContextOrDiscard(ctx)
         log.Info("Attempting to count AWS EC2 instances")
 
         // Use AWS credentials and configuration to create an EC2 client
-        ec2Client, err := ec.createClient(kubeClient, ctx)
+        ec2Client, err := ec.getEC2Client(kubeClient, ctx)
         if err != nil </span><span class="cov0" title="0">{
                 return -1, fmt.Errorf("failed to create an EC2 client: %w", err)
         }</span>
 
         // Get instances
-        <span class="cov0" title="0">instancesOutput, err := ec2Client.DescribeInstances(
+        <span class="cov8" title="1">instancesOutput, err := ec2Client.DescribeInstances(
                 ctx,
                 &amp;ec2.DescribeInstancesInput{
                         Filters: []types.Filter{
@@ -444,46 +431,46 @@ func (ec AWSEc2DynamicConfig) CountInstances(kubeClient client.Client, ctx conte
                         },
                 },
         )
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 log.Error(err, "failed to retrieve EC2 instances", "instanceTag", instanceTag)
                 return -1, fmt.Errorf("failed to retrieve EC2 instances starting with %s: %w", instanceTag, err)
         }</span>
 
-        <span class="cov0" title="0">count := 0
-        for _, reservation := range instancesOutput.Reservations </span><span class="cov0" title="0">{
-                for _, instance := range reservation.Instances </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">count := 0
+        for _, reservation := range instancesOutput.Reservations </span><span class="cov8" title="1">{
+                for _, instance := range reservation.Instances </span><span class="cov8" title="1">{
                         // Verify the instance is running an is of the specified VM "flavor"
-                        if instance.State.Name != types.InstanceStateNameTerminated &amp;&amp; string(instance.InstanceType) == ec.InstanceType </span><span class="cov0" title="0">{
+                        if instance.State.Name != types.InstanceStateNameTerminated &amp;&amp; string(instance.InstanceType) == ec.InstanceType </span><span class="cov8" title="1">{
                                 log.Info("Counting instance towards running count", "instanceID", *instance.InstanceId)
                                 count++
                         }</span>
                 }
         }
-        <span class="cov0" title="0">return count, nil</span>
+        <span class="cov8" title="1">return count, nil</span>
 }
 
 // GetInstanceAddress returns the IP Address associated with the instanceID EC2 instance. If none is found, an empty
 // string is returned.
-func (ec AWSEc2DynamicConfig) GetInstanceAddress(kubeClient client.Client, ctx context.Context, instanceID cloud.InstanceIdentifier) (string, error) <span class="cov0" title="0">{
+func (ec AWSEc2DynamicConfig) GetInstanceAddress(kubeClient client.Client, ctx context.Context, instanceID cloud.InstanceIdentifier) (string, error) <span class="cov8" title="1">{
         log := logr.FromContextOrDiscard(ctx)
         log.Info("Attempting to get AWS EC2 instance's IP address", "instanceID", instanceID)
 
         // Use AWS credentials and configuration to create an EC2 client
-        ec2Client, err := ec.createClient(kubeClient, ctx)
+        ec2Client, err := ec.getEC2Client(kubeClient, ctx)
         if err != nil </span><span class="cov0" title="0">{
                 return "", fmt.Errorf("failed to create an EC2 client: %w", err)
         }</span>
 
         // Get instances
-        <span class="cov0" title="0">instancesOutput, err := ec2Client.DescribeInstances(ctx, &amp;ec2.DescribeInstancesInput{InstanceIds: []string{string(instanceID)}})
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">instancesOutput, err := ec2Client.DescribeInstances(ctx, &amp;ec2.DescribeInstancesInput{InstanceIds: []string{string(instanceID)}})
+        if err != nil </span><span class="cov8" title="1">{
                 // This might be a transient error, so only log it
                 log.Error(err, "failed to retrieve instance", "instanceID", instanceID)
                 return "", nil
         }</span>
 
         // Get IP address
-        <span class="cov0" title="0">if len(instancesOutput.Reservations) &gt; 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if len(instancesOutput.Reservations) &gt; 0 </span><span class="cov0" title="0">{
                 if len(instancesOutput.Reservations[0].Instances) &gt; 0 </span><span class="cov0" title="0">{
                         instance := instancesOutput.Reservations[0].Instances[0]
                         ip, err := ec.validateIPAddress(ctx, &amp;instance)
@@ -495,37 +482,37 @@ func (ec AWSEc2DynamicConfig) GetInstanceAddress(kubeClient client.Client, ctx c
                         <span class="cov0" title="0">return ip, nil</span>
                 }
         }
-        <span class="cov0" title="0">return "", nil</span>
+        <span class="cov8" title="1">return "", nil</span>
 }
 
 // TerminateInstance tries to delete the instanceID EC2 instance.
-func (ec AWSEc2DynamicConfig) TerminateInstance(kubeClient client.Client, ctx context.Context, instanceID cloud.InstanceIdentifier) error <span class="cov0" title="0">{
+func (ec AWSEc2DynamicConfig) TerminateInstance(kubeClient client.Client, ctx context.Context, instanceID cloud.InstanceIdentifier) error <span class="cov8" title="1">{
         log := logr.FromContextOrDiscard(ctx)
         log.Info("Attempting to terminate AWS EC2 instance", "instanceID", instanceID)
 
         // Use AWS credentials and configuration to create an EC2 client
-        ec2Client, err := ec.createClient(kubeClient, ctx)
+        ec2Client, err := ec.getEC2Client(kubeClient, ctx)
         if err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("failed to create an EC2 client: %w", err)
         }</span>
 
-        <span class="cov0" title="0">_, err = ec2Client.TerminateInstances(ctx, &amp;ec2.TerminateInstancesInput{InstanceIds: []string{string(instanceID)}})
+        <span class="cov8" title="1">_, err = ec2Client.TerminateInstances(ctx, &amp;ec2.TerminateInstancesInput{InstanceIds: []string{string(instanceID)}})
         return err</span>
 }
 
 // ListInstances returns a collection of accessible EC2 instances whose names start with instanceTag.
-func (ec AWSEc2DynamicConfig) ListInstances(kubeClient client.Client, ctx context.Context, instanceTag string) ([]cloud.CloudVMInstance, error) <span class="cov0" title="0">{
+func (ec AWSEc2DynamicConfig) ListInstances(kubeClient client.Client, ctx context.Context, instanceTag string) ([]cloud.CloudVMInstance, error) <span class="cov8" title="1">{
         log := logr.FromContextOrDiscard(ctx)
         log.Info("Attempting to list AWS EC2 instances")
 
         // Use AWS credentials and configuration to create an EC2 client
-        ec2Client, err := ec.createClient(kubeClient, ctx)
+        ec2Client, err := ec.getEC2Client(kubeClient, ctx)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("failed to create an EC2 client: %w", err)
         }</span>
 
         // Get instances
-        <span class="cov0" title="0">instancesOutput, err := ec2Client.DescribeInstances(
+        <span class="cov8" title="1">instancesOutput, err := ec2Client.DescribeInstances(
                 ctx,
                 &amp;ec2.DescribeInstancesInput{
                         Filters: []types.Filter{
@@ -534,21 +521,21 @@ func (ec AWSEc2DynamicConfig) ListInstances(kubeClient client.Client, ctx contex
                         },
                 },
         )
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 log.Error(err, "failed to retrieve EC2 instances", "instanceTag", instanceTag)
                 return nil, fmt.Errorf("failed to retrieve EC2 instances starting with %s: %w", instanceTag, err)
         }</span>
 
         // Append each instance to the list of CloudVMInstances
-        <span class="cov0" title="0">vmInstances := []cloud.CloudVMInstance{}
-        for _, reservation := range instancesOutput.Reservations </span><span class="cov0" title="0">{
-                for i := range reservation.Instances </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">vmInstances := []cloud.CloudVMInstance{}
+        for _, reservation := range instancesOutput.Reservations </span><span class="cov8" title="1">{
+                for i := range reservation.Instances </span><span class="cov8" title="1">{
                         instance := reservation.Instances[i]
                         // Verify the instance is running an is of the specified VM "flavor"
-                        if instance.State.Name != types.InstanceStateNameTerminated &amp;&amp; string(instance.InstanceType) == ec.InstanceType </span><span class="cov0" title="0">{
+                        if instance.State.Name != types.InstanceStateNameTerminated &amp;&amp; string(instance.InstanceType) == ec.InstanceType </span><span class="cov8" title="1">{
                                 // Only list instance if it has an accessible IP
                                 ip, err := ec.validateIPAddress(ctx, &amp;instance)
-                                if err == nil </span><span class="cov0" title="0">{
+                                if err == nil </span><span class="cov8" title="1">{
                                         newVmInstance := cloud.CloudVMInstance{
                                                 InstanceId: cloud.InstanceIdentifier(*instance.InstanceId),
                                                 StartTime:  *instance.LaunchTime,
@@ -560,7 +547,7 @@ func (ec AWSEc2DynamicConfig) ListInstances(kubeClient client.Client, ctx contex
                         }
                 }
         }
-        <span class="cov0" title="0">return vmInstances, nil</span>
+        <span class="cov8" title="1">return vmInstances, nil</span>
 }
 
 func (r AWSEc2DynamicConfig) SshUser() string <span class="cov8" title="1">{
@@ -570,7 +557,7 @@ func (r AWSEc2DynamicConfig) SshUser() string <span class="cov8" title="1">{
 // GetState returns instanceID's VM state from the ec cloud in AWS. See
 // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_InstanceState.html
 // for valid states.
-func (ec AWSEc2DynamicConfig) GetState(kubeClient client.Client, ctx context.Context, instanceId cloud.InstanceIdentifier) (cloud.VMState, error) <span class="cov0" title="0">{
+func (ec AWSEc2DynamicConfig) GetState(kubeClient client.Client, ctx context.Context, instanceId cloud.InstanceIdentifier) (cloud.VMState, error) <span class="cov8" title="1">{
         log := logr.FromContextOrDiscard(ctx)
         log.Info("Attempting to get AWS EC2 instance's IP address", "instanceId", instanceId)
         // AWS EC2 states considered to be OK
@@ -584,27 +571,27 @@ func (ec AWSEc2DynamicConfig) GetState(kubeClient client.Client, ctx context.Con
         }
 
         // Create an EC2 client and get instance
-        ec2Client, err := ec.createClient(kubeClient, ctx)
+        ec2Client, err := ec.getEC2Client(kubeClient, ctx)
         if err != nil </span><span class="cov0" title="0">{
                 return "", fmt.Errorf("failed to create an EC2 client: %w", err)
         }</span>
-        <span class="cov0" title="0">instancesOutput, err := ec2Client.DescribeInstances(ctx, &amp;ec2.DescribeInstancesInput{InstanceIds: []string{string(instanceId)}})
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">instancesOutput, err := ec2Client.DescribeInstances(ctx, &amp;ec2.DescribeInstancesInput{InstanceIds: []string{string(instanceId)}})
+        if err != nil </span><span class="cov8" title="1">{
                 // This might be a transient error, so only log it
                 log.Error(err, "failed to retrieve instance", "instanceId", instanceId)
                 return "", nil
         }</span>
 
         // Get state
-        <span class="cov0" title="0">if len(instancesOutput.Reservations) &gt; 0 </span><span class="cov0" title="0">{
-                if len(instancesOutput.Reservations[0].Instances) &gt; 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if len(instancesOutput.Reservations) &gt; 0 </span><span class="cov8" title="1">{
+                if len(instancesOutput.Reservations[0].Instances) &gt; 0 </span><span class="cov8" title="1">{
                         instance := instancesOutput.Reservations[0].Instances[0]
-                        if slices.Contains(okStates, string(instance.State.Name)) </span><span class="cov0" title="0">{
+                        if slices.Contains(okStates, string(instance.State.Name)) </span><span class="cov8" title="1">{
                                 return cloud.OKState, nil
                         }</span>
                 }
         }
-        <span class="cov0" title="0">return cloud.FailedState, nil</span>
+        <span class="cov8" title="1">return cloud.FailedState, nil</span>
 }
 
 // An AWSEc2DynamicConfig represents a configuration for an AWS EC2 instance.
@@ -649,10 +636,6 @@ type AWSEc2DynamicConfig struct {
         // Disk is the amount of permanent storage (in GB) to allocate the instance.
         Disk int32
 
-        // MaxSpotInstancePrice is the maximum price (TODO: find out format) the user
-        // is willing to pay for an EC2 [Spot instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html)
-        MaxSpotInstancePrice string
-
         // InstanceProfileName is the name of the instance profile (a container for
         // an AWS IAM role attached to an EC2 instance).
         InstanceProfileName string
@@ -685,6 +668,14 @@ type AWSEc2DynamicConfig struct {
         // StrictPublicAddress specifies whether the instance must use a public IP address.
         // If false, it would be also possible for the instance to use a private IP address.
         StrictPublicAddress bool
+
+        // ec2Client allows tests to inject a mock EC2 API client.
+        // When nil, getEC2Client builds a real client from AWS credentials.
+        ec2Client ec2API
+
+        // pingFunc allows tests to inject a mock for SSH connectivity checks.
+        // When nil, the real pingIPAddress (TCP dial to port 22) is used.
+        pingFunc func(ip string) error
 }
 </pre>
 		
@@ -728,7 +719,7 @@ func (ec AWSEc2DynamicConfig) validateIPAddress(ctx context.Context, instance *t
         // Select IP address based on priority: PublicDnsName &gt; PublicIpAddress &gt; PrivateIpAddress
         if instance.PublicDnsName != nil &amp;&amp; *instance.PublicDnsName != "" </span><span class="cov0" title="0">{
                 ip = *instance.PublicDnsName
-        }</span> else<span class="cov8" title="1"> if instance.PublicIpAddress != nil &amp;&amp; *instance.PublicIpAddress != "" </span><span class="cov0" title="0">{
+        }</span> else<span class="cov8" title="1"> if instance.PublicIpAddress != nil &amp;&amp; *instance.PublicIpAddress != "" </span><span class="cov8" title="1">{
                 ip = *instance.PublicIpAddress
         }</span> else<span class="cov8" title="1"> if instance.PrivateIpAddress != nil &amp;&amp; *instance.PrivateIpAddress != "" &amp;&amp; !ec.StrictPublicAddress </span><span class="cov0" title="0">{
                 ip = *instance.PrivateIpAddress
@@ -740,23 +731,31 @@ func (ec AWSEc2DynamicConfig) validateIPAddress(ctx context.Context, instance *t
         }</span>
 
         // Verify SSH connectivity
-        <span class="cov0" title="0">if err := pingIPAddress(ip); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">ping := pingIPAddress
+        if ec.pingFunc != nil </span><span class="cov8" title="1">{
+                ping = ec.pingFunc
+        }</span>
+        <span class="cov8" title="1">if err := ping(ip); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "failed to connect to AWS instance via SSH",
                         "instanceID", aws.ToString(instance.InstanceId),
                         "ipAddress", ip)
                 return "", fmt.Errorf("failed to resolve IP address %s: %w", ip, err)
         }</span>
 
-        <span class="cov0" title="0">log.Info("Successfully validated IP address",
+        <span class="cov8" title="1">log.Info("Successfully validated IP address",
                 "instanceID", aws.ToString(instance.InstanceId),
                 "ipAddress", ip)
 
         return ip, nil</span>
 }
 
-// createClient uses AWS credentials and an EC2 configuration to create and return an EC2 client.
-func (ec AWSEc2DynamicConfig) createClient(kubeClient client.Client, ctx context.Context) (*ec2.Client, error) <span class="cov0" title="0">{
-        secretCredentials := SecretCredentialsProvider{Name: ec.Secret, Namespace: ec.SystemNamespace, Client: kubeClient}
+// getEC2Client returns the injected mock client if set, otherwise builds a real
+// EC2 client from AWS credentials.
+func (ec AWSEc2DynamicConfig) getEC2Client(kubeClient client.Client, ctx context.Context) (ec2API, error) <span class="cov8" title="1">{
+        if ec.ec2Client != nil </span><span class="cov8" title="1">{
+                return ec.ec2Client, nil
+        }</span>
+        <span class="cov0" title="0">secretCredentials := SecretCredentialsProvider{Name: ec.Secret, Namespace: ec.SystemNamespace, Client: kubeClient}
         cfg, err := config.LoadDefaultConfig(ctx,
                 config.WithCredentialsProvider(secretCredentials),
                 config.WithRegion(ec.Region))
@@ -783,7 +782,6 @@ func (ec AWSEc2DynamicConfig) configureInstance(taskRunName string, instanceTag 
         var securityGroups []string
         var securityGroupIds []string
         var instanceProfile *types.IamInstanceProfileSpecification
-        var instanceMarketOpts *types.InstanceMarketOptionsRequest
         var placement *types.Placement
         var licenseSpecifications []types.LicenseConfigurationRequest
 
@@ -805,17 +803,6 @@ func (ec AWSEc2DynamicConfig) configureInstance(taskRunName string, instanceTag 
                         instanceProfile.Arn = aws.String(ec.InstanceProfileArn)
                 }</span>
         }
-
-        <span class="cov8" title="1">if ec.MaxSpotInstancePrice != "" </span><span class="cov8" title="1">{
-                instanceMarketOpts = &amp;types.InstanceMarketOptionsRequest{
-                        MarketType: types.MarketTypeSpot,
-                        SpotOptions: &amp;types.SpotMarketOptions{
-                                MaxPrice:                     aws.String(ec.MaxSpotInstancePrice),
-                                InstanceInterruptionBehavior: types.InstanceInterruptionBehaviorTerminate,
-                                SpotInstanceType:             types.SpotInstanceTypeOneTime,
-                        },
-                }
-        }</span>
 
         // Configure placement and license for dedicated hosts (e.g., Mac instances)
         // All three fields (Tenancy, HostResourceGroupArn, LicenseConfigurationArn) are validated to be set together
@@ -862,7 +849,6 @@ func (ec AWSEc2DynamicConfig) configureInstance(taskRunName string, instanceTag 
                         },
                 }},
                 InstanceInitiatedShutdownBehavior: types.ShutdownBehaviorTerminate,
-                InstanceMarketOptions:             instanceMarketOpts,
                 Placement:                         placement,
                 LicenseSpecifications:             licenseSpecifications,
                 TagSpecifications: []types.TagSpecification{
@@ -887,9 +873,9 @@ type SecretCredentialsProvider struct {
 
 // Retrieve is one of the AWS CredentialsProvider interface's methods that uses external Kubernetes
 // secrets or local environment variables to generate AWS credentials.
-func (r SecretCredentialsProvider) Retrieve(ctx context.Context) (aws.Credentials, error) <span class="cov0" title="0">{
+func (r SecretCredentialsProvider) Retrieve(ctx context.Context) (aws.Credentials, error) <span class="cov8" title="1">{
         // Use local environment variables for credentials
-        if r.Client == nil </span><span class="cov0" title="0">{
+        if r.Client == nil </span><span class="cov8" title="1">{
                 // TODO: add a check if the ENVs are empty?
                 return aws.Credentials{
                         AccessKeyID:     os.Getenv("MULTI_ARCH_ACCESS_KEY"),
@@ -899,22 +885,22 @@ func (r SecretCredentialsProvider) Retrieve(ctx context.Context) (aws.Credential
         }</span>
 
         // Connect to Kubernetes to get credentials info
-        <span class="cov0" title="0">s := v1.Secret{}
+        <span class="cov8" title="1">s := v1.Secret{}
         nameSpacedSecret := types2.NamespacedName{Name: r.Name, Namespace: r.Namespace}
         err := r.Client.Get(ctx, nameSpacedSecret, &amp;s)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return aws.Credentials{},
                         fmt.Errorf("failed to retrieve the secret %v from the Kubernetes client: %w", nameSpacedSecret, err)
         }</span>
 
-        <span class="cov0" title="0">accessKeyID := string(s.Data["access-key-id"])
+        <span class="cov8" title="1">accessKeyID := string(s.Data["access-key-id"])
         secretAccessKey := string(s.Data["secret-access-key"])
         sessionToken := ""
-        if sessionTokenData, ok := s.Data["session-token"]; ok </span><span class="cov0" title="0">{
+        if sessionTokenData, ok := s.Data["session-token"]; ok </span><span class="cov8" title="1">{
                 sessionToken = string(sessionTokenData)
         }</span>
 
-        <span class="cov0" title="0">return aws.Credentials{
+        <span class="cov8" title="1">return aws.Credentials{
                 AccessKeyID:     accessKeyID,
                 SecretAccessKey: secretAccessKey,
                 SessionToken:    sessionToken,

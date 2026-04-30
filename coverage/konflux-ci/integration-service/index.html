@@ -75,7 +75,7 @@
 				
 				<option value="file9">github.com/konflux-ci/integration-service/snapshot/create.go (67.8%)</option>
 				
-				<option value="file10">github.com/konflux-ci/integration-service/snapshot/gcl.go (63.8%)</option>
+				<option value="file10">github.com/konflux-ci/integration-service/snapshot/gcl.go (60.9%)</option>
 				
 				<option value="file11">github.com/konflux-ci/integration-service/snapshot/utils.go (94.7%)</option>
 				
@@ -2832,7 +2832,7 @@ func UpdateMultipleGCLEntries(ctx context.Context, adapterClient client.Client, 
         }
 
         <span class="cov8" title="1">err := adapterClient.Status().Patch(ctx, componentGroup, patch)
-        if err != nil </span><span class="cov8" title="1">{
+        if err != nil </span><span class="cov0" title="0">{
                 logger.Error(err, "Failed to updated GCL entry for ComponentVersion with components", "componentGroup", componentGroup.Name, "snapshotComponents", componentsToUpdate)
                 return err
         }</span>
@@ -6003,9 +6003,10 @@ func IterateIntegrationTestScenarioWithSameStatus(ctx context.Context, client cl
                 }</span>
         }
 
-        // if git provider is gitlab, and comment is neither disabled for component nor pac repository, it can extent to more git provider
-        // it delete existing comment and post one new comment with the latest test report summary of all ITS to gitlab merge request for each component
-        <span class="cov8" title="1">if reporter.GetReporterName() == GitLabProvider </span><span class="cov8" title="1">{
+        // if git provider is gitlab or forgejo, and comment is neither disabled for component nor pac repository,
+        // delete existing comment and post one new comment with the latest test report summary of all ITS to the merge/pull request for each component
+        <span class="cov8" title="1">if reporter.GetReporterName() == GitLabProvider ||
+                reporter.GetReporterName() == ForgejoProvider </span><span class="cov8" title="1">{
                 _, isMergeRequest := snapshot.GetAnnotations()[gitops.PipelineAsCodePullRequestAnnotation]
                 if isMergeRequest </span><span class="cov8" title="1">{
                         // get the destination snapshot's component to check if comment is disabled for all comments for pac repository or integration test
