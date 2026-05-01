@@ -102,7 +102,7 @@ func LookPath(file string) (string, error) <span class="cov8" title="1">{
         <span class="cov8" title="1">return exec.LookPath(file)</span>
 }
 
-// Push the given directory in front of $PATH unless its already listed there
+// Push the given directory in front of $PATH unless it's already listed there
 func pushToPath(dir string) error <span class="cov8" title="1">{
         osPath := os.Getenv("PATH")
         osPathList := filepath.SplitList(osPath)
