@@ -65,33 +65,35 @@
 				
 				<option value="file4">github.com/konflux-ci/integration-service/git/github/github.go (79.4%)</option>
 				
-				<option value="file5">github.com/konflux-ci/integration-service/pkg/integrationteststatus/integration_test_status.go (91.2%)</option>
+				<option value="file5">github.com/konflux-ci/integration-service/pkg/dag/verify.go (63.6%)</option>
 				
-				<option value="file6">github.com/konflux-ci/integration-service/pkg/integrationteststatus/integrationteststatus_enumer.go (63.2%)</option>
+				<option value="file6">github.com/konflux-ci/integration-service/pkg/integrationteststatus/integration_test_status.go (91.2%)</option>
 				
-				<option value="file7">github.com/konflux-ci/integration-service/pkg/metrics/githubapp.go (20.7%)</option>
+				<option value="file7">github.com/konflux-ci/integration-service/pkg/integrationteststatus/integrationteststatus_enumer.go (63.2%)</option>
 				
-				<option value="file8">github.com/konflux-ci/integration-service/pkg/metrics/integration.go (55.2%)</option>
+				<option value="file8">github.com/konflux-ci/integration-service/pkg/metrics/githubapp.go (20.7%)</option>
 				
-				<option value="file9">github.com/konflux-ci/integration-service/snapshot/create.go (67.8%)</option>
+				<option value="file9">github.com/konflux-ci/integration-service/pkg/metrics/integration.go (55.2%)</option>
 				
-				<option value="file10">github.com/konflux-ci/integration-service/snapshot/gcl.go (60.9%)</option>
+				<option value="file10">github.com/konflux-ci/integration-service/snapshot/create.go (70.1%)</option>
 				
-				<option value="file11">github.com/konflux-ci/integration-service/snapshot/utils.go (94.7%)</option>
+				<option value="file11">github.com/konflux-ci/integration-service/snapshot/gcl.go (63.8%)</option>
 				
-				<option value="file12">github.com/konflux-ci/integration-service/snapshot/validation.go (81.2%)</option>
+				<option value="file12">github.com/konflux-ci/integration-service/snapshot/utils.go (94.1%)</option>
 				
-				<option value="file13">github.com/konflux-ci/integration-service/status/format.go (85.7%)</option>
+				<option value="file13">github.com/konflux-ci/integration-service/snapshot/validation.go (81.2%)</option>
 				
-				<option value="file14">github.com/konflux-ci/integration-service/status/reporter.go (77.4%)</option>
+				<option value="file14">github.com/konflux-ci/integration-service/status/format.go (85.7%)</option>
 				
-				<option value="file15">github.com/konflux-ci/integration-service/status/reporter_forgejo.go (63.5%)</option>
+				<option value="file15">github.com/konflux-ci/integration-service/status/reporter.go (77.4%)</option>
 				
-				<option value="file16">github.com/konflux-ci/integration-service/status/reporter_github.go (78.6%)</option>
+				<option value="file16">github.com/konflux-ci/integration-service/status/reporter_forgejo.go (63.5%)</option>
 				
-				<option value="file17">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (79.3%)</option>
+				<option value="file17">github.com/konflux-ci/integration-service/status/reporter_github.go (78.6%)</option>
 				
-				<option value="file18">github.com/konflux-ci/integration-service/status/status.go (63.3%)</option>
+				<option value="file18">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (79.3%)</option>
+				
+				<option value="file19">github.com/konflux-ci/integration-service/status/status.go (63.3%)</option>
 				
 				</select>
 			</div>
@@ -204,12 +206,11 @@ type TestGraphNode struct {
         // +required
         Name string `json:"name"`
 
-        // OnFail defines how to behave if this IntegrationTestScenario fails.
-        // Options: "run" (default) - continue running dependent tests, "skip" - skip dependent tests
-        // +kubebuilder:validation:Enum=run;skip
-        // +kubebuilder:default=run
+        // FailFast defines how to behave if this IntegrationTestScenario fails.
+        // If true, skip dependent tests.  If false, continue running dependent tests
+        // +kubebuilder:default=false
         // +optional
-        OnFail string `json:"onFail,omitempty"`
+        FailFast bool `json:"failFast,omitempty"`
 }
 
 // SnapshotCreatorSpec defines custom logic for creating snapshots.
@@ -1657,6 +1658,135 @@ func (c *Client) GetPullRequest(ctx context.Context, owner string, repo string, 
 </pre>
 		
 		<pre class="file" id="file5" style="display: none">/*
+Copyright 2025 Red Hat Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package dag
+
+import (
+        "fmt"
+        "maps"
+
+        "github.com/konflux-ci/integration-service/api/v1beta2"
+)
+
+// Node represents a Task in a pipeline.
+type Node struct {
+        // Key represent a unique name of the node in a graph
+        Key string
+        // Prev represent all the Previous task Nodes for the current Task
+        Prev []*Node
+        // Next represent all the Next task Nodes for the current Task
+        Next []*Node
+        // FailFastMap maps next node names to their FailFast behavior
+        FailFastMap map[string]bool
+}
+
+// Graph represents the Pipeline Graph
+type Graph struct {
+        // Nodes represent map of PipelineTask name to Node in Pipeline Graph
+        Nodes map[string]*Node
+}
+
+func newGraph() *Graph <span class="cov0" title="0">{
+        return &amp;Graph{Nodes: map[string]*Node{}}
+}</span>
+
+func (g *Graph) addScenarioToGraph(scenarioName string) <span class="cov0" title="0">{
+        newNode := &amp;Node{
+                Key: scenarioName,
+        }
+        g.Nodes[scenarioName] = newNode
+}</span>
+
+// ValidateTestGraph checks that all scenarios are representable as a DAG within
+// the provided testGraph (i.e. the graph contains no cycles).
+// TODO: when we validate test graph during testing time, we'll wan to expand the
+// for loop in this function to also remove nodes from graphCopy that are not going
+// to be run based on the contexts
+func ValidateTestGraph(testGraph map[string][]v1beta2.TestGraphNode, scenarios ...v1beta2.IntegrationTestScenario) error <span class="cov0" title="0">{
+        dag := newGraph()
+        graphCopy := maps.Clone(testGraph)
+
+        for _, scenario := range scenarios </span><span class="cov0" title="0">{
+                dag.addScenarioToGraph(scenario.Name)
+
+                // Ensure every scenario appears in testGraph even if it has no declared
+                // parents, so that checkGraphForCycles sees the full node set.
+                // This isn't technically necessary (every node in a cycle has a parent)
+                // but it creates some peace of mind
+                if _, ok := graphCopy[scenario.Name]; !ok </span><span class="cov0" title="0">{
+                        graphCopy[scenario.Name] = []v1beta2.TestGraphNode{}
+                }</span>
+        }
+
+        // We're technically checking a reversed version of the graph. Reversing
+        // the graph preserves all cycles so this is acceptable
+        <span class="cov0" title="0">if err := checkGraphForCycles(graphCopy); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid TestGraph - cycle detected: %w", err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// checkGraphForCycles uses Kahn's algorithm on the reversed dependency graph to
+// detect cycles.  The testGraph maps each scenario name to the list of parent
+// scenarios it depends on (parents must finish before the keyed scenario starts).
+func checkGraphForCycles(testGraph map[string][]v1beta2.TestGraphNode) error <span class="cov8" title="1">{
+        // indegrees[x] = number of nodes that list x as a parent (i.e. x's child count).
+        indegrees := make(map[string]int)
+        var res []string
+
+        for _, parentNodes := range testGraph </span><span class="cov8" title="1">{
+                for _, parentNode := range parentNodes </span><span class="cov8" title="1">{
+                        indegrees[parentNode.Name]++
+                }</span>
+        }
+
+        // Seed the queue with nodes that have no children (nobody depends on them).
+        <span class="cov8" title="1">var queue []string
+        for node := range testGraph </span><span class="cov8" title="1">{
+                if indegrees[node] == 0 </span><span class="cov8" title="1">{
+                        queue = append(queue, node)
+                        res = append(res, node)
+                }</span>
+        }
+
+        // BFS: for each childless node, decrement its parents' child-counts; enqueue
+        // any parent that reaches zero.
+        <span class="cov8" title="1">for len(queue) &gt; 0 </span><span class="cov8" title="1">{
+                node := queue[0]
+                queue = queue[1:]
+                for _, parentNode := range testGraph[node] </span><span class="cov8" title="1">{
+                        indegrees[parentNode.Name]--
+                        if indegrees[parentNode.Name] == 0 </span><span class="cov8" title="1">{
+                                queue = append(queue, parentNode.Name)
+                                res = append(res, parentNode.Name)
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">switch </span>{
+        case len(res) &lt; len(testGraph):<span class="cov8" title="1">
+                return fmt.Errorf("cycles found in graph; remaining indegrees: %+v", indegrees)</span>
+        default:<span class="cov8" title="1">
+                return nil</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">/*
 Copyright 2023 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2015,7 +2145,7 @@ func NewSnapshotIntegrationTestStatuses(jsondata string) (*SnapshotIntegrationTe
 }
 </pre>
 		
-		<pre class="file" id="file6" style="display: none">// Code generated by "enumer -type=IntegrationTestStatus -linecomment -json"; DO NOT EDIT.
+		<pre class="file" id="file7" style="display: none">// Code generated by "enumer -type=IntegrationTestStatus -linecomment -json"; DO NOT EDIT.
 
 package integrationteststatus
 
@@ -2095,7 +2225,7 @@ func (i *IntegrationTestStatus) UnmarshalJSON(data []byte) error <span class="co
 }
 </pre>
 		
-		<pre class="file" id="file7" style="display: none">package metrics
+		<pre class="file" id="file8" style="display: none">package metrics
 
 import (
         "context"
@@ -2197,7 +2327,7 @@ func (g *GithubAppAvailabilityProbe) AvailabilityGauge() prometheus.Gauge <span 
 }</span>
 </pre>
 		
-		<pre class="file" id="file8" style="display: none">/*
+		<pre class="file" id="file9" style="display: none">/*
 Copyright 2023 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2372,7 +2502,7 @@ type AvailabilityProbe interface {
 }
 </pre>
 		
-		<pre class="file" id="file9" style="display: none">/*
+		<pre class="file" id="file10" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2554,19 +2684,30 @@ func PrepareSnapshot(ctx context.Context, adapterClient client.Client, component
         <span class="cov8" title="1">return snapshot, nil</span>
 }
 
+// This prevents race conditions if EnsureGCLAlignedWithSpecComponents runs late
 func getSnapshotComponentsFromGCL(componentGroup *v1beta2.ComponentGroup, log logr.Logger) ([]applicationapiv1alpha1.SnapshotComponent, []v1beta2.ComponentState) <span class="cov8" title="1">{
         var snapshotComponents []applicationapiv1alpha1.SnapshotComponent
         var invalidComponents []v1beta2.ComponentState
+
+        specComponents := getSpecComponentsAndVersionsMap(componentGroup)
         for _, gclComponent := range componentGroup.Status.GlobalCandidateList </span><span class="cov8" title="1">{
                 name := gclComponent.Name
                 version := gclComponent.Version
                 image := gclComponent.LastPromotedImage
 
+                // Necessary to prevent race condition if reconciler function has not
+                // cleaned up GCL by the time snapshot is created
+                specVersions, ok := specComponents[name]
+                if !ok || !slices.Contains(specVersions, version) </span><span class="cov8" title="1">{
+                        log.Info("componentVersion was deleted from spec.Components. Will not add to snapshot", "componentGroup", componentGroup.Name, "component.Name", name, "component.Version", version)
+                        continue</span>
+                }
+
                 // If containerImage is empty, we have run into a race condition in
                 // which multiple components are being built in close succession.
                 // We omit this not-yet-built component from the snapshot rather than
                 // including a component that is incomplete.
-                if image == "" </span><span class="cov8" title="1">{
+                <span class="cov8" title="1">if image == "" </span><span class="cov8" title="1">{
                         // skip components that have not been added to GCL yet
                         log.Info("component cannot be added to snapshot for application due to missing containerImage", "component.Name", gclComponent.Name)
                         invalidComponents = append(invalidComponents, gclComponent)
@@ -2591,6 +2732,14 @@ func getSnapshotComponentsFromGCL(componentGroup *v1beta2.ComponentGroup, log lo
                 )</span>
         }
         <span class="cov8" title="1">return snapshotComponents, invalidComponents</span>
+}
+
+func getSpecComponentsAndVersionsMap(componentGroup *v1beta2.ComponentGroup) map[string][]string <span class="cov8" title="1">{
+        componentVersions := make(map[string][]string)
+        for _, component := range componentGroup.Spec.Components </span><span class="cov8" title="1">{
+                componentVersions[component.Name] = append(componentVersions[component.Name], component.ComponentVersion.Name)
+        }</span>
+        <span class="cov8" title="1">return componentVersions</span>
 }
 
 // Adds the updated Component to the list of snapshotComponents that will be added to the snapshot.  If a SnapshotComponent with
@@ -2699,7 +2848,7 @@ func getSnapshotComponentFromBuildPLR(pipelineRun *tektonv1.PipelineRun, compone
 }
 </pre>
 		
-		<pre class="file" id="file10" style="display: none">/*
+		<pre class="file" id="file11" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2820,7 +2969,7 @@ func UpdateGCLEntry(ctx context.Context, adapterClient client.Client, componentG
 func UpdateMultipleGCLEntries(ctx context.Context, adapterClient client.Client, componentGroup *v1beta2.ComponentGroup, componentsToUpdate map[string]v1beta2.ComponentState, logger helpers.IntegrationLogger) error <span class="cov8" title="1">{
         patch := client.MergeFromWithOptions(componentGroup.DeepCopy(), client.MergeFromWithOptimisticLock{})
         for i, entry := range componentGroup.Status.GlobalCandidateList </span><span class="cov8" title="1">{
-                entryKey := getComponentVersionString(entry.Name, entry.Version)
+                entryKey := helpers.GetComponentVersionString(entry.Name, entry.Version)
                 newEntry, ok := componentsToUpdate[entryKey]
                 if !ok </span><span class="cov8" title="1">{
                         // if key doesn't exist then we want to retain the original GCL entry
@@ -2832,7 +2981,7 @@ func UpdateMultipleGCLEntries(ctx context.Context, adapterClient client.Client, 
         }
 
         <span class="cov8" title="1">err := adapterClient.Status().Patch(ctx, componentGroup, patch)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 logger.Error(err, "Failed to updated GCL entry for ComponentVersion with components", "componentGroup", componentGroup.Name, "snapshotComponents", componentsToUpdate)
                 return err
         }</span>
@@ -2846,7 +2995,7 @@ func UpdateGCLForOverrideSnapshot(ctx context.Context, adapterClient client.Clie
                 component := component //G601
 
                 // Create ComponentState object
-                key := getComponentVersionString(component.Name, component.Version)
+                key := helpers.GetComponentVersionString(component.Name, component.Version)
                 componentsToAdd[key] = snapshotComponentToComponentState(component)
         }</span>
 
@@ -2866,7 +3015,7 @@ func UpdateGCLForOverrideSnapshot(ctx context.Context, adapterClient client.Clie
 }
 </pre>
 		
-		<pre class="file" id="file11" style="display: none">/*
+		<pre class="file" id="file12" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2886,13 +3035,13 @@ package snapshot
 
 import (
         "crypto/rand"
-        "fmt"
         "math/big"
         "strings"
         "time"
 
         applicationapiv1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
         "github.com/konflux-ci/integration-service/api/v1beta2"
+        "github.com/konflux-ci/integration-service/helpers"
         tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
 
@@ -2911,18 +3060,10 @@ func generateRandomSuffix() (string, error) <span class="cov8" title="1">{
         <span class="cov8" title="1">return string(suffix), nil</span>
 }
 
-func getComponentVersionString(name, version string) string <span class="cov8" title="1">{
-        return fmt.Sprintf("%s/%s", name, version)
-}</span>
-
-func getComponentVersionLogString(name, version string) string <span class="cov8" title="1">{
-        return fmt.Sprintf("%s (version %s)", name, version)
-}</span>
-
 func joinInvalidComponentNamesAndVersions(invalidComponents []v1beta2.ComponentState) string <span class="cov8" title="1">{
         var sb strings.Builder
         for _, component := range invalidComponents </span><span class="cov8" title="1">{
-                sb.WriteString(getComponentVersionLogString(component.Name, component.Version))
+                sb.WriteString(helpers.GetComponentVersionLogString(component.Name, component.Version))
         }</span>
         <span class="cov8" title="1">return sb.String()</span>
 }
@@ -2946,7 +3087,7 @@ func getPipelineRunStartTimeMillis(pipelineRun *tektonv1.PipelineRun) int64 <spa
 }
 </pre>
 		
-		<pre class="file" id="file12" style="display: none">/*
+		<pre class="file" id="file13" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2972,6 +3113,7 @@ import (
         applicationapiv1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
         "github.com/konflux-ci/integration-service/api/v1beta2"
         "github.com/konflux-ci/integration-service/gitops"
+        "github.com/konflux-ci/integration-service/helpers"
         "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -2985,16 +3127,16 @@ func ValidateOverrideSnapshotComponents(ctx context.Context, snapshot *applicati
         // Build a set of known (name, version) pairs from the ComponentGroup spec in O(n)
         knownComponents := make(map[string]bool, len(componentGroup.Spec.Components))
         for _, component := range componentGroup.Spec.Components </span><span class="cov8" title="1">{
-                knownComponents[getComponentVersionString(component.Name, component.ComponentVersion.Name)] = true
+                knownComponents[helpers.GetComponentVersionString(component.Name, component.ComponentVersion.Name)] = true
         }</span>
 
         <span class="cov8" title="1">var errsForSnapshot error
         for _, snapshotComponent := range snapshot.Spec.Components </span><span class="cov8" title="1">{
                 snapshotComponent := snapshotComponent //G601
 
-                key := getComponentVersionString(snapshotComponent.Name, snapshotComponent.Version)
+                key := helpers.GetComponentVersionString(snapshotComponent.Name, snapshotComponent.Version)
                 if _, found := knownComponents[key]; !found </span><span class="cov8" title="1">{
-                        errsForSnapshot = errors.Join(errsForSnapshot, fmt.Errorf("snapshotComponent %s defined in snapshot %s doesn't exist in componentGroup %s/%s", getComponentVersionLogString(snapshotComponent.Name, snapshotComponent.Version), snapshot.Name, componentGroup.Namespace, componentGroup.Name))
+                        errsForSnapshot = errors.Join(errsForSnapshot, fmt.Errorf("snapshotComponent %s defined in snapshot %s doesn't exist in componentGroup %s/%s", helpers.GetComponentVersionLogString(snapshotComponent.Name, snapshotComponent.Version), snapshot.Name, componentGroup.Namespace, componentGroup.Name))
                 }</span>
 
                 <span class="cov8" title="1">if err := gitops.ValidateImageDigest(snapshotComponent.ContainerImage); err != nil </span><span class="cov0" title="0">{
@@ -3011,7 +3153,7 @@ func ValidateOverrideSnapshotComponents(ctx context.Context, snapshot *applicati
 }
 </pre>
 		
-		<pre class="file" id="file13" style="display: none">/*
+		<pre class="file" id="file14" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3389,7 +3531,7 @@ func FormatTaskLogURL(taskRun *helpers.TaskRun, pipelinerun string, namespace st
 }
 </pre>
 		
-		<pre class="file" id="file14" style="display: none">/*
+		<pre class="file" id="file15" style="display: none">/*
 Copyright 2024 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3531,7 +3673,7 @@ func GetPACGitProviderToken(ctx context.Context, k8sClient client.Client, snapsh
 }
 </pre>
 		
-		<pre class="file" id="file15" style="display: none">/*
+		<pre class="file" id="file16" style="display: none">/*
 Copyright 2026 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3990,7 +4132,7 @@ func GenerateForgejoCommitState(state intgteststat.IntegrationTestStatus, option
 }
 </pre>
 		
-		<pre class="file" id="file16" style="display: none">/*
+		<pre class="file" id="file17" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4710,7 +4852,7 @@ func (r *GitHubReporter) ReturnCodeIsUnrecoverable(statusCode int) bool <span cl
 }</span>
 </pre>
 		
-		<pre class="file" id="file17" style="display: none">/*
+		<pre class="file" id="file18" style="display: none">/*
 Copyright 2024 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -5272,7 +5414,7 @@ func GenerateGitlabCommitState(state intgteststat.IntegrationTestStatus, optiona
 }
 </pre>
 		
-		<pre class="file" id="file18" style="display: none">/*
+		<pre class="file" id="file19" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");

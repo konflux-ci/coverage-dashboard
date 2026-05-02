@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/25202213951",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/25243422589",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -22,15 +22,15 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 81.7
-        },
-        {
-          "package": "github.com/konflux-ci/build-service/pkg/common",
-          "coverage": 90.0
+          "coverage": 81.6
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
           "coverage": 20.5
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/common",
+          "coverage": 90.0
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git/gitproviderfactory",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 73.0,
+      "coverage": 73.2,
       "status": "ok",
       "packages": [
         {
@@ -145,7 +145,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 73.3
+          "coverage": 73.7
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -174,12 +174,12 @@
     },
     {
       "repo": "konflux-ci/integration-service",
-      "coverage": 61.7,
+      "coverage": 61.8,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/integration-service/snapshot",
-          "coverage": 68.9
+          "coverage": 70.7
         },
         {
           "package": "github.com/konflux-ci/integration-service/status",
@@ -192,6 +192,10 @@
         {
           "package": "github.com/konflux-ci/integration-service/pkg/integrationteststatus",
           "coverage": 86.4
+        },
+        {
+          "package": "github.com/konflux-ci/integration-service/pkg/dag",
+          "coverage": 63.6
         },
         {
           "package": "github.com/konflux-ci/integration-service/git/github",
@@ -596,12 +600,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 57.1,
+      "coverage": 58.4,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 57.1
+          "coverage": 58.4
         }
       ]
     },
