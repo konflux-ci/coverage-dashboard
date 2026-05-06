@@ -75,7 +75,7 @@
 				
 				<option value="file9">github.com/konflux-ci/integration-service/pkg/metrics/integration.go (55.2%)</option>
 				
-				<option value="file10">github.com/konflux-ci/integration-service/snapshot/create.go (70.1%)</option>
+				<option value="file10">github.com/konflux-ci/integration-service/snapshot/create.go (70.3%)</option>
 				
 				<option value="file11">github.com/konflux-ci/integration-service/snapshot/gcl.go (60.9%)</option>
 				
@@ -2586,6 +2586,10 @@ func PrepareSnapshotForPipelineRun(ctx context.Context, adapterClient client.Cli
         // Naming once, at the end
         snapshot.Annotations[gitops.BuildPipelineRunStartTime] = strconv.FormatInt(timestampMillis, 10)
         snapshot.Name = gitops.GenerateSnapshotNameWithTimestamp(componentGroup.Name, timestampMillis)
+
+        // Copy all build PipelineRun results as Snapshot annotations so downstream
+        // consumers can access them without loading the PLR (which may be pruned).
+        gitops.CopyBuildPipelineRunResultsToSnapshot(pipelineRun, snapshot)
 
         // Set the integration workflow annotation based on the PipelineRun type
         if tekton.IsPLRCreatedByPACPushEvent(pipelineRun) </span><span class="cov8" title="1">{

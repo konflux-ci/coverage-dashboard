@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/25357285800",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/25416218115",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 60.0,
+      "coverage": 60.2,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 81.5
+          "coverage": 81.9
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
@@ -99,12 +99,12 @@
           "coverage": 72.0
         },
         {
-          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
-          "coverage": 9.5
-        },
-        {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/pr",
           "coverage": 16.8
+        },
+        {
+          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
+          "coverage": 9.5
         },
         {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/config",
@@ -174,12 +174,12 @@
     },
     {
       "repo": "konflux-ci/integration-service",
-      "coverage": 61.7,
+      "coverage": 61.8,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/integration-service/snapshot",
-          "coverage": 69.9
+          "coverage": 70.0
         },
         {
           "package": "github.com/konflux-ci/integration-service/status",
@@ -301,12 +301,12 @@
           "coverage": 16.9
         },
         {
-          "package": "github.com/konflux-ci/mintmaker/internal/slices",
-          "coverage": 100.0
-        },
-        {
           "package": "github.com/konflux-ci/mintmaker/internal/metrics",
           "coverage": 32.4
+        },
+        {
+          "package": "github.com/konflux-ci/mintmaker/internal/slices",
+          "coverage": 100.0
         },
         {
           "package": "github.com/konflux-ci/mintmaker/internal/utils",
@@ -392,12 +392,12 @@
           "coverage": 17.9
         },
         {
-          "package": "github.com/konflux-ci/operator-toolkit/predicates",
-          "coverage": 4.8
-        },
-        {
           "package": "github.com/konflux-ci/operator-toolkit/utils",
           "coverage": 100.0
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/predicates",
+          "coverage": 4.8
         },
         {
           "package": "github.com/konflux-ci/operator-toolkit/conditions",
@@ -474,12 +474,12 @@
           "coverage": 32.3
         },
         {
-          "package": "github.com/konflux-ci/qe-tools/cmd/analyzetestresults",
-          "coverage": 41.7
-        },
-        {
           "package": "github.com/konflux-ci/qe-tools/cmd",
           "coverage": 72.2
+        },
+        {
+          "package": "github.com/konflux-ci/qe-tools/cmd/analyzetestresults",
+          "coverage": 41.7
         },
         {
           "package": "github.com/konflux-ci/qe-tools/cmd/coffeebreak",
@@ -600,12 +600,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.4,
+      "coverage": 57.1,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.4
+          "coverage": 57.1
         }
       ]
     },
