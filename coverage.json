@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/25416218115",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/25475855521",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 60.2,
+      "coverage": 59.9,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 81.9
+          "coverage": 81.5
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
@@ -38,7 +38,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git/forgejo",
-          "coverage": 20.8
+          "coverage": 20.6
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/bometrics",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 73.4,
+      "coverage": 73.2,
       "status": "ok",
       "packages": [
         {
@@ -145,7 +145,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 73.9
+          "coverage": 73.7
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -365,7 +365,7 @@
     },
     {
       "repo": "konflux-ci/notification-service",
-      "coverage": 65.4,
+      "coverage": 69.1,
       "status": "ok",
       "packages": [
         {
@@ -374,7 +374,7 @@
         },
         {
           "package": "github.com/konflux-ci/notification-service/internal/controller",
-          "coverage": 83.5
+          "coverage": 86.0
         }
       ]
     },
