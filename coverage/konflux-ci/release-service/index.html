@@ -55,7 +55,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/release-service/api/v1alpha1/release_types.go (98.5%)</option>
+				<option value="file0">github.com/konflux-ci/release-service/api/v1alpha1/release_types.go (98.6%)</option>
 				
 				<option value="file1">github.com/konflux-ci/release-service/api/v1alpha1/releaseplan_types.go (100.0%)</option>
 				
@@ -71,45 +71,47 @@
 				
 				<option value="file7">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/releaseplanadmission/webhook.go (96.2%)</option>
 				
-				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (83.9%)</option>
+				<option value="file8">github.com/konflux-ci/release-service/controllers/release/adapter.go (86.2%)</option>
 				
 				<option value="file9">github.com/konflux-ci/release-service/controllers/release/controller.go (70.6%)</option>
 				
-				<option value="file10">github.com/konflux-ci/release-service/controllers/releaseplan/adapter.go (100.0%)</option>
+				<option value="file10">github.com/konflux-ci/release-service/controllers/release/utils.go (100.0%)</option>
 				
-				<option value="file11">github.com/konflux-ci/release-service/controllers/releaseplan/controller.go (66.7%)</option>
+				<option value="file11">github.com/konflux-ci/release-service/controllers/releaseplan/adapter.go (100.0%)</option>
 				
-				<option value="file12">github.com/konflux-ci/release-service/controllers/releaseplanadmission/adapter.go (91.7%)</option>
+				<option value="file12">github.com/konflux-ci/release-service/controllers/releaseplan/controller.go (66.7%)</option>
 				
-				<option value="file13">github.com/konflux-ci/release-service/controllers/releaseplanadmission/controller.go (66.7%)</option>
+				<option value="file13">github.com/konflux-ci/release-service/controllers/releaseplanadmission/adapter.go (91.7%)</option>
 				
-				<option value="file14">github.com/konflux-ci/release-service/controllers/utils/handlers/enqueue_matched.go (100.0%)</option>
+				<option value="file14">github.com/konflux-ci/release-service/controllers/releaseplanadmission/controller.go (66.7%)</option>
 				
-				<option value="file15">github.com/konflux-ci/release-service/controllers/utils/predicates/predicates.go (94.7%)</option>
+				<option value="file15">github.com/konflux-ci/release-service/controllers/utils/handlers/enqueue_matched.go (100.0%)</option>
 				
-				<option value="file16">github.com/konflux-ci/release-service/git/references.go (81.2%)</option>
+				<option value="file16">github.com/konflux-ci/release-service/controllers/utils/predicates/predicates.go (94.7%)</option>
 				
-				<option value="file17">github.com/konflux-ci/release-service/kubearchive/client.go (82.8%)</option>
+				<option value="file17">github.com/konflux-ci/release-service/git/references.go (81.2%)</option>
 				
-				<option value="file18">github.com/konflux-ci/release-service/loader/loader.go (84.5%)</option>
+				<option value="file18">github.com/konflux-ci/release-service/kubearchive/client.go (82.8%)</option>
 				
-				<option value="file19">github.com/konflux-ci/release-service/loader/loader_mock.go (63.0%)</option>
+				<option value="file19">github.com/konflux-ci/release-service/loader/loader.go (84.8%)</option>
 				
-				<option value="file20">github.com/konflux-ci/release-service/metadata/labels.go (100.0%)</option>
+				<option value="file20">github.com/konflux-ci/release-service/loader/loader_mock.go (63.0%)</option>
 				
-				<option value="file21">github.com/konflux-ci/release-service/metadata/metadata.go (100.0%)</option>
+				<option value="file21">github.com/konflux-ci/release-service/metadata/labels.go (100.0%)</option>
 				
-				<option value="file22">github.com/konflux-ci/release-service/metrics/release.go (100.0%)</option>
+				<option value="file22">github.com/konflux-ci/release-service/metadata/metadata.go (100.0%)</option>
 				
-				<option value="file23">github.com/konflux-ci/release-service/syncer/syncer.go (90.0%)</option>
+				<option value="file23">github.com/konflux-ci/release-service/metrics/release.go (100.0%)</option>
 				
-				<option value="file24">github.com/konflux-ci/release-service/tekton/predicates.go (100.0%)</option>
+				<option value="file24">github.com/konflux-ci/release-service/syncer/syncer.go (90.0%)</option>
 				
-				<option value="file25">github.com/konflux-ci/release-service/tekton/utils.go (91.4%)</option>
+				<option value="file25">github.com/konflux-ci/release-service/tekton/predicates.go (100.0%)</option>
 				
-				<option value="file26">github.com/konflux-ci/release-service/tekton/utils/pipeline.go (98.8%)</option>
+				<option value="file26">github.com/konflux-ci/release-service/tekton/utils.go (91.4%)</option>
 				
-				<option value="file27">github.com/konflux-ci/release-service/tekton/utils/pipeline_run_builder.go (90.7%)</option>
+				<option value="file27">github.com/konflux-ci/release-service/tekton/utils/pipeline.go (98.8%)</option>
+				
+				<option value="file28">github.com/konflux-ci/release-service/tekton/utils/pipeline_run_builder.go (90.7%)</option>
 				
 				</select>
 			</div>
@@ -668,6 +670,41 @@ func (r *Release) MarkManagedCollectorsPipelineProcessing() <span class="cov8" t
         )</span>
 }
 
+// MarkManagedPipelineProcessing marks the Release Managed Pipeline as processing.
+// This is used when the PipelineRun creation itself fails before any attempt can be registered.
+func (r *Release) MarkManagedPipelineProcessing() <span class="cov8" title="1">{
+        if r.HasManagedPipelineProcessingFinished() </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">if !r.IsManagedPipelineProcessing() </span><span class="cov8" title="1">{
+                // Deprecated: populate ManagedProcessing for backward compatibility
+                r.Status.ManagedProcessing.StartTime = &amp;metav1.Time{Time: time.Now()}
+        }</span>
+
+        <span class="cov8" title="1">conditions.SetCondition(&amp;r.Status.Conditions, managedProcessedConditionType, metav1.ConditionFalse, ProgressingReason)</span>
+}
+
+// MarkManagedPipelineProcessingFailed marks the Release Managed Pipeline processing as failed.
+// This is used when the PipelineRun creation itself fails before any attempt can be registered.
+func (r *Release) MarkManagedPipelineProcessingFailed(message string) <span class="cov8" title="1">{
+        if !r.IsManagedPipelineProcessing() || r.HasManagedPipelineProcessingFinished() </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        // Deprecated: populate ManagedProcessing for backward compatibility
+        <span class="cov8" title="1">r.Status.ManagedProcessing.CompletionTime = &amp;metav1.Time{Time: time.Now()}
+        conditions.SetConditionWithMessage(&amp;r.Status.Conditions, managedProcessedConditionType, metav1.ConditionFalse, FailedReason, message)
+
+        go metrics.RegisterCompletedReleasePipelineProcessing(
+                r.Status.ManagedProcessing.StartTime,
+                r.Status.ManagedProcessing.CompletionTime,
+                FailedReason.String(),
+                r.Status.Target,
+                metadata.ManagedPipelineType.String(),
+        )</span>
+}
+
 // MarkCurrentManagedPipelineAttemptProcessing marks the current managed pipeline attempt as processing.
 func (r *Release) MarkCurrentManagedPipelineAttemptProcessing() <span class="cov8" title="1">{
         // only block after success or skip, failed attempts can be retried
@@ -1011,6 +1048,26 @@ func (r *Release) getPhaseReason(conditionType conditions.ConditionType) string 
         }</span>
 
         <span class="cov8" title="1">return reason</span>
+}
+
+// HasPipelinePhaseFailed returns true if any pipeline processing phase (tenant collectors, managed
+// collectors, tenant, managed, or final) is in the Failed state. Skipped phases are not considered
+// failures. This is used by EnsureReleaseIsCompleted to decide whether to MarkReleased or
+// MarkReleaseFailed when all phases have finished.
+func (r *Release) HasPipelinePhaseFailed() bool <span class="cov8" title="1">{
+        for _, conditionType := range []conditions.ConditionType{
+                tenantCollectorsProcessedConditionType,
+                managedCollectorsProcessedConditionType,
+                tenantProcessedConditionType,
+                managedProcessedConditionType,
+                finalProcessedConditionType,
+        } </span><span class="cov8" title="1">{
+                condition := meta.FindStatusCondition(r.Status.Conditions, conditionType.String())
+                if condition != nil &amp;&amp; condition.Status == metav1.ConditionFalse &amp;&amp; condition.Reason == FailedReason.String() </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+        <span class="cov8" title="1">return false</span>
 }
 
 // hasPhaseFinished checks whether a Release phase (e.g. deployment or processing) has finished.
@@ -2254,30 +2311,75 @@ func (a *adapter) EnsureManagedCollectorsPipelineIsProcessed() (controller.Opera
                         if releasePlanAdmission.Spec.Collectors.ServiceAccountName != "" </span><span class="cov8" title="1">{
                                 if tenantRoleBinding == nil </span><span class="cov8" title="1">{
                                         tenantRoleBinding, err = a.createRoleBindingForClusterRole("release-pipeline-resource-role", releasePlanAdmission.Spec.Origin, releasePlanAdmission.Spec.Collectors.ServiceAccountName, releasePlanAdmission.Namespace)
-                                        if err != nil </span><span class="cov0" title="0">{
-                                                return controller.RequeueWithError(err)
+                                        if err != nil </span><span class="cov8" title="1">{
+                                                return pipelineCreationResult(handlePipelineCreationError(a.ctx, a.client, a.release, err,
+                                                        a.release.MarkManagedCollectorsPipelineProcessing,
+                                                        a.release.MarkManagedCollectorsPipelineProcessingFailed,
+                                                        "Release processing failed on managed collectors RoleBinding creation"))
                                         }</span>
                                 }
 
                                 <span class="cov8" title="1">if managedRoleBinding == nil </span><span class="cov8" title="1">{
                                         managedRoleBinding, err = a.createRoleBindingForClusterRole("release-pipeline-resource-role", releasePlanAdmission.Namespace, releasePlanAdmission.Spec.Collectors.ServiceAccountName, releasePlanAdmission.Namespace)
-                                        if err != nil </span><span class="cov0" title="0">{
-                                                return controller.RequeueWithError(err)
-                                        }</span>
+                                        if err != nil </span><span class="cov8" title="1">{
+                                                capturedTenant := tenantRoleBinding
+                                                return pipelineCreationResult(handlePipelineCreationError(a.ctx, a.client, a.release, err,
+                                                        a.release.MarkManagedCollectorsPipelineProcessing,
+                                                        a.release.MarkManagedCollectorsPipelineProcessingFailed,
+                                                        "Release processing failed on managed collectors RoleBinding creation",
+                                                        func() </span><span class="cov8" title="1">{
+                                                                if capturedTenant != nil </span><span class="cov8" title="1">{
+                                                                        a.release.Status.CollectorsProcessing.ManagedCollectorsProcessing.RoleBindings.TenantRoleBinding =
+                                                                                fmt.Sprintf("%s%c%s", capturedTenant.Namespace, types.Separator, capturedTenant.Name)
+                                                                }</span>
+                                                        }))
+                                        }
                                 }
 
                                 <span class="cov8" title="1">if secretRoleBinding == nil &amp;&amp; releasePlanAdmission.Spec.Collectors.Secrets != nil </span><span class="cov8" title="1">{
                                         secretRoleBinding, err = a.createRoleBindingForCollectorSecrets("managed-collectors", releasePlanAdmission.Namespace, releasePlanAdmission.Spec.Collectors.ServiceAccountName, releasePlanAdmission.Spec.Collectors.Secrets)
-                                        if err != nil </span><span class="cov0" title="0">{
-                                                return controller.RequeueWithError(err)
-                                        }</span>
+                                        if err != nil </span><span class="cov8" title="1">{
+                                                capturedTenant, capturedManaged := tenantRoleBinding, managedRoleBinding
+                                                return pipelineCreationResult(handlePipelineCreationError(a.ctx, a.client, a.release, err,
+                                                        a.release.MarkManagedCollectorsPipelineProcessing,
+                                                        a.release.MarkManagedCollectorsPipelineProcessingFailed,
+                                                        "Release processing failed on managed collectors RoleBinding creation",
+                                                        func() </span><span class="cov8" title="1">{
+                                                                if capturedTenant != nil </span><span class="cov8" title="1">{
+                                                                        a.release.Status.CollectorsProcessing.ManagedCollectorsProcessing.RoleBindings.TenantRoleBinding =
+                                                                                fmt.Sprintf("%s%c%s", capturedTenant.Namespace, types.Separator, capturedTenant.Name)
+                                                                }</span>
+                                                                <span class="cov8" title="1">if capturedManaged != nil </span><span class="cov8" title="1">{
+                                                                        a.release.Status.CollectorsProcessing.ManagedCollectorsProcessing.RoleBindings.ManagedRoleBinding =
+                                                                                fmt.Sprintf("%s%c%s", capturedManaged.Namespace, types.Separator, capturedManaged.Name)
+                                                                }</span>
+                                                        }))
+                                        }
                                 }
                         }
 
                         <span class="cov8" title="1">pipelineRun, err = a.createManagedCollectorsPipelineRun(releasePlanAdmission)
-                        if err != nil </span><span class="cov0" title="0">{
-                                return controller.RequeueWithError(err)
-                        }</span>
+                        if err != nil </span><span class="cov8" title="1">{
+                                capturedTenant, capturedManaged, capturedSecret := tenantRoleBinding, managedRoleBinding, secretRoleBinding
+                                return pipelineCreationResult(handlePipelineCreationError(a.ctx, a.client, a.release, err,
+                                        a.release.MarkManagedCollectorsPipelineProcessing,
+                                        a.release.MarkManagedCollectorsPipelineProcessingFailed,
+                                        "Release processing failed on managed collectors pipelineRun creation",
+                                        func() </span><span class="cov8" title="1">{
+                                                if capturedTenant != nil </span><span class="cov8" title="1">{
+                                                        a.release.Status.CollectorsProcessing.ManagedCollectorsProcessing.RoleBindings.TenantRoleBinding =
+                                                                fmt.Sprintf("%s%c%s", capturedTenant.Namespace, types.Separator, capturedTenant.Name)
+                                                }</span>
+                                                <span class="cov8" title="1">if capturedManaged != nil </span><span class="cov8" title="1">{
+                                                        a.release.Status.CollectorsProcessing.ManagedCollectorsProcessing.RoleBindings.ManagedRoleBinding =
+                                                                fmt.Sprintf("%s%c%s", capturedManaged.Namespace, types.Separator, capturedManaged.Name)
+                                                }</span>
+                                                <span class="cov8" title="1">if capturedSecret != nil </span><span class="cov8" title="1">{
+                                                        a.release.Status.CollectorsProcessing.ManagedCollectorsProcessing.RoleBindings.SecretRoleBinding =
+                                                                fmt.Sprintf("%s%c%s", capturedSecret.Namespace, types.Separator, capturedSecret.Name)
+                                                }</span>
+                                        }))
+                        }
 
                         <span class="cov8" title="1">a.logger.Info(fmt.Sprintf("Created %s Release PipelineRun", metadata.ManagedCollectorsPipelineType),
                                 "PipelineRun.Name", pipelineRun.Name, "PipelineRun.Namespace", pipelineRun.Namespace)</span>
@@ -2355,23 +2457,50 @@ func (a *adapter) EnsureTenantCollectorsPipelineIsProcessed() (controller.Operat
                         if releasePlan.Spec.Collectors.ServiceAccountName != "" </span><span class="cov8" title="1">{
                                 if tenantRoleBinding == nil </span><span class="cov8" title="1">{
                                         tenantRoleBinding, err = a.createRoleBindingForClusterRole("release-pipeline-resource-role", releasePlan.Namespace, releasePlan.Spec.Collectors.ServiceAccountName, releasePlan.Namespace)
-                                        if err != nil </span><span class="cov0" title="0">{
-                                                return controller.RequeueWithError(err)
+                                        if err != nil </span><span class="cov8" title="1">{
+                                                return pipelineCreationResult(handlePipelineCreationError(a.ctx, a.client, a.release, err,
+                                                        a.release.MarkTenantCollectorsPipelineProcessing,
+                                                        a.release.MarkTenantCollectorsPipelineProcessingFailed,
+                                                        "Release processing failed on tenant collectors RoleBinding creation"))
                                         }</span>
                                 }
 
                                 <span class="cov8" title="1">if secretRoleBinding == nil &amp;&amp; releasePlan.Spec.Collectors.Secrets != nil </span><span class="cov8" title="1">{
                                         secretRoleBinding, err = a.createRoleBindingForCollectorSecrets("tenant-collectors", releasePlan.Namespace, releasePlan.Spec.Collectors.ServiceAccountName, releasePlan.Spec.Collectors.Secrets)
-                                        if err != nil </span><span class="cov0" title="0">{
-                                                return controller.RequeueWithError(err)
-                                        }</span>
+                                        if err != nil </span><span class="cov8" title="1">{
+                                                capturedTenant := tenantRoleBinding
+                                                return pipelineCreationResult(handlePipelineCreationError(a.ctx, a.client, a.release, err,
+                                                        a.release.MarkTenantCollectorsPipelineProcessing,
+                                                        a.release.MarkTenantCollectorsPipelineProcessingFailed,
+                                                        "Release processing failed on tenant collectors RoleBinding creation",
+                                                        func() </span><span class="cov8" title="1">{
+                                                                if capturedTenant != nil </span><span class="cov8" title="1">{
+                                                                        a.release.Status.CollectorsProcessing.TenantCollectorsProcessing.RoleBindings.TenantRoleBinding =
+                                                                                fmt.Sprintf("%s%c%s", capturedTenant.Namespace, types.Separator, capturedTenant.Name)
+                                                                }</span>
+                                                        }))
+                                        }
                                 }
                         }
 
                         <span class="cov8" title="1">pipelineRun, err = a.createTenantCollectorsPipelineRun(releasePlan, releasePlanAdmission)
-                        if err != nil </span><span class="cov0" title="0">{
-                                return controller.RequeueWithError(err)
-                        }</span>
+                        if err != nil </span><span class="cov8" title="1">{
+                                capturedTenant, capturedSecret := tenantRoleBinding, secretRoleBinding
+                                return pipelineCreationResult(handlePipelineCreationError(a.ctx, a.client, a.release, err,
+                                        a.release.MarkTenantCollectorsPipelineProcessing,
+                                        a.release.MarkTenantCollectorsPipelineProcessingFailed,
+                                        "Release processing failed on tenant collectors pipelineRun creation",
+                                        func() </span><span class="cov8" title="1">{
+                                                if capturedTenant != nil </span><span class="cov8" title="1">{
+                                                        a.release.Status.CollectorsProcessing.TenantCollectorsProcessing.RoleBindings.TenantRoleBinding =
+                                                                fmt.Sprintf("%s%c%s", capturedTenant.Namespace, types.Separator, capturedTenant.Name)
+                                                }</span>
+                                                <span class="cov8" title="1">if capturedSecret != nil </span><span class="cov8" title="1">{
+                                                        a.release.Status.CollectorsProcessing.TenantCollectorsProcessing.RoleBindings.SecretRoleBinding =
+                                                                fmt.Sprintf("%s%c%s", capturedSecret.Namespace, types.Separator, capturedSecret.Name)
+                                                }</span>
+                                        }))
+                        }
 
                         <span class="cov8" title="1">a.logger.Info(fmt.Sprintf("Created %s Release PipelineRun", metadata.TenantCollectorsPipelineType),
                                 "PipelineRun.Name", pipelineRun.Name, "PipelineRun.Namespace", pipelineRun.Namespace)</span>
@@ -2443,8 +2572,11 @@ func (a *adapter) EnsureTenantPipelineIsProcessed() (controller.OperationResult,
                         }</span>
 
                         <span class="cov8" title="1">pipelineRun, err = a.createTenantPipelineRun(releasePlan, snapshot)
-                        if err != nil </span><span class="cov0" title="0">{
-                                return controller.RequeueWithError(err)
+                        if err != nil </span><span class="cov8" title="1">{
+                                return pipelineCreationResult(handlePipelineCreationError(a.ctx, a.client, a.release, err,
+                                        a.release.MarkTenantPipelineProcessing,
+                                        a.release.MarkTenantPipelineProcessingFailed,
+                                        "Release processing failed on tenant pipelineRun creation"))
                         }</span>
 
                         <span class="cov8" title="1">a.logger.Info(fmt.Sprintf("Created %s Release PipelineRun", metadata.TenantPipelineType),
@@ -2506,15 +2638,28 @@ func (a *adapter) EnsureManagedPipelineIsProcessed() (controller.OperationResult
                         <span class="cov8" title="1">if tenantRoleBinding == nil &amp;&amp; resources.ReleasePlanAdmission.Spec.Pipeline.ServiceAccountName != "" </span><span class="cov8" title="1">{
                                 // This string should probably be a constant somewhere
                                 tenantRoleBinding, err = a.createRoleBindingForClusterRole("release-pipeline-resource-role", resources.ReleasePlanAdmission.Spec.Origin, resources.ReleasePlanAdmission.Spec.Pipeline.ServiceAccountName, resources.ReleasePlanAdmission.Namespace)
-                                if err != nil </span><span class="cov0" title="0">{
-                                        return controller.RequeueWithError(err)
+                                if err != nil </span><span class="cov8" title="1">{
+                                        return pipelineCreationResult(handlePipelineCreationError(a.ctx, a.client, a.release, err,
+                                                a.release.MarkManagedPipelineProcessing,
+                                                a.release.MarkManagedPipelineProcessingFailed,
+                                                "Release processing failed on managed pipeline RoleBinding creation"))
                                 }</span>
                         }
 
                         <span class="cov8" title="1">pipelineRun, err = a.createManagedPipelineRun(resources)
-                        if err != nil </span><span class="cov0" title="0">{
-                                return controller.RequeueWithError(err)
-                        }</span>
+                        if err != nil </span><span class="cov8" title="1">{
+                                capturedTenant := tenantRoleBinding
+                                return pipelineCreationResult(handlePipelineCreationError(a.ctx, a.client, a.release, err,
+                                        a.release.MarkManagedPipelineProcessing,
+                                        a.release.MarkManagedPipelineProcessingFailed,
+                                        "Release processing failed on managed pipelineRun creation",
+                                        func() </span><span class="cov8" title="1">{
+                                                if capturedTenant != nil </span><span class="cov8" title="1">{
+                                                        a.release.Status.ManagedProcessing.RoleBindings.TenantRoleBinding =
+                                                                fmt.Sprintf("%s%c%s", capturedTenant.Namespace, types.Separator, capturedTenant.Name)
+                                                }</span>
+                                        }))
+                        }
 
                         <span class="cov8" title="1">a.logger.Info(fmt.Sprintf("Created %s Release PipelineRun", metadata.ManagedPipelineType),
                                 "PipelineRun.Name", pipelineRun.Name, "PipelineRun.Namespace", pipelineRun.Namespace)</span>
@@ -2558,8 +2703,11 @@ func (a *adapter) EnsureFinalPipelineIsProcessed() (controller.OperationResult, 
                         }</span>
 
                         <span class="cov8" title="1">pipelineRun, err = a.createFinalPipelineRun(releasePlan, snapshot)
-                        if err != nil </span><span class="cov0" title="0">{
-                                return controller.RequeueWithError(err)
+                        if err != nil </span><span class="cov8" title="1">{
+                                return pipelineCreationResult(handlePipelineCreationError(a.ctx, a.client, a.release, err,
+                                        a.release.MarkFinalPipelineProcessing,
+                                        a.release.MarkFinalPipelineProcessingFailed,
+                                        "Release processing failed on final pipelineRun creation"))
                         }</span>
 
                         <span class="cov8" title="1">a.logger.Info(fmt.Sprintf("Created %s Release PipelineRun", metadata.FinalPipelineType),
@@ -3045,7 +3193,7 @@ func (a *adapter) createManagedCollectorsPipelineRun(releasePlanAdmission *v1alp
         }</span>
 
         <span class="cov8" title="1">err = a.client.Create(a.ctx, pipelineRun)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return nil, err
         }</span>
 
@@ -3095,7 +3243,7 @@ func (a *adapter) createTenantCollectorsPipelineRun(releasePlan *v1alpha1.Releas
         }</span>
 
         <span class="cov8" title="1">err = a.client.Create(a.ctx, pipelineRun)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return nil, err
         }</span>
 
@@ -3145,7 +3293,7 @@ func (a *adapter) createFinalPipelineRun(releasePlan *v1alpha1.ReleasePlan, snap
         }</span>
 
         <span class="cov8" title="1">err = a.client.Create(a.ctx, pipelineRun)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return nil, err
         }</span>
 
@@ -3200,7 +3348,7 @@ func (a *adapter) createManagedPipelineRun(resources *loader.ProcessingResources
         }</span>
 
         <span class="cov8" title="1">err = a.client.Create(a.ctx, pipelineRun)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return nil, err
         }</span>
 
@@ -3250,7 +3398,7 @@ func (a *adapter) createTenantPipelineRun(releasePlan *v1alpha1.ReleasePlan, sna
         }</span>
 
         <span class="cov8" title="1">err = a.client.Create(a.ctx, pipelineRun)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return nil, err
         }</span>
 
@@ -3276,7 +3424,7 @@ func (a *adapter) createRoleBindingForCollectorSecrets(collectorType, namespace,
                 },
         }
 
-        if err := a.client.Create(a.ctx, role); err != nil </span><span class="cov0" title="0">{
+        if err := a.client.Create(a.ctx, role); err != nil </span><span class="cov8" title="1">{
                 return nil, err
         }</span>
 
@@ -3954,10 +4102,6 @@ func (a *adapter) validationError(err error) *controller.ValidationResult <span 
         return &amp;controller.ValidationResult{Valid: false}</span>
 }
 
-// maxConditionMessageLength is the maximum length for a Kubernetes condition message.
-// This limit is enforced by the API server validation (MaxLength=32768).
-const maxConditionMessageLength = 31000
-
 // listTaskRunsForPipelineRun returns the TaskRuns associated with the given PipelineRun.
 func (a *adapter) listTaskRunsForPipelineRun(pipelineRun *tektonv1.PipelineRun) ([]tektonv1.TaskRun, error) <span class="cov8" title="1">{
         if pipelineRun == nil </span><span class="cov8" title="1">{
@@ -4210,7 +4354,69 @@ func (c *Controller) SetupCache(mgr ctrl.Manager) error <span class="cov8" title
 }
 </pre>
 		
-		<pre class="file" id="file10" style="display: none">/*
+		<pre class="file" id="file10" style="display: none">package release
+
+import (
+        "context"
+
+        "github.com/konflux-ci/operator-toolkit/controller"
+        "github.com/konflux-ci/release-service/api/v1alpha1"
+        "github.com/konflux-ci/release-service/loader"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+// maxConditionMessageLength is the maximum length for a Kubernetes condition message.
+// This limit is enforced by the API server validation (MaxLength=32768).
+const maxConditionMessageLength = 31000
+
+// handlePipelineCreationError handles errors returned when creating a PipelineRun or RoleBinding.
+// For retriable (transient) errors such as network timeouts or conflicts, it returns the original
+// error so the caller can requeue. For permanent errors (e.g., admission webhook denials), it
+// marks the pipeline and release as failed and continues reconciliation so that downstream
+// Ensure* operations can mark their own phases as skipped via their IsFailed() guards. Without
+// continuing, no future reconcile is triggered (no PipelineRun was created, and
+// GenerationChangedPredicate ignores status-only patches), leaving downstream pipeline conditions
+// permanently unset.
+//
+// The optional extraStatusUpdates callbacks run after the patch baseline is taken, so their
+// changes are included in the same atomic status patch as the failure marks. This is used to
+// persist RoleBinding refs that were created before the failure, so that
+// EnsureCollectorsProcessingResourcesAreCleanedUp can find and delete them on the next reconcile.
+
+// pipelineCreationResult converts the (retryable, err) pair returned by handlePipelineCreationError
+// into the appropriate OperationResult: RequeueWithError for retryable errors, RequeueOnErrorOrContinue
+// for permanent errors (where err is the patch error, which may be nil on success).
+func pipelineCreationResult(retryable bool, err error) (controller.OperationResult, error) <span class="cov8" title="1">{
+        if retryable </span><span class="cov8" title="1">{
+                return controller.RequeueWithError(err)
+        }</span>
+        <span class="cov8" title="1">return controller.RequeueOnErrorOrContinue(err)</span>
+}
+
+// handlePipelineCreationError returns (true, originalErr) for retryable errors so the caller
+// can requeue via RequeueWithError. For permanent errors it marks the pipeline and release as
+// failed, patches the status, and returns (false, patchErr) so the caller can continue via
+// RequeueOnErrorOrContinue.
+func handlePipelineCreationError(ctx context.Context, c client.Client, release *v1alpha1.Release, err error, markProcessing func(), markPipelineFailed func(string), releaseFailedMsg string, extraStatusUpdates ...func()) (bool, error) <span class="cov8" title="1">{
+        if loader.IsRetryableCreationError(err) </span><span class="cov8" title="1">{
+                return true, err
+        }</span>
+        <span class="cov8" title="1">patch := client.MergeFrom(release.DeepCopy())
+        for _, update := range extraStatusUpdates </span><span class="cov8" title="1">{
+                update()
+        }</span>
+        <span class="cov8" title="1">markProcessing()
+        errMsg := err.Error()
+        if len(errMsg) &gt; maxConditionMessageLength </span><span class="cov8" title="1">{
+                errMsg = errMsg[:maxConditionMessageLength]
+        }</span>
+        <span class="cov8" title="1">markPipelineFailed(errMsg)
+        release.MarkReleaseFailed(releaseFailedMsg)
+        return false, c.Status().Patch(ctx, release, patch)</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4289,7 +4495,7 @@ func (a *adapter) EnsureMatchingInformationIsSet() (controller.OperationResult, 
 }
 </pre>
 		
-		<pre class="file" id="file11" style="display: none">/*
+		<pre class="file" id="file12" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4381,7 +4587,7 @@ func (c *Controller) SetupCache(mgr ctrl.Manager) error <span class="cov0" title
 }</span>
 </pre>
 		
-		<pre class="file" id="file12" style="display: none">/*
+		<pre class="file" id="file13" style="display: none">/*
 Copyright 2023.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4459,7 +4665,7 @@ func (a *adapter) EnsureMatchingInformationIsSet() (controller.OperationResult, 
 }
 </pre>
 		
-		<pre class="file" id="file13" style="display: none">/*
+		<pre class="file" id="file14" style="display: none">/*
 Copyright 2023.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4548,7 +4754,7 @@ func (c *Controller) SetupCache(mgr ctrl.Manager) error <span class="cov0" title
 }</span>
 </pre>
 		
-		<pre class="file" id="file14" style="display: none">/*
+		<pre class="file" id="file15" style="display: none">/*
 Copyright 2023.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4650,7 +4856,7 @@ func enqueueRequest(namespacedNameString string, rateLimitingInterface workqueue
 }
 </pre>
 		
-		<pre class="file" id="file15" style="display: none">/*
+		<pre class="file" id="file16" style="display: none">/*
 Copyright 2023.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4789,7 +4995,7 @@ func hasSourceChanged(objectOld, objectNew client.Object) bool <span class="cov8
 }
 </pre>
 		
-		<pre class="file" id="file16" style="display: none">/*
+		<pre class="file" id="file17" style="display: none">/*
 Copyright 2025.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4892,7 +5098,7 @@ func ResolveBranchToSHA(repoURL, revision string) (string, error) <span class="c
 }
 </pre>
 		
-		<pre class="file" id="file17" style="display: none">package kubearchive
+		<pre class="file" id="file18" style="display: none">package kubearchive
 
 import (
         "context"
@@ -5158,7 +5364,7 @@ func truncate(s string, maxLen int) string <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file18" style="display: none">package loader
+		<pre class="file" id="file19" style="display: none">package loader
 
 import (
         "context"
@@ -5570,6 +5776,21 @@ func (l *loader) GetProcessingResources(ctx context.Context, cli client.Client, 
         <span class="cov8" title="1">return resources, nil</span>
 }
 
+// IsRetryableCreationError returns true if the error is transient and the creation should be
+// retried. Returns false for known permanent failures (e.g. admission webhook denial, invalid
+// resource spec, insufficient RBAC) that will not resolve on retry.
+func IsRetryableCreationError(err error) bool <span class="cov8" title="1">{
+        if err == nil </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">return !apierrors.IsBadRequest(err) &amp;&amp;
+                !apierrors.IsInvalid(err) &amp;&amp;
+                !apierrors.IsForbidden(err) &amp;&amp;
+                !apierrors.IsUnauthorized(err) &amp;&amp;
+                !apierrors.IsMethodNotSupported(err) &amp;&amp;
+                !apierrors.IsRequestEntityTooLargeError(err)</span>
+}
+
 // IsRetriable returns true if the error is transient, such as a
 // network hiccup, concurrency conflict, or server-side throttling,
 // indicating that the operation should be retried.
@@ -5596,7 +5817,7 @@ func IsRetriable(err error) bool <span class="cov0" title="0">{
 }
 </pre>
 		
-		<pre class="file" id="file19" style="display: none">package loader
+		<pre class="file" id="file20" style="display: none">package loader
 
 import (
         "context"
@@ -5764,7 +5985,7 @@ func (l *mockLoader) GetProcessingResources(ctx context.Context, cli client.Clie
 }
 </pre>
 		
-		<pre class="file" id="file20" style="display: none">/*
+		<pre class="file" id="file21" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -5886,7 +6107,7 @@ var (
 )
 </pre>
 		
-		<pre class="file" id="file21" style="display: none">/*
+		<pre class="file" id="file22" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -5974,7 +6195,7 @@ func safeCopy(dst map[string]string, key, val string) <span class="cov8" title="
 }
 </pre>
 		
-		<pre class="file" id="file22" style="display: none">/*
+		<pre class="file" id="file23" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -6204,7 +6425,7 @@ func init() <span class="cov8" title="1">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file23" style="display: none">/*
+		<pre class="file" id="file24" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -6277,7 +6498,7 @@ func (s *Syncer) SyncSnapshot(snapshot *applicationapiv1alpha1.Snapshot, namespa
 }
 </pre>
 		
-		<pre class="file" id="file24" style="display: none">/*
+		<pre class="file" id="file25" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -6327,7 +6548,7 @@ func ReleasePipelineRunLifecyclePredicate() predicate.Predicate <span class="cov
 }
 </pre>
 		
-		<pre class="file" id="file25" style="display: none">/*
+		<pre class="file" id="file26" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -6507,7 +6728,7 @@ func getFailedTaskRun(pipelineRun *tektonv1.PipelineRun, taskRuns []tektonv1.Tas
 }
 </pre>
 		
-		<pre class="file" id="file26" style="display: none">/*
+		<pre class="file" id="file27" style="display: none">/*
 Copyright 2023.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -6843,7 +7064,7 @@ func AdjustTimeouts(timeouts *tektonv1.TimeoutFields, logger logr.Logger) *tekto
 }
 </pre>
 		
-		<pre class="file" id="file27" style="display: none">/*
+		<pre class="file" id="file28" style="display: none">/*
 Copyright 2023.
 
 Licensed under the Apache License, Version 2.0 (the "License");

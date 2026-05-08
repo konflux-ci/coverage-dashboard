@@ -55,19 +55,19 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (76.1%)</option>
+				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (77.0%)</option>
 				
-				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.3%)</option>
+				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.4%)</option>
 				
-				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (80.8%)</option>
+				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (83.1%)</option>
 				
-				<option value="file3">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pipeline.go (86.2%)</option>
+				<option value="file3">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pipeline.go (86.7%)</option>
 				
 				<option value="file4">github.com/konflux-ci/build-service/internal/controller/component_build_controller_secrets.go (74.4%)</option>
 				
 				<option value="file5">github.com/konflux-ci/build-service/internal/controller/component_build_controller_service_account.go (72.3%)</option>
 				
-				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2.go (85.5%)</option>
+				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2.go (86.3%)</option>
 				
 				<option value="file7">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2_validations.go (87.8%)</option>
 				
@@ -234,7 +234,7 @@ type ComponentBuildReconciler struct {
         Scheme             *runtime.Scheme
         EventRecorder      record.EventRecorder
         CredentialProvider *k8s.GitCredentialProvider
-        WebhookURLLoader   pacwebhook.WebhookURLLoader
+        PaCWebhookMapping  *pacwebhook.PaCWebhookMapping
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -301,6 +301,7 @@ func isComponentUsingNewModel(component *compapiv1alpha1.Component) bool <span c
 // The following line is needed for component_dependency_update_controller since config there is overriden from here.
 //+kubebuilder:rbac:groups=core,resources=configmaps,verbs=create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;patch;update;delete
+//+kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
 //+kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 //+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch
@@ -455,7 +456,7 @@ func (r *ComponentBuildReconciler) Reconcile(ctx context.Context, req ctrl.Reque
                 writeBuildStatus(&amp;component, buildStatus)
                 delete(component.Annotations, BuildRequestAnnotationName)
 
-                if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
+                if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
                         log.Error(err, fmt.Sprintf("failed to update component after wrong %s annotation", defaultBuildPipelineAnnotation))
                         return ctrl.Result{}, err
                 }</span>
@@ -765,10 +766,11 @@ const (
         pipelineRunOnPRSuffix             = "-on-pull-request"
         pipelineRunOnPushFilename         = "push.yaml"
         pipelineRunOnPRFilename           = "pull-request.yaml"
-        pipelinesAsCodeNamespace          = "openshift-pipelines"
-        pipelinesAsCodeNamespaceFallback  = "pipelines-as-code"
+        pipelinesAsCodeNamespaceEnvVar    = "PAC_NAMESPACE"
+        pipelinesAsCodeNamespaceOpenshift = "openshift-pipelines"
+        pipelinesAsCodeNamespace          = "pipelines-as-code"
         pipelinesAsCodeRouteName          = "pipelines-as-code-controller"
-        pipelinesAsCodeRouteEnvVar        = "PAC_WEBHOOK_URL"
+        pipelinesAsCodeWebhookUrlEnvVar   = "PAC_WEBHOOK_URL"
         pipelinesAsCodeWebhooksSecretName = "pipelines-as-code-webhooks-secret"
 
         pacCelExpressionAnnotationName = "pipelinesascode.tekton.dev/on-cel-expression"
@@ -803,9 +805,9 @@ Please follow the block sequence indentation style introduced by the proprosed P
 // GetHttpClientFunction can be mocked in tests.
 var GetHttpClientFunction = getHttpClient
 
-// GetWebhookDataAndPacSecret gets and validates webhookSecretString, webhookTargetUrl, pacSecret
+// GetPacSecrets gets and validates webhookSecretString and pacSecret.
 // TODO remove newModel handling after only new model is used
-func (r *ComponentBuildReconciler) GetWebhookDataAndPacSecret(ctx context.Context, component *compapiv1alpha1.Component) (string, string, *corev1.Secret, error) <span class="cov8" title="1">{
+func (r *ComponentBuildReconciler) GetPacSecrets(ctx context.Context, component *compapiv1alpha1.Component) (string, *corev1.Secret, error) <span class="cov8" title="1">{
         log := ctrllog.FromContext(ctx).WithName("GetWebhookAndPacSecret")
         newModel := true
 
@@ -814,31 +816,31 @@ func (r *ComponentBuildReconciler) GetWebhookDataAndPacSecret(ctx context.Contex
         gitProvider, err := getGitProvider(*component, newModel)
         if err != nil </span><span class="cov0" title="0">{
                 // Do not reconcile, because configuration must be fixed before it is possible to proceed.
-                return "", "", nil, err
+                return "", nil, err
         }</span>
         <span class="cov8" title="1">repoUrl := getGitRepoUrl(*component, newModel)
 
         if strings.HasPrefix(repoUrl, "http:") </span><span class="cov0" title="0">{
-                return "", "", nil, boerrors.NewBuildOpError(boerrors.EHttpUsedForRepository,
+                return "", nil, boerrors.NewBuildOpError(boerrors.EHttpUsedForRepository,
                         fmt.Errorf("git repository URL can't use insecure HTTP: %s", repoUrl))
         }</span>
 
         <span class="cov8" title="1">if url, ok := component.Annotations[GitProviderAnnotationURL]; ok </span><span class="cov0" title="0">{
                 if strings.HasPrefix(url, "http:") </span><span class="cov0" title="0">{
-                        return "", "", nil, boerrors.NewBuildOpError(boerrors.EHttpUsedForRepository,
+                        return "", nil, boerrors.NewBuildOpError(boerrors.EHttpUsedForRepository,
                                 fmt.Errorf("git repository URL in annotation %s can't use insecure HTTP: %s", GitProviderAnnotationURL, repoUrl))
                 }</span>
         }
 
         <span class="cov8" title="1">pacSecret, err := r.lookupPaCSecret(ctx, component, gitProvider, newModel)
         if err != nil </span><span class="cov8" title="1">{
-                return "", "", nil, err
+                return "", nil, err
         }</span>
 
         <span class="cov8" title="1">if err := validatePaCConfiguration(gitProvider, *pacSecret); err != nil </span><span class="cov0" title="0">{
                 r.EventRecorder.Event(pacSecret, "Warning", "ErrorValidatingPaCSecret", err.Error())
                 // Do not reconcile, because configuration must be fixed before it is possible to proceed.
-                return "", "", nil, boerrors.NewBuildOpError(boerrors.EPaCSecretInvalid,
+                return "", nil, boerrors.NewBuildOpError(boerrors.EPaCSecretInvalid,
                         fmt.Errorf("invalid configuration in Pipelines as Code secret: %w", err))
         }</span>
 
@@ -848,17 +850,11 @@ func (r *ComponentBuildReconciler) GetWebhookDataAndPacSecret(ctx context.Contex
                 // and stores it in the corresponding k8s secret.
                 webhookSecretString, err = r.ensureWebhookSecret(ctx, component, newModel)
                 if err != nil </span><span class="cov0" title="0">{
-                        return "", "", nil, err
+                        return "", nil, err
                 }</span>
         }
 
-        // Obtain Pipelines as Code callback URL (needed for both webhook mode and app mode for incoming triggers)
-        <span class="cov8" title="1">webhookTargetUrl, err := r.getPaCWebhookTargetUrl(ctx, repoUrl, true)
-        if err != nil </span><span class="cov0" title="0">{
-                return "", "", nil, err
-        }</span>
-
-        <span class="cov8" title="1">return webhookSecretString, webhookTargetUrl, pacSecret, nil</span>
+        <span class="cov8" title="1">return webhookSecretString, pacSecret, nil</span>
 }
 
 // ProvisionPaCForComponentOldModel does Pipelines as Code provision for the given component.
@@ -912,14 +908,14 @@ func (r *ComponentBuildReconciler) ProvisionPaCForComponentOldModel(ctx context.
                 }</span>
 
                 // Obtain Pipelines as Code callback URL
-                <span class="cov8" title="1">webhookTargetUrl, err = r.getPaCWebhookTargetUrl(ctx, repoUrl, true)
+                <span class="cov8" title="1">webhookTargetUrl, err = r.getPaCWebhookTargetUrl(ctx, repoUrl)
                 if err != nil </span><span class="cov0" title="0">{
                         return "", err
                 }</span>
         }
 
         <span class="cov8" title="1">var pacRepositoryName string
-        if pacRepositoryName, err = r.ensurePaCRepository(ctx, component, pacSecret, nil, newModel); err != nil </span><span class="cov0" title="0">{
+        if pacRepositoryName, err = r.ensurePaCRepository(ctx, component, pacSecret, nil, nil, newModel); err != nil </span><span class="cov0" title="0">{
                 return "", err
         }</span>
         <span class="cov8" title="1">log.Info("Using PaC repository", "PaCRepositoryName", pacRepositoryName, l.Action, l.ActionView)
@@ -1032,7 +1028,7 @@ func (r *ComponentBuildReconciler) TriggerPaCBuildPreparation(
         }
 
         <span class="cov8" title="1">if incomingUpdated </span><span class="cov8" title="1">{
-                if err := r.Client.Update(ctx, repository); err != nil </span><span class="cov0" title="0">{
+                if err := r.Client.Update(ctx, repository); err != nil </span><span class="cov8" title="1">{
                         log.Error(err, "failed to update PaC repository with incomings", "PaCRepositoryName", repository.Name)
                         return false, nil, nil, err
                 }</span>
@@ -1051,7 +1047,7 @@ func (r *ComponentBuildReconciler) TriggerPaCBuild(
         component *compapiv1alpha1.Component,
         sanitizedVersionName string,
         targetBranch string,
-        webhookTargetUrl string,
+        pacInternalUrl string,
         incomingSecret *corev1.Secret,
         repository *pacv1alpha1.Repository,
 ) error <span class="cov8" title="1">{
@@ -1062,7 +1058,7 @@ func (r *ComponentBuildReconciler) TriggerPaCBuild(
         secretValue := string(incomingSecret.Data[pacIncomingSecretKey])
         pipelineRunName := getPipelineRunDefinitionName(component.Name, sanitizedVersionName, false)
 
-        triggerURL := fmt.Sprintf("%s/incoming", webhookTargetUrl)
+        triggerURL := fmt.Sprintf("%s/incoming", pacInternalUrl)
         HttpClient := GetHttpClientFunction()
 
         // we have to supply source_url as additional param, because PaC isn't able to resolve it for trigger
@@ -1160,7 +1156,7 @@ func (r *ComponentBuildReconciler) TriggerPaCBuildOldModel(ctx context.Context, 
                 return true, nil
         }</span>
 
-        <span class="cov8" title="1">webhookTargetUrl, err := r.getPaCWebhookTargetUrl(ctx, repoUrl, false)
+        <span class="cov8" title="1">pacInternalUrl, err := r.getInternalPaCEndpoint(ctx)
         if err != nil </span><span class="cov0" title="0">{
                 return false, err
         }</span>
@@ -1169,7 +1165,7 @@ func (r *ComponentBuildReconciler) TriggerPaCBuildOldModel(ctx context.Context, 
 
         pipelineRunName := getPipelineRunDefinitionName(component.Name, "", false)
 
-        triggerURL := fmt.Sprintf("%s/incoming", webhookTargetUrl)
+        triggerURL := fmt.Sprintf("%s/incoming", pacInternalUrl)
         HttpClient := GetHttpClientFunction()
 
         // we have to supply source_url as additional param, because PaC isn't able to resolve it for trigger
@@ -1222,7 +1218,7 @@ func (r *ComponentBuildReconciler) UndoPaCProvisionForComponentOldModel(ctx cont
         <span class="cov8" title="1">repoUrl := getGitRepoUrl(*component, newModel)
         webhookTargetUrl := ""
         if !common.IsPaCApplicationConfigured(gitProvider, pacSecret.Data) </span><span class="cov8" title="1">{
-                webhookTargetUrl, err = r.getPaCWebhookTargetUrl(ctx, repoUrl, true)
+                webhookTargetUrl, err = r.getPaCWebhookTargetUrl(ctx, repoUrl)
                 if err != nil </span><span class="cov8" title="1">{
                         // Just log the error and continue with pruning merge request creation
                         log.Error(err, "failed to get Pipelines as Code webhook target URL. Webhook will not be deleted.", l.Action, l.ActionView, l.Audit, "true")
@@ -1256,49 +1252,91 @@ func (r *ComponentBuildReconciler) UndoPaCProvisionForComponentOldModel(ctx cont
 }
 
 // getPaCWebhookTargetUrl returns URL to which events from git repository should be sent.
-// it will first try to get url from env variable
-// then when useWebhookUrlConfig is true it will try to get it from webhook config
-// and lastly it will try to get it from PaC route url
-func (r *ComponentBuildReconciler) getPaCWebhookTargetUrl(ctx context.Context, repositoryURL string, useWebhookUrlConfig bool) (string, error) <span class="cov8" title="1">{
-        webhookTargetUrl := os.Getenv(pipelinesAsCodeRouteEnvVar)
+// First, it checks provided mapping, if any.
+// If no match found, reads PAC_WEBHOOK_URL environment variable.
+// Lastly, falls back to PaC Route URL.
+func (r *ComponentBuildReconciler) getPaCWebhookTargetUrl(ctx context.Context, repositoryURL string) (string, error) <span class="cov8" title="1">{
+        webhookTargetUrl := r.PaCWebhookMapping.GetPaCWebhookUrlForGitRepo(repositoryURL)
 
-        if webhookTargetUrl == "" &amp;&amp; useWebhookUrlConfig </span><span class="cov8" title="1">{
-                webhookTargetUrl = r.WebhookURLLoader.Load(repositoryURL)
+        if webhookTargetUrl == "" </span><span class="cov8" title="1">{
+                webhookTargetUrl = os.Getenv(pipelinesAsCodeWebhookUrlEnvVar)
         }</span>
 
         <span class="cov8" title="1">if webhookTargetUrl == "" </span><span class="cov8" title="1">{
-                // The env variable is not set
-                // Use the installed on the cluster Pipelines as Code
                 var err error
                 webhookTargetUrl, err = r.getPaCRoutePublicUrl(ctx)
                 if err != nil </span><span class="cov8" title="1">{
                         return "", err
                 }</span>
         }
+
         <span class="cov8" title="1">return webhookTargetUrl, nil</span>
 }
 
 // getPaCRoutePublicUrl returns Pipelines as Code public route that recieves events to trigger new pipeline runs.
+// It checks "openshift-pipelines", "pipelines-as-code" namespaces
+// and namespace defined in PAC_NAMESPACE environment variable, if any (takes precedence).
+// Note, it makes sense only for Openshift as in pure k8s PaC doesn't have Ingress by default.
 func (r *ComponentBuildReconciler) getPaCRoutePublicUrl(ctx context.Context) (string, error) <span class="cov8" title="1">{
         pacWebhookRoute := &amp;routev1.Route{}
-        pacWebhookRouteKey := types.NamespacedName{Namespace: pipelinesAsCodeNamespace, Name: pipelinesAsCodeRouteName}
-        if err := r.Client.Get(ctx, pacWebhookRouteKey, pacWebhookRoute); err != nil </span><span class="cov8" title="1">{
-                if !errors.IsNotFound(err) </span><span class="cov0" title="0">{
-                        return "", fmt.Errorf("failed to get Pipelines as Code route in %s namespace: %w", pacWebhookRouteKey.Namespace, err)
-                }</span>
-                // Fallback to old PaC namesapce
-                <span class="cov8" title="1">pacWebhookRouteKey.Namespace = pipelinesAsCodeNamespaceFallback
+
+        namespacesToCheck := []string{pipelinesAsCodeNamespaceOpenshift, pipelinesAsCodeNamespace}
+        customPacNamespace := os.Getenv(pipelinesAsCodeNamespaceEnvVar)
+        if customPacNamespace != "" </span><span class="cov0" title="0">{
+                namespacesToCheck = append([]string{customPacNamespace}, namespacesToCheck...)
+        }</span>
+
+        <span class="cov8" title="1">for _, namespace := range namespacesToCheck </span><span class="cov8" title="1">{
+                pacWebhookRouteKey := types.NamespacedName{Namespace: namespace, Name: pipelinesAsCodeRouteName}
                 if err := r.Client.Get(ctx, pacWebhookRouteKey, pacWebhookRoute); err != nil </span><span class="cov8" title="1">{
                         if !errors.IsNotFound(err) </span><span class="cov0" title="0">{
-                                return "", fmt.Errorf("failed to get Pipelines as Code route in %s namespace: %w", pacWebhookRouteKey.Namespace, err)
+                                return "", fmt.Errorf("failed to get Pipelines as Code route in %s namespace: %w", namespace, err)
                         }</span>
-                        // Pipelines as Code public route was not found in expected namespaces
-                        // Consider this error permanent
-                        <span class="cov8" title="1">return "", boerrors.NewBuildOpError(boerrors.EPaCRouteDoesNotExist,
-                                fmt.Errorf("PaC route not found in %s nor %s namespace", pipelinesAsCodeNamespace, pipelinesAsCodeNamespaceFallback))</span>
+                        // Not found, continue
+                } else<span class="cov8" title="1"> {
+                        // Route found
+                        return "https://" + pacWebhookRoute.Spec.Host, nil
+                }</span>
+        }
+        // Checked all candidate namespaces for PaC installation, the PaC Route not found.
+        <span class="cov8" title="1">return "", fmt.Errorf("PaC route not found in '%s' namespaces", strings.Join(namespacesToCheck, " "))</span>
+}
+
+// getInternalPaCEndpoint returns cluster internal URL to PaC endpoint.
+// It searches for PaC Service (which has the same name as Route) in "openshift-pipelines", "pipelines-as-code" namespaces
+// and namespace defined in PAC_NAMESPACE environment variable, if any (takes precedence).
+// The operator should always use this endpoint when communicating with PaC within the cluster.
+func (r *ComponentBuildReconciler) getInternalPaCEndpoint(ctx context.Context) (string, error) <span class="cov8" title="1">{
+        pacEndpointService := &amp;corev1.Service{}
+
+        namespacesToCheck := []string{pipelinesAsCodeNamespaceOpenshift, pipelinesAsCodeNamespace}
+        customPacNamespace := os.Getenv(pipelinesAsCodeNamespaceEnvVar)
+        if customPacNamespace != "" </span><span class="cov0" title="0">{
+                namespacesToCheck = append([]string{customPacNamespace}, namespacesToCheck...)
+        }</span>
+
+        <span class="cov8" title="1">for _, namespace := range namespacesToCheck </span><span class="cov8" title="1">{
+                pacEndpointServiceKey := types.NamespacedName{Namespace: namespace, Name: pipelinesAsCodeRouteName}
+                if err := r.Client.Get(ctx, pacEndpointServiceKey, pacEndpointService); err != nil </span><span class="cov0" title="0">{
+                        if !errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                                return "", fmt.Errorf("failed to get Pipelines as Code service in %s namespace: %w", namespace, err)
+                        }</span>
+                        // Not found, continue
+                } else<span class="cov8" title="1"> {
+                        // Service found, generate URL: http://&lt;service-name&gt;.&lt;namespace-name&gt;.svc.cluster.local:&lt;service-port&gt;
+                        port := 80
+                        for _, servicePortConfig := range pacEndpointService.Spec.Ports </span><span class="cov8" title="1">{
+                                if servicePortConfig.Name == "http-listener" </span><span class="cov8" title="1">{
+                                        port = int(servicePortConfig.Port)
+                                        break</span>
+                                }
+                        }
+                        <span class="cov8" title="1">internalServiceUrl := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", pacEndpointServiceKey.Name, pacEndpointServiceKey.Namespace, port)
+                        return internalServiceUrl, nil</span>
                 }
         }
-        <span class="cov8" title="1">return "https://" + pacWebhookRoute.Spec.Host, nil</span>
+        // Checked all candidate namespaces for PaC installation, the PaC Service not found.
+        <span class="cov0" title="0">return "", fmt.Errorf("PaC service not found in '%s' namespaces", strings.Join(namespacesToCheck, " "))</span>
 }
 
 // TODO remove newModel handling after only new model is used
@@ -1354,16 +1392,22 @@ func GetGitClient(component *compapiv1alpha1.Component, pacConfig map[string][]b
 // The webhook is only created when PaC GitHub/GitLab App is not configured (checks via IsPaCApplicationConfigured).
 // When using App-based integration, webhooks are managed automatically by the git provider and this setup is skipped.
 // TODO remove newModel handling after only new model is used
-func (r *ComponentBuildReconciler) SetupPacWebhookWhenAppNotUsed(ctx context.Context, component *compapiv1alpha1.Component, gitClient gp.GitProviderClient, pacConfig map[string][]byte, webhookTargetUrl, webhookSecret string) error <span class="cov8" title="1">{
-        log := ctrllog.FromContext(ctx).WithValues("repository", component.Spec.Source.GitURL)
+func (r *ComponentBuildReconciler) SetupPacWebhookWhenAppNotUsed(ctx context.Context, component *compapiv1alpha1.Component, gitClient gp.GitProviderClient, pacConfig map[string][]byte, webhookSecret string) error <span class="cov8" title="1">{
         newModel := true
 
         gitProvider, _ := getGitProvider(*component, newModel)
         repoUrl := getGitRepoUrl(*component, newModel)
 
+        log := ctrllog.FromContext(ctx).WithValues("repository", repoUrl)
+
         isAppUsed := common.IsPaCApplicationConfigured(gitProvider, pacConfig)
         if !isAppUsed </span><span class="cov8" title="1">{
-                if err := gitClient.SetupPaCWebhook(repoUrl, webhookTargetUrl, webhookSecret); err != nil </span><span class="cov0" title="0">{
+                webhookTargetUrl, err := r.getPaCWebhookTargetUrl(ctx, repoUrl)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to get PaC webhook URL: %w", err)
+                }</span>
+
+                <span class="cov8" title="1">if err := gitClient.SetupPaCWebhook(repoUrl, webhookTargetUrl, webhookSecret); err != nil </span><span class="cov0" title="0">{
                         log.Error(err, fmt.Sprintf("failed to setup Pipelines as Code webhook %s for %s Component in %s namespace", webhookTargetUrl, component.Name, component.Namespace), l.Audit, "true")
                         return err
                 }</span> else<span class="cov8" title="1"> {
@@ -1525,7 +1569,7 @@ func (r *ComponentBuildReconciler) ConfigureRepositoryForPaCOldModel(ctx context
 
 // RemovePacWebhook removes repository webhook, but only when no other component is using it, used only when component is removed
 // TODO remove newModel handling after only new model is used
-func (r *ComponentBuildReconciler) RemovePacWebhook(ctx context.Context, component *compapiv1alpha1.Component, gitClient gp.GitProviderClient, pacConfig map[string][]byte, webhookTargetUrl string) error <span class="cov8" title="1">{
+func (r *ComponentBuildReconciler) RemovePacWebhook(ctx context.Context, component *compapiv1alpha1.Component, gitClient gp.GitProviderClient, pacConfig map[string][]byte) error <span class="cov8" title="1">{
         log := ctrllog.FromContext(ctx)
         newModel := true
 
@@ -1533,8 +1577,13 @@ func (r *ComponentBuildReconciler) RemovePacWebhook(ctx context.Context, compone
         repoUrl := getGitRepoUrl(*component, newModel)
 
         isAppUsed := common.IsPaCApplicationConfigured(gitProvider, pacConfig)
-        if !isAppUsed &amp;&amp; webhookTargetUrl != "" </span><span class="cov8" title="1">{
-                componentList := &amp;compapiv1alpha1.ComponentList{}
+        if !isAppUsed </span><span class="cov8" title="1">{
+                webhookTargetUrl, err := r.getPaCWebhookTargetUrl(ctx, repoUrl)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to get PaC webhook URL: %w", err)
+                }</span>
+
+                <span class="cov8" title="1">componentList := &amp;compapiv1alpha1.ComponentList{}
                 if err := r.Client.List(ctx, componentList, &amp;client.ListOptions{Namespace: component.Namespace}); err != nil </span><span class="cov0" title="0">{
                         log.Error(err, "failed to list components")
                         return err
@@ -1927,6 +1976,7 @@ import (
         "reflect"
         "regexp"
         "slices"
+        "strconv"
         "strings"
 
         compapiv1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
@@ -1942,6 +1992,11 @@ import (
         "github.com/konflux-ci/build-service/pkg/boerrors"
         "github.com/konflux-ci/build-service/pkg/common"
         l "github.com/konflux-ci/build-service/pkg/logs"
+)
+
+const (
+        BuildsEnabledParamName   = "builds_enabled"
+        PacTargetBranchFilterKey = "pac.target_branch"
 )
 
 // TODO remove newModel handling after only new model is used
@@ -1993,8 +2048,61 @@ func getUniqueStrings(items []string) []string <span class="cov8" title="1">{
         <span class="cov8" title="1">return result</span>
 }
 
+// updatePaCRepositorySkipBuildsParams updates the PaC repository parameters based on the skip builds map.
+// Returns true if any parameters were updated, false otherwise.
+func updatePaCRepositorySkipBuildsParams(repository *pacv1alpha1.Repository, skipBuildsMap map[string]bool) bool <span class="cov8" title="1">{
+        // Build desired params based on skipBuildsMap
+        desiredParams := []pacv1alpha1.Params{}
+        for revision, skipBuilds := range skipBuildsMap </span><span class="cov8" title="1">{
+                // The applyParamFilter defines when the parameter is passed to the pipeline run.
+                applyParamFilter := getPaCParamFilterForRevision(revision)
+                desiredParams = append(desiredParams, pacv1alpha1.Params{
+                        Name:   BuildsEnabledParamName,
+                        Value:  strconv.FormatBool(!skipBuilds),
+                        Filter: applyParamFilter,
+                })
+        }</span>
+
+        // Check if params need to be updated
+        <span class="cov8" title="1">if repository.Spec.Params == nil </span><span class="cov0" title="0">{
+                repository.Spec.Params = &amp;desiredParams
+                return true
+        }</span>
+
+        <span class="cov8" title="1">updatedParams := *repository.Spec.Params
+        paramsUpdated := false
+
+        // Check each desired param against existing params
+        // Params for removed branches are removed during version cleanup
+        for _, desired := range desiredParams </span><span class="cov8" title="1">{
+                found := false
+                for i := range updatedParams </span><span class="cov8" title="1">{
+                        if updatedParams[i].Name == desired.Name &amp;&amp; updatedParams[i].Filter == desired.Filter </span><span class="cov8" title="1">{
+                                found = true
+                                // Update value if different
+                                if updatedParams[i].Value != desired.Value </span><span class="cov8" title="1">{
+                                        updatedParams[i].Value = desired.Value
+                                        paramsUpdated = true
+                                }</span>
+                                <span class="cov8" title="1">break</span>
+                        }
+                }
+                // Add new param if not found
+                <span class="cov8" title="1">if !found </span><span class="cov8" title="1">{
+                        updatedParams = append(updatedParams, desired)
+                        paramsUpdated = true
+                }</span>
+        }
+
+        <span class="cov8" title="1">if paramsUpdated </span><span class="cov8" title="1">{
+                repository.Spec.Params = &amp;updatedParams
+        }</span>
+
+        <span class="cov8" title="1">return paramsUpdated</span>
+}
+
 // TODO remove newModel handling after only new model is used
-func (r *ComponentBuildReconciler) ensurePaCRepository(ctx context.Context, component *compapiv1alpha1.Component, pacConfig *corev1.Secret, repositorySettings *compapiv1alpha1.RepositorySettings, newModel bool) (string, error) <span class="cov8" title="1">{
+func (r *ComponentBuildReconciler) ensurePaCRepository(ctx context.Context, component *compapiv1alpha1.Component, pacConfig *corev1.Secret, repositorySettings *compapiv1alpha1.RepositorySettings, skipBuildsMap map[string]bool, newModel bool) (string, error) <span class="cov8" title="1">{
         log := ctrllog.FromContext(ctx)
 
         // Check multi component git repository scenario.
@@ -2015,6 +2123,7 @@ func (r *ComponentBuildReconciler) ensurePaCRepository(ctx context.Context, comp
                 }</span>
 
                 <span class="cov8" title="1">repositorySettingsUpdated := false
+                repositoryParamsUpdated := false
                 if newModel </span><span class="cov8" title="1">{
                         // Initialize Settings if nil
                         if repository.Spec.Settings == nil </span><span class="cov0" title="0">{
@@ -2053,9 +2162,13 @@ func (r *ComponentBuildReconciler) ensurePaCRepository(ctx context.Context, comp
                                         repositorySettingsUpdated = true
                                 }</span>
                         }
+
+                        <span class="cov8" title="1">if skipBuildsMap != nil </span><span class="cov8" title="1">{
+                                repositoryParamsUpdated = updatePaCRepositorySkipBuildsParams(repository, skipBuildsMap)
+                        }</span>
                 }
 
-                <span class="cov8" title="1">if (len(repository.OwnerReferences) &gt; pacRepositoryOwnersNumber) || repositorySettingsUpdated </span><span class="cov8" title="1">{
+                <span class="cov8" title="1">if (len(repository.OwnerReferences) &gt; pacRepositoryOwnersNumber) || repositorySettingsUpdated || repositoryParamsUpdated </span><span class="cov8" title="1">{
                         if err := r.Client.Update(ctx, repository); err != nil </span><span class="cov0" title="0">{
                                 log.Error(err, "failed to update existing PaC repository with component owner reference", "PaCRepositoryName", repository.Name)
                                 return "", err
@@ -2068,7 +2181,7 @@ func (r *ComponentBuildReconciler) ensurePaCRepository(ctx context.Context, comp
         }
 
         // This is the first Component that does PaC provision for the git repository
-        <span class="cov8" title="1">repository, err = generatePACRepository(*component, pacConfig, repositorySettings, newModel)
+        <span class="cov8" title="1">repository, err = generatePACRepository(*component, pacConfig, repositorySettings, skipBuildsMap, newModel)
         if err != nil </span><span class="cov0" title="0">{
                 return "", err
         }</span>
@@ -2169,7 +2282,7 @@ func pacRepoAddParamWorkspaceName(repository *pacv1alpha1.Repository, workspaceN
 
 // TODO remove newModel handling after only new model is used
 // generatePACRepository creates configuration of Pipelines as Code repository object.
-func generatePACRepository(component compapiv1alpha1.Component, config *corev1.Secret, repositorySettings *compapiv1alpha1.RepositorySettings, newModel bool) (*pacv1alpha1.Repository, error) <span class="cov8" title="1">{
+func generatePACRepository(component compapiv1alpha1.Component, config *corev1.Secret, repositorySettings *compapiv1alpha1.RepositorySettings, skipBuildsMap map[string]bool, newModel bool) (*pacv1alpha1.Repository, error) <span class="cov8" title="1">{
         gitProvider, err := getGitProvider(component, newModel)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, err
@@ -2267,12 +2380,21 @@ func generatePACRepository(component compapiv1alpha1.Component, config *corev1.S
                 }</span>
         }
 
+        <span class="cov8" title="1">if newModel &amp;&amp; skipBuildsMap != nil </span><span class="cov8" title="1">{
+                params := []pacv1alpha1.Params{}
+                for revision, skipBuild := range skipBuildsMap </span><span class="cov8" title="1">{
+                        applyParamFilter := getPaCParamFilterForRevision(revision)
+                        params = append(params, pacv1alpha1.Params{Name: BuildsEnabledParamName, Value: strconv.FormatBool(!skipBuild), Filter: applyParamFilter})
+                }</span>
+                <span class="cov8" title="1">repository.Spec.Params = &amp;params</span>
+        }
+
         <span class="cov8" title="1">return repository, nil</span>
 }
 
 // TODO remove newModel handling after only new model is used
-// cleanupPaCRepositoryIncomings cleans up incomings in Repository
-func (r *ComponentBuildReconciler) cleanupPaCRepositoryIncomings(ctx context.Context, component *compapiv1alpha1.Component) error <span class="cov8" title="1">{
+// cleanupPaCRepositoryIncomingsAndSkipBuildParams cleans up incomings and skip build params in Repository
+func (r *ComponentBuildReconciler) cleanupPaCRepositoryIncomingsAndSkipBuildParams(ctx context.Context, component *compapiv1alpha1.Component) error <span class="cov8" title="1">{
         log := ctrllog.FromContext(ctx)
         newModel := true
 
@@ -2319,19 +2441,49 @@ func (r *ComponentBuildReconciler) cleanupPaCRepositoryIncomings(ctx context.Con
         // Ignore return value - we don't care if incomings changed, we just want to consolidate multiple entries into a single entry
         <span class="cov8" title="1">_ = updateIncoming(repository, incomingSecretName, pacIncomingSecretKey, dummyRevision)
 
+        updateRequired := false
         // Update repository incomings to only include used revisions
         if repository.Spec.Incomings != nil &amp;&amp; len(*repository.Spec.Incomings) &gt; 0 </span><span class="cov8" title="1">{
                 // updateIncoming was called above to ensure there's only one entry, so we can safely access index [0]
                 // Set targets to used revisions (can be empty slice)
                 (*repository.Spec.Incomings)[0].Targets = usedRevisions
+                updateRequired = true
+        }</span>
 
-                if err := r.Client.Update(ctx, repository); err != nil </span><span class="cov0" title="0">{
-                        log.Error(err, "failed to update PaC repository incomings", "PaCRepositoryName", repository.Name)
-                        return err
-                }</span>
-                <span class="cov8" title="1">log.Info("Updated incomings in the PaC repository", "PaCRepositoryName", repository.Name, "Targets", usedRevisions, l.Action, l.ActionUpdate)</span>
+        // update params and remove skip builds params for unused revisions
+        <span class="cov8" title="1">if repository.Spec.Params != nil &amp;&amp; len(*repository.Spec.Params) &gt; 0 </span><span class="cov8" title="1">{
+                newParams := []pacv1alpha1.Params{}
+                for _, param := range *repository.Spec.Params </span><span class="cov8" title="1">{
+                        // param isn't for skip build keep it
+                        if param.Name != BuildsEnabledParamName </span><span class="cov8" title="1">{
+                                newParams = append(newParams, param)
+                                continue</span>
+                        }
+                        // check if filter matches existing branch, when it does keep it, otherwise skip it
+                        <span class="cov8" title="1">filterMatched := false
+                        for _, revision := range usedRevisions </span><span class="cov8" title="1">{
+                                applyParamFilter := getPaCParamFilterForRevision(revision)
+                                if param.Filter == applyParamFilter </span><span class="cov8" title="1">{
+                                        newParams = append(newParams, param)
+                                        filterMatched = true
+                                        break</span>
+                                }
+
+                        }
+                        <span class="cov8" title="1">if !filterMatched </span><span class="cov8" title="1">{
+                                updateRequired = true
+                        }</span>
+                }
+                <span class="cov8" title="1">repository.Spec.Params = &amp;newParams</span>
         }
 
+        <span class="cov8" title="1">if updateRequired </span><span class="cov8" title="1">{
+                if err := r.Client.Update(ctx, repository); err != nil </span><span class="cov0" title="0">{
+                        log.Error(err, "failed to update PaC repository incomings and skip build params", "PaCRepositoryName", repository.Name)
+                        return err
+                }</span>
+                <span class="cov8" title="1">log.Info("Updated incomings and skip build params in the PaC repository", "PaCRepositoryName", repository.Name, "Targets", usedRevisions, l.Action, l.ActionUpdate)</span>
+        }
         <span class="cov8" title="1">return nil</span>
 }
 
@@ -2553,6 +2705,11 @@ func generatePaCRepositoryNameFromGitUrl(urlStr string) (string, error) <span cl
 
         <span class="cov8" title="1">return sanitized, nil</span>
 }
+
+// getPaCParamFilterForRevision returns PaC param filter for given revision
+func getPaCParamFilterForRevision(revision string) string <span class="cov8" title="1">{
+        return fmt.Sprintf("%s == %s", PacTargetBranchFilterKey, revision)
+}</span>
 </pre>
 		
 		<pre class="file" id="file3" style="display: none">/*
@@ -2883,8 +3040,8 @@ func (r *ComponentBuildReconciler) GetBuildPipelineFromComponentAnnotation(ctx c
         additionalParams := []string{}
 
         pipelinesConfigMap := &amp;corev1.ConfigMap{}
-        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineConfigMapResourceName, Namespace: common.BuildServiceNamespaceName}, pipelinesConfigMap); err != nil </span><span class="cov0" title="0">{
-                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+        if err := r.Client.Get(ctx, types.NamespacedName{Name: buildPipelineConfigMapResourceName, Namespace: common.BuildServiceNamespaceName}, pipelinesConfigMap); err != nil </span><span class="cov8" title="1">{
+                if errors.IsNotFound(err) </span><span class="cov8" title="1">{
                         return nil, nil, boerrors.NewBuildOpError(boerrors.EBuildPipelineConfigNotDefined, err)
                 }</span>
                 <span class="cov0" title="0">return nil, nil, err</span>
@@ -3327,6 +3484,8 @@ func generateCelExpressionForPipeline(component *compapiv1alpha1.Component, gitC
         <span class="cov8" title="1">eventCondition := fmt.Sprintf(`event == "%s"`, eventType)
 
         targetBranchCondition := fmt.Sprintf(`target_branch == "%s"`, versionInfo.Revision)
+        buildEnabledCondition := fmt.Sprintf(`%s == "true"`, BuildsEnabledParamName)
+
         repoUrl := getGitRepoUrl(*component, newModel)
 
         // Set path changed event filtering only for Components that are stored within a directory of the git repository.
@@ -3363,7 +3522,7 @@ func generateCelExpressionForPipeline(component *compapiv1alpha1.Component, gitC
                 pathChangedSuffix = fmt.Sprintf(` &amp;&amp; ( "%s***".pathChanged() || ".tekton/%s".pathChanged() %s)`, contextDir, pipelineFileName, dockerfilePathChangedSuffix)</span>
         }
 
-        <span class="cov8" title="1">return fmt.Sprintf("%s &amp;&amp; %s%s", eventCondition, targetBranchCondition, pathChangedSuffix), nil</span>
+        <span class="cov8" title="1">return fmt.Sprintf("%s &amp;&amp; %s &amp;&amp; %s%s", eventCondition, targetBranchCondition, buildEnabledCondition, pathChangedSuffix), nil</span>
 }
 
 // TODO remove after only new model is used
@@ -4379,8 +4538,10 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                 <span class="cov8" title="1">log.Info("Removed invalid versions from trigger build actions", l.Action, l.ActionUpdate, "InvalidVersions", invalidVersionsToTriggerBuildFor)</span>
         }
 
+        <span class="cov8" title="1">skipBuildsMap, skipBuildsChanged := buildSkipBuildsMapAndCheckChanges(&amp;component, existingSpecVersions)
+
         // Check if PAC repository needs to be created or updated
-        <span class="cov8" title="1">createOrUpdateRepository := false
+        createOrUpdateRepository := false
         if component.Status.PacRepository == "" </span><span class="cov8" title="1">{
                 // Repository doesn't exist yet, need to create it
                 createOrUpdateRepository = true
@@ -4389,15 +4550,18 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                 createOrUpdateRepository = true
                 log.Info("Repository settings changed, need to update PAC Repository", l.Action, l.ActionUpdate, "PacRepository", component.Status.PacRepository, "SpecRepositorySettings", component.Spec.RepositorySettings, "StatusRepositorySettings", component.Status.RepositorySettings)
         }</span>
+        <span class="cov8" title="1">if skipBuildsChanged </span><span class="cov8" title="1">{
+                createOrUpdateRepository = true
+                log.Info("Skip builds settings changed, need to update PAC Repository", l.Action, l.ActionUpdate, "PacRepository", component.Status.PacRepository)
+        }</span>
 
         <span class="cov8" title="1">var webhookSecretString string
-        var webhookTargetUrl string
         var pacSecret *corev1.Secret
         var gitClient gitprovider.GitProviderClient
 
         // Get webhook data and PaC secret and git client if any action needs to be performed
         if createOrUpdateRepository || len(versionsToOnboard) &gt; 0 || len(versionsToOffboard) &gt; 0 || len(versionsToTriggerBuildFor) &gt; 0 || len(versionsToCreatePRFor) &gt; 0 </span><span class="cov8" title="1">{
-                webhookSecretString, webhookTargetUrl, pacSecret, err = r.GetWebhookDataAndPacSecret(ctx, &amp;component)
+                webhookSecretString, pacSecret, err = r.GetPacSecrets(ctx, &amp;component)
                 if err != nil </span><span class="cov8" title="1">{
                         return ctrl.Result{}, r.handlePersistentError(ctx, &amp;component, err, "Failed to get webhook data and PaC secret")
                 }</span>
@@ -4425,13 +4589,21 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
 
                 // Ensure PaC Repository exists and is properly configured
                 <span class="cov8" title="1">var pacRepositoryName string
-                if pacRepositoryName, err = r.ensurePaCRepository(ctx, &amp;component, pacSecret, &amp;component.Spec.RepositorySettings, true); err != nil </span><span class="cov0" title="0">{
+                if pacRepositoryName, err = r.ensurePaCRepository(ctx, &amp;component, pacSecret, &amp;component.Spec.RepositorySettings, skipBuildsMap, true); err != nil </span><span class="cov0" title="0">{
                         return ctrl.Result{}, r.handlePersistentError(ctx, &amp;component, err, "Failed to ensure PaC repository")
                 }</span>
                 <span class="cov8" title="1">log.Info("Using PaC repository", "PaCRepositoryName", pacRepositoryName)
 
+                // Update skipBuilds in the status for already onboarded versions
+                // skipBuilds is set also during onboarding, but this is to react on changes to skipBuilds in the spec
+                if skipBuildsChanged </span><span class="cov8" title="1">{
+                        if err := r.updateVersionsSkipBuilds(ctx, &amp;component, existingSpecVersions); err != nil </span><span class="cov0" title="0">{
+                                return ctrl.Result{}, err
+                        }</span>
+                }
+
                 // Update component status with PaC repository information
-                if err := r.setStatusPacRepository(ctx, &amp;component, pacRepositoryName, &amp;component.Spec.RepositorySettings); err != nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if err := r.setStatusPacRepository(ctx, &amp;component, pacRepositoryName, &amp;component.Spec.RepositorySettings); err != nil </span><span class="cov0" title="0">{
                         return ctrl.Result{}, err
                 }</span>
         }
@@ -4439,7 +4611,7 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
         // Setup PaC webhook for the component git repository when GitHub/GitLab App is not configured
         // (App-based repos skip webhook setup as the app manages webhooks automatically)
         <span class="cov8" title="1">if len(versionsToOnboard) &gt; 0 || len(versionsToCreatePRFor) &gt; 0 </span><span class="cov8" title="1">{
-                if err := r.SetupPacWebhookWhenAppNotUsed(ctx, &amp;component, gitClient, pacSecret.Data, webhookTargetUrl, webhookSecretString); err != nil </span><span class="cov0" title="0">{
+                if err := r.SetupPacWebhookWhenAppNotUsed(ctx, &amp;component, gitClient, pacSecret.Data, webhookSecretString); err != nil </span><span class="cov0" title="0">{
                         return ctrl.Result{}, r.handlePersistentError(ctx, &amp;component, err, "Failed to setup PaC webhook")
                 }</span>
         }
@@ -4457,7 +4629,7 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
 
                 // Prepare for triggering builds (ensure incoming secret, update repository incomings)
                 <span class="cov8" title="1">reconcileRequired, incomingSecret, repository, err := r.TriggerPaCBuildPreparation(ctx, &amp;component, targetBranches)
-                if err != nil </span><span class="cov0" title="0">{
+                if err != nil </span><span class="cov8" title="1">{
                         return ctrl.Result{}, r.handlePersistentError(ctx, &amp;component, err, "Failed to prepare for triggering builds")
                 }</span>
 
@@ -4469,12 +4641,17 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                         return ctrl.Result{Requeue: true}, nil
                 }</span>
 
+                <span class="cov8" title="1">pacInternalUrl, err := r.getInternalPaCEndpoint(ctx)
+                if err != nil </span><span class="cov0" title="0">{
+                        return ctrl.Result{}, err
+                }</span>
+
                 // Trigger builds for the requested versions
                 <span class="cov8" title="1">successfullyTriggered := make([]string, 0, len(versionsToTriggerBuildFor))
                 for _, versionName := range versionsToTriggerBuildFor </span><span class="cov8" title="1">{
                         versionInfo := existingSpecVersions[versionName]
                         // Trigger PaC build by calling the incoming webhook endpoint
-                        err := r.TriggerPaCBuild(ctx, &amp;component, versionInfo.SanitizedVersion, versionInfo.Revision, webhookTargetUrl, incomingSecret, repository)
+                        err := r.TriggerPaCBuild(ctx, &amp;component, versionInfo.SanitizedVersion, versionInfo.Revision, pacInternalUrl, incomingSecret, repository)
                         if err != nil </span><span class="cov8" title="1">{
                                 log.Error(err, "Failed to trigger build for component version", "Version", versionName)
 
@@ -4611,13 +4788,13 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                         <span class="cov8" title="1">log.Info("Requested versions offboarded successfully", "OffboardedVersions", versionsToOffboard)</span>
                 }
 
-                // Clean up repository incomings for offboarded versions
+                // Clean up repository incomings and skip build params for offboarded versions
                 // Don't return error here - since we already removed offboarded versions from status,
                 // new reconcile won't enter the offboarding block again. The cleanup recalculates targets
                 // from all components' status, so it will correct itself on the next offboarding of any
                 // component using the same repository.
-                <span class="cov8" title="1">if err = r.cleanupPaCRepositoryIncomings(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
-                        log.Error(err, "failed to cleanup incomings from repository, will retry on next offboarding")
+                <span class="cov8" title="1">if err = r.cleanupPaCRepositoryIncomingsAndSkipBuildParams(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
+                        log.Error(err, "failed to cleanup incomings and skip build params from repository, will retry on next offboarding")
                 }</span>
 
                 // Observe metrics for successful offboarding
@@ -4871,9 +5048,8 @@ func (r *ComponentBuildReconciler) cleanupComponentPaCResources(ctx context.Cont
         // Generate version info from status for offboarding
         existingStatusVersions := buildVersionInfoMap(component, true)
 
-        // Get webhook data and PaC secret
-        _, webhookTargetUrl, pacSecret, err := r.GetWebhookDataAndPacSecret(ctx, component)
-        if err != nil </span><span class="cov0" title="0">{
+        _, pacSecret, err := r.GetPacSecrets(ctx, component)
+        if err != nil </span><span class="cov8" title="1">{
                 log.Info("Error during component cleanup: failed to get webhook data and PaC secret", "error", err)
         }</span>
 
@@ -4884,11 +5060,9 @@ func (r *ComponentBuildReconciler) cleanupComponentPaCResources(ctx context.Cont
                         log.Info("Error during component cleanup: failed to get git client", "error", err)
                 }</span> else<span class="cov8" title="1"> {
                         // Remove webhook only when other component isn't using the same git repository
-                        if webhookTargetUrl != "" </span><span class="cov8" title="1">{
-                                if err := r.RemovePacWebhook(ctx, component, gitClient, pacSecret.Data, webhookTargetUrl); err != nil </span><span class="cov0" title="0">{
-                                        log.Info("Error during component cleanup: failed to remove PaC webhook", "error", err)
-                                }</span>
-                        }
+                        if err := r.RemovePacWebhook(ctx, component, gitClient, pacSecret.Data); err != nil </span><span class="cov0" title="0">{
+                                log.Info("Error during component cleanup: failed to remove PaC webhook", "error", err)
+                        }</span>
 
                         // Remove PaC configuration for all versions from the component git repository
                         <span class="cov8" title="1">if len(existingStatusVersions) &gt; 0 </span><span class="cov8" title="1">{
@@ -4903,8 +5077,8 @@ func (r *ComponentBuildReconciler) cleanupComponentPaCResources(ctx context.Cont
                 }
         }
 
-        // Clean up repository incomings for offboarded versions
-        <span class="cov8" title="1">if err := r.cleanupPaCRepositoryIncomings(ctx, component); err != nil </span><span class="cov0" title="0">{
+        // Clean up repository incomings and skip build params for offboarded versions
+        <span class="cov8" title="1">if err := r.cleanupPaCRepositoryIncomingsAndSkipBuildParams(ctx, component); err != nil </span><span class="cov0" title="0">{
                 log.Info("Error during component cleanup: failed to cleanup repository incomings", "error", err)
         }</span>
 }
@@ -4948,6 +5122,61 @@ func buildVersionInfoMap(component *compapiv1alpha1.Component, fromStatus bool) 
         }
 
         <span class="cov8" title="1">return versionInfoMap</span>
+}
+
+// buildSkipBuildsMapAndCheckChanges creates a map of revisions to their SkipBuilds values from spec
+// and checks if any version has a different SkipBuilds value in status or is missing from status.
+// For multiple versions with the same revision: SkipBuilds is false if ANY version has SkipBuilds=false,
+// and true ONLY if ALL versions for that revision have SkipBuilds=true.
+// Returns:
+//   - skipBuildsMap: map of revision to their SkipBuilds values (aggregated by revision)
+//   - hasChanges: true if any version is missing from status or has different SkipBuilds value in status
+func buildSkipBuildsMapAndCheckChanges(component *compapiv1alpha1.Component, existingSpecVersions map[string]*VersionInfo) (map[string]bool, bool) <span class="cov8" title="1">{
+        skipBuildsMap := make(map[string]bool)
+        skipBuildsChanged := false
+
+        // Aggregate SkipBuilds by revision: a revision has SkipBuilds=true only if ALL versions
+        // sharing that revision have SkipBuilds=true (AND logic across versions)
+        for _, versionInfo := range existingSpecVersions </span><span class="cov8" title="1">{
+                revision := versionInfo.Revision
+                if currentValue, exists := skipBuildsMap[revision]; exists </span><span class="cov8" title="1">{
+                        skipBuildsMap[revision] = currentValue &amp;&amp; versionInfo.SkipBuilds
+                }</span> else<span class="cov8" title="1"> {
+                        skipBuildsMap[revision] = versionInfo.SkipBuilds
+                }</span>
+        }
+
+        // Update SkipBuilds in existingSpecVersions based on the aggregated revision map.
+        // This ensures versions will use the correct aggregated value when updating status,
+        // since multiple versions can share the same revision with different SkipBuilds settings in spec.
+        <span class="cov8" title="1">for _, versionInfo := range existingSpecVersions </span><span class="cov8" title="1">{
+                versionInfo.SkipBuilds = skipBuildsMap[versionInfo.Revision]
+        }</span>
+
+        // Check if any version has different SkipBuilds in status or is missing from status
+        <span class="cov8" title="1">for versionName, versionInfo := range existingSpecVersions </span><span class="cov8" title="1">{
+                // Check if version exists in status
+                foundInStatus := false
+                for _, statusVersion := range component.Status.Versions </span><span class="cov8" title="1">{
+                        if statusVersion.Name == versionName </span><span class="cov8" title="1">{
+                                foundInStatus = true
+                                // Check if SkipBuilds value is different
+                                if statusVersion.SkipBuilds != versionInfo.SkipBuilds </span><span class="cov8" title="1">{
+                                        skipBuildsChanged = true
+                                }</span>
+                                <span class="cov8" title="1">break</span>
+                        }
+                }
+                // Version missing from status
+                <span class="cov8" title="1">if !foundInStatus </span><span class="cov8" title="1">{
+                        skipBuildsChanged = true
+                }</span>
+                // If we already found a change, no need to continue checking
+                <span class="cov8" title="1">if skipBuildsChanged </span><span class="cov8" title="1">{
+                        break</span>
+                }
+        }
+        <span class="cov8" title="1">return skipBuildsMap, skipBuildsChanged</span>
 }
 
 // getUniqueVersionsFromVersionFields extracts and validates version references from action version fields.
@@ -5217,8 +5446,9 @@ func (r *ComponentBuildReconciler) updateVersionsStatus(ctx context.Context, com
         <span class="cov8" title="1">for _, version := range versions </span><span class="cov8" title="1">{
                 versionInfo := existingSpecVersions[version.name]
                 versionStatus := compapiv1alpha1.ComponentVersionStatus{
-                        Name:     version.name,
-                        Revision: versionInfo.Revision,
+                        Name:       version.name,
+                        Revision:   versionInfo.Revision,
+                        SkipBuilds: versionInfo.SkipBuilds,
                 }
 
                 // Get existing ConfigurationMergeURL if version already versionExists in status
@@ -5471,6 +5701,39 @@ func (r *ComponentBuildReconciler) removeVersionsFromStatus(ctx context.Context,
         <span class="cov8" title="1">r.WaitForCacheUpdateRes(ctx, types.NamespacedName{Namespace: component.Namespace, Name: component.Name}, component)
 
         log.Info("Removed versions from status", "RemovedVersions", versionsToRemove, l.Action, l.ActionUpdate)
+        return nil</span>
+}
+
+// updateVersionsSkipBuilds updates the SkipBuilds field for versions in component.Status.Versions
+// based on the values in existingSpecVersions. Only updates status if there are actual changes.
+// Returns an error if the status update fails.
+func (r *ComponentBuildReconciler) updateVersionsSkipBuilds(ctx context.Context, component *compapiv1alpha1.Component, existingSpecVersions map[string]*VersionInfo) error <span class="cov8" title="1">{
+        log := ctrllog.FromContext(ctx)
+
+        hasChanges := false
+
+        // Loop through status versions and update SkipBuilds from spec if different
+        for i := range component.Status.Versions </span><span class="cov8" title="1">{
+                versionName := component.Status.Versions[i].Name
+                if versionInfo, exists := existingSpecVersions[versionName]; exists </span><span class="cov8" title="1">{
+                        if component.Status.Versions[i].SkipBuilds != versionInfo.SkipBuilds </span><span class="cov8" title="1">{
+                                component.Status.Versions[i].SkipBuilds = versionInfo.SkipBuilds
+                                hasChanges = true
+                        }</span>
+                }
+        }
+
+        // Only update status if there were actual changes
+        <span class="cov8" title="1">if !hasChanges </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov0" title="0">{
+                log.Error(err, "failed to update component versions SkipBuilds in status", l.Action, l.ActionUpdate, l.Audit, "true")
+                return err
+        }</span>
+
+        <span class="cov8" title="1">log.Info("Updated versions SkipBuilds in status", l.Action, l.ActionUpdate)
         return nil</span>
 }
 
@@ -6125,7 +6388,6 @@ import (
         compapiv1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
         releaseapi "github.com/konflux-ci/release-service/api/v1alpha1"
         tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-        "slices"
         corev1 "k8s.io/api/core/v1"
         "k8s.io/apimachinery/pkg/api/errors"
         "k8s.io/apimachinery/pkg/runtime"
@@ -6140,6 +6402,7 @@ import (
         ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
         "sigs.k8s.io/controller-runtime/pkg/predicate"
         "sigs.k8s.io/controller-runtime/pkg/reconcile"
+        "slices"
 
         l "github.com/konflux-ci/build-service/pkg/logs"
 )
@@ -11696,7 +11959,7 @@ func bestMatchingSecret(ctx context.Context, componentRepository string, secrets
 </pre>
 		
 		<pre class="file" id="file27" style="display: none">/*
-Copyright 2023-2025 Red Hat, Inc.
+Copyright 2023-2026 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11714,64 +11977,47 @@ package webhook
 
 import (
         "encoding/json"
+        "fmt"
+        "os"
         "strings"
-
-        "github.com/go-logr/logr"
-        ctrl "sigs.k8s.io/controller-runtime"
 )
 
-var log logr.Logger = ctrl.Log.WithName("webhook")
-
-type WebhookURLLoader interface {
-        Load(repositoryUrl string) string
-}
-
-type ConfigWebhookURLLoader struct {
-        // Prefix to target url mapping
+// PaCWebhookMapping allows to configure PaC webhook URL based on git repository URL.
+type PaCWebhookMapping struct {
+        // Git repository URL prefix to target webhook URL mapping
         mapping map[string]string
 }
 
-func NewConfigWebhookURLLoader(mapping map[string]string) ConfigWebhookURLLoader <span class="cov8" title="1">{
-        return ConfigWebhookURLLoader{mapping: mapping}
+func NewPaCWebhookMappingFromMap(mapping map[string]string) *PaCWebhookMapping <span class="cov8" title="1">{
+        return &amp;PaCWebhookMapping{mapping: mapping}
 }</span>
 
-// Load implements WebhookURLLoader.
-// Load allows to configure the PaC webhook target url based on the repository url of the component.
-// The PaC webhook target url config is read from the provided config file or environment variable (has precedence).
-// In case no config file or environment variable are provided, the default PaC route in the cluster will be used.
-// Find the longest prefix match of `repositoryUrl` and the keys of `mapping`, and return the value of that key.
-func (c ConfigWebhookURLLoader) Load(repositoryUrl string) string <span class="cov8" title="1">{
-        longestPrefixLen := 0
-        matchedTarget := ""
-        for prefix, target := range c.mapping </span><span class="cov8" title="1">{
-                if strings.HasPrefix(repositoryUrl, prefix) &amp;&amp; len(prefix) &gt; longestPrefixLen </span><span class="cov8" title="1">{
-                        longestPrefixLen = len(prefix)
-                        matchedTarget = target
-                }</span>
-        }
+func NewPaCWebhookMapping(webhookConfigPath string) (*PaCWebhookMapping, error) <span class="cov8" title="1">{
+        webhookMapping := &amp;PaCWebhookMapping{}
 
-        // Provide a default using the empty string
-        <span class="cov8" title="1">if matchedTarget == "" </span><span class="cov8" title="1">{
-                if val, ok := c.mapping[""]; ok </span><span class="cov8" title="1">{
-                        matchedTarget = val
-                }</span>
-        }
+        mapping, err := readMapping(webhookConfigPath)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to read PaC webhook mapping: %w", err)
+        }</span>
+        <span class="cov8" title="1">webhookMapping.mapping = mapping
 
-        <span class="cov8" title="1">return matchedTarget</span>
+        return webhookMapping, nil</span>
 }
 
-var _ WebhookURLLoader = ConfigWebhookURLLoader{}
-
-type FileReader func(name string) ([]byte, error)
-
-// LoadMappingFromFile loads the prefix to target url mapping from a file.
-func LoadMappingFromFile(path string, fileReader FileReader) (map[string]string, error) <span class="cov8" title="1">{
-        if path == "" </span><span class="cov8" title="1">{
-                log.Info("Webhook config was not provided")
-                return map[string]string{}, nil
+// readMapping reads JSON config file with mapping between git repository URL prefix and target PaC webhook URL.
+// Example config file content:
+//
+//        {
+//            "https://my-gitlab.com": "https://my.event.proxy.net:1234",
+//            "https://github.com/my-org/": "https://smee.io/SomeChannel1234"
+//        }
+func readMapping(webhookConfigPath string) (map[string]string, error) <span class="cov8" title="1">{
+        if webhookConfigPath == "" </span><span class="cov8" title="1">{
+                // No config is provided, don't do any mapping
+                return nil, nil
         }</span>
 
-        <span class="cov8" title="1">content, err := fileReader(path)
+        <span class="cov8" title="1">content, err := os.ReadFile(webhookConfigPath)
         if err != nil </span><span class="cov8" title="1">{
                 return nil, err
         }</span>
@@ -11782,9 +12028,25 @@ func LoadMappingFromFile(path string, fileReader FileReader) (map[string]string,
                 return nil, err
         }</span>
 
-        <span class="cov8" title="1">log.Info("Using webhook config", "config", mapping)
+        <span class="cov8" title="1">return mapping, nil</span>
+}
 
-        return mapping, nil</span>
+// GetPaCWebhookUrlForGitRepo returns PaC webhook URL to set into git repository webhook configuration for git providers
+// that cannot access the cluster PaC Route directly (e.g. the cluster in behind a VPN and a proxy for git events needed).
+// The URL is resolved based on the provided mapping between git repository url prefix and desired webhook URL.
+// It finds the longest prefix match for the given git repository URL.
+// Note, it's possible to have empty prefix entry, so it will match any git repo URL unless better match is found.
+// It returns empty string if no mapping for the given git defined. In such case, cluster PaC Route should be used.
+func (w *PaCWebhookMapping) GetPaCWebhookUrlForGitRepo(repositoryUrl string) string <span class="cov8" title="1">{
+        longestPrefixLen := -1
+        matchedTarget := ""
+        for prefix, target := range w.mapping </span><span class="cov8" title="1">{
+                if strings.HasPrefix(repositoryUrl, prefix) &amp;&amp; len(prefix) &gt; longestPrefixLen </span><span class="cov8" title="1">{
+                        longestPrefixLen = len(prefix)
+                        matchedTarget = target
+                }</span>
+        }
+        <span class="cov8" title="1">return matchedTarget</span>
 }
 </pre>
 		

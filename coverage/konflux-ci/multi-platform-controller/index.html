@@ -59,7 +59,7 @@
 				
 				<option value="file1">github.com/konflux-ci/multi-platform-controller/cmd/otp/otp.go (74.5%)</option>
 				
-				<option value="file2">github.com/konflux-ci/multi-platform-controller/pkg/aws/ec2.go (87.4%)</option>
+				<option value="file2">github.com/konflux-ci/multi-platform-controller/pkg/aws/ec2.go (85.4%)</option>
 				
 				<option value="file3">github.com/konflux-ci/multi-platform-controller/pkg/aws/ec2_helpers.go (87.7%)</option>
 				
@@ -69,37 +69,39 @@
 				
 				<option value="file6">github.com/konflux-ci/multi-platform-controller/pkg/config/validation.go (96.3%)</option>
 				
-				<option value="file7">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmp.go (12.2%)</option>
+				<option value="file7">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmp.go (88.1%)</option>
 				
-				<option value="file8">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmp_helpers.go (14.2%)</option>
+				<option value="file8">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmp_client.go (40.9%)</option>
 				
-				<option value="file9">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmz.go (4.2%)</option>
+				<option value="file9">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmp_helpers.go (64.3%)</option>
 				
-				<option value="file10">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmz_helpers.go (7.6%)</option>
+				<option value="file10">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmz.go (4.2%)</option>
 				
-				<option value="file11">github.com/konflux-ci/multi-platform-controller/pkg/metrics/platform.go (77.1%)</option>
+				<option value="file11">github.com/konflux-ci/multi-platform-controller/pkg/ibm/ibmz_helpers.go (8.5%)</option>
 				
-				<option value="file12">github.com/konflux-ci/multi-platform-controller/pkg/metrics/taskrun_exporter.go (62.3%)</option>
+				<option value="file12">github.com/konflux-ci/multi-platform-controller/pkg/metrics/platform.go (77.1%)</option>
 				
-				<option value="file13">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/controller.go (0.0%)</option>
+				<option value="file13">github.com/konflux-ci/multi-platform-controller/pkg/metrics/taskrun_exporter.go (62.3%)</option>
 				
-				<option value="file14">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/dynamic.go (75.4%)</option>
+				<option value="file14">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/controller.go (0.0%)</option>
 				
-				<option value="file15">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/dynamicpool.go (91.1%)</option>
+				<option value="file15">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/dynamic.go (75.2%)</option>
 				
-				<option value="file16">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/hostpool.go (78.5%)</option>
+				<option value="file16">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/dynamicpool.go (91.1%)</option>
 				
-				<option value="file17">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/local.go (100.0%)</option>
+				<option value="file17">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/hostpool.go (78.5%)</option>
 				
-				<option value="file18">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/taskrun.go (80.3%)</option>
+				<option value="file18">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/local.go (100.0%)</option>
 				
-				<option value="file19">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/updates.go (96.2%)</option>
+				<option value="file19">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/taskrun.go (80.3%)</option>
 				
-				<option value="file20">github.com/konflux-ci/multi-platform-controller/pkg/util/retry.go (100.0%)</option>
+				<option value="file20">github.com/konflux-ci/multi-platform-controller/pkg/reconciler/taskrun/updates.go (96.2%)</option>
 				
-				<option value="file21">github.com/konflux-ci/multi-platform-controller/pkg/util/subresource_client.go (100.0%)</option>
+				<option value="file21">github.com/konflux-ci/multi-platform-controller/pkg/util/retry.go (100.0%)</option>
 				
-				<option value="file22">github.com/konflux-ci/multi-platform-controller/pkg/util/subresource_writer.go (100.0%)</option>
+				<option value="file22">github.com/konflux-ci/multi-platform-controller/pkg/util/subresource_client.go (100.0%)</option>
+				
+				<option value="file23">github.com/konflux-ci/multi-platform-controller/pkg/util/subresource_writer.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -488,7 +490,12 @@ func (ec AWSEc2DynamicConfig) GetInstanceAddress(kubeClient client.Client, ctx c
 // TerminateInstance tries to delete the instanceID EC2 instance.
 func (ec AWSEc2DynamicConfig) TerminateInstance(kubeClient client.Client, ctx context.Context, instanceID cloud.InstanceIdentifier) error <span class="cov8" title="1">{
         log := logr.FromContextOrDiscard(ctx)
-        log.Info("Attempting to terminate AWS EC2 instance", "instanceID", instanceID)
+        if instanceID == "" </span><span class="cov0" title="0">{
+                err := errors.New("cannot terminate instance: empty instance ID")
+                log.Error(err, "cannot terminate instance: empty instance ID")
+                return err
+        }</span>
+        <span class="cov8" title="1">log.Info("Attempting to terminate AWS EC2 instance", "instanceID", instanceID)
 
         // Use AWS credentials and configuration to create an EC2 client
         ec2Client, err := ec.getEC2Client(kubeClient, ctx)
@@ -1788,6 +1795,11 @@ import (
         "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+        staleInstanceThreshold = 365 * 24 * time.Hour
+        defaultSSHUser         = "root"
+)
+
 // CreateIBMPowerCloudConfig returns an IBM Power Systems cloud configuration that implements the CloudProvider interface.
 func CreateIBMPowerCloudConfig(platform string, config map[string]string, systemNamespace string) cloud.CloudProvider <span class="cov8" title="1">{
         mem, err := strconv.ParseFloat(config["dynamic."+platform+".memory"], 64)
@@ -1827,61 +1839,74 @@ func CreateIBMPowerCloudConfig(platform string, config map[string]string, system
         }</span>
 }
 
+// getPowerClient returns the injected powerClient (for tests) or creates a real
+// one backed by an authenticated IBM BaseService.
+func (pw IBMPowerDynamicConfig) getPowerClient(ctx context.Context, kubeClient client.Client) (powerAPI, error) <span class="cov8" title="1">{
+        if pw.pClient != nil </span><span class="cov8" title="1">{
+                return pw.pClient, nil
+        }</span>
+        <span class="cov0" title="0">service, err := pw.createAuthenticatedBaseService(ctx, kubeClient)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">return &amp;powerClient{service: service, config: pw}, nil</span>
+}
+
 // LaunchInstance creates a Power Systems VM instance and returns its identifier. This function is implemented as
 // part of the CloudProvider interface, which is why some of the arguments are unused for this particular implementation.
-func (pw IBMPowerDynamicConfig) LaunchInstance(kubeClient client.Client, ctx context.Context, taskRunID string, instanceTag string, _ map[string]string) (cloud.InstanceIdentifier, error) <span class="cov0" title="0">{
-        service, err := pw.createAuthenticatedBaseService(ctx, kubeClient)
+func (pw IBMPowerDynamicConfig) LaunchInstance(kubeClient client.Client, ctx context.Context, taskRunID string, instanceTag string, _ map[string]string) (cloud.InstanceIdentifier, error) <span class="cov8" title="1">{
+        pwClient, err := pw.getPowerClient(ctx, kubeClient)
         if err != nil </span><span class="cov0" title="0">{
                 return "", fmt.Errorf("failed to create an authenticated base service: %w", err)
         }</span>
 
-        <span class="cov0" title="0">instanceName, err := createInstanceName(instanceTag)
+        <span class="cov8" title="1">instanceName, err := createInstanceName(instanceTag)
         if err != nil </span><span class="cov0" title="0">{
                 return "", fmt.Errorf("failed to create an instance name: %w", err)
         }</span>
 
-        <span class="cov0" title="0">err = cloud.ValidateTaskRunID(taskRunID)
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">err = cloud.ValidateTaskRunID(taskRunID)
+        if err != nil </span><span class="cov8" title="1">{
                 return "", fmt.Errorf("invalid TaskRun ID: %w", err)
         }</span>
 
-        <span class="cov0" title="0">additionalInfo := map[string]string{
+        <span class="cov8" title="1">additionalInfo := map[string]string{
                 "name":              instanceName,
                 cloud.TaskRunTagKey: taskRunID,
         }
-        instance, err := pw.launchInstance(ctx, service, additionalInfo)
-        if err != nil </span><span class="cov0" title="0">{
+        instance, err := pwClient.launchInstance(ctx, additionalInfo)
+        if err != nil </span><span class="cov8" title="1">{
                 err = fmt.Errorf("failed to create a Power Systems instance: %w", err)
         }</span>
-        <span class="cov0" title="0">return instance, err</span>
+        <span class="cov8" title="1">return instance, err</span>
 }
 
 // CountInstances returns the number of Power Systems VM instances on the pw cloud whose names start
 // with instanceTag.
-func (pw IBMPowerDynamicConfig) CountInstances(kubeClient client.Client, ctx context.Context, instanceTag string) (int, error) <span class="cov0" title="0">{
-        service, err := pw.createAuthenticatedBaseService(ctx, kubeClient)
+func (pw IBMPowerDynamicConfig) CountInstances(kubeClient client.Client, ctx context.Context, instanceTag string) (int, error) <span class="cov8" title="1">{
+        pwClient, err := pw.getPowerClient(ctx, kubeClient)
         if err != nil </span><span class="cov0" title="0">{
                 return -1, fmt.Errorf("failed to create an authenticated base service: %w", err)
         }</span>
 
-        <span class="cov0" title="0">instances, err := pw.listInstances(ctx, service)
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">instances, err := pwClient.listInstances(ctx)
+        if err != nil </span><span class="cov8" title="1">{
                 return -1, fmt.Errorf("failed to fetch Power Systems instances: %w", err)
         }</span>
 
-        <span class="cov0" title="0">count := 0
-        for _, instance := range instances.PvmInstances </span><span class="cov0" title="0">{
-                if strings.HasPrefix(*instance.ServerName, instanceTag) </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">count := 0
+        for _, instance := range instances.PvmInstances </span><span class="cov8" title="1">{
+                if strings.HasPrefix(*instance.ServerName, instanceTag) </span><span class="cov8" title="1">{
                         count++
                 }</span>
         }
-        <span class="cov0" title="0">return count, nil</span>
+        <span class="cov8" title="1">return count, nil</span>
 }
 
 // GetInstanceAddress returns the IP Address associated with the instanceID Power Systems VM instance.
-func (pw IBMPowerDynamicConfig) GetInstanceAddress(kubeClient client.Client, ctx context.Context, instanceID cloud.InstanceIdentifier) (string, error) <span class="cov0" title="0">{
+func (pw IBMPowerDynamicConfig) GetInstanceAddress(kubeClient client.Client, ctx context.Context, instanceID cloud.InstanceIdentifier) (string, error) <span class="cov8" title="1">{
         log := logr.FromContextOrDiscard(ctx)
-        service, err := pw.createAuthenticatedBaseService(ctx, kubeClient)
+        pwClient, err := pw.getPowerClient(ctx, kubeClient)
         if err != nil </span><span class="cov0" title="0">{
                 return "", fmt.Errorf("failed to create an authenticated base service: %w", err)
         }</span>
@@ -1889,18 +1914,23 @@ func (pw IBMPowerDynamicConfig) GetInstanceAddress(kubeClient client.Client, ctx
         // Errors regarding finding the instance, getting it's IP address and checking if the
         // address is live are not returned as we are waiting for the network interface to start up.
         // This is a normal part of the instance allocation process.
-        <span class="cov0" title="0">instance, err := pw.getInstance(ctx, service, string(instanceID))
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">instance, err := pwClient.getInstance(ctx, string(instanceID))
+        if err != nil </span><span class="cov8" title="1">{
                 log.Error(err, "failed to get instance", "instanceID", instanceID)
                 return "", nil
         }</span>
-        <span class="cov0" title="0">ip, err := retrieveInstanceIp(*instance.PvmInstanceID, instance.Networks)
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">ip, err := retrieveInstanceIp(*instance.PvmInstanceID, instance.Networks)
+        if err != nil </span><span class="cov8" title="1">{
                 log.Error(err, "failed to retrieve IP address", "instanceID", instanceID)
                 return "", nil
         }</span>
+
+        <span class="cov8" title="1">pingFn := pw.pingFunc
+        if pingFn == nil </span><span class="cov0" title="0">{
+                pingFn = checkIfIpIsLive
+        }</span>
         //Don't return an error here since an IP address can take a while to become "live"
-        <span class="cov0" title="0">if err = checkIfIpIsLive(ctx, ip); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err = pingFn(ctx, ip); err != nil </span><span class="cov8" title="1">{
                 log.Error(
                         err,
                         "failed to check if IP address was live",
@@ -1909,117 +1939,123 @@ func (pw IBMPowerDynamicConfig) GetInstanceAddress(kubeClient client.Client, ctx
                 )
                 return "", nil
         }</span>
-        <span class="cov0" title="0">return ip, nil</span>
+        <span class="cov8" title="1">return ip, nil</span>
 }
 
 // ListInstances returns a collection of accessible Power Systems VM instances, on the pw cloud,
 // whose names start with instanceTag.
-func (pw IBMPowerDynamicConfig) ListInstances(kubeClient client.Client, ctx context.Context, instanceTag string) ([]cloud.CloudVMInstance, error) <span class="cov0" title="0">{
+func (pw IBMPowerDynamicConfig) ListInstances(kubeClient client.Client, ctx context.Context, instanceTag string) ([]cloud.CloudVMInstance, error) <span class="cov8" title="1">{
         log := logr.FromContextOrDiscard(ctx)
         log.Info("Listing Power Systems instances", "tag", instanceTag)
-        service, err := pw.createAuthenticatedBaseService(ctx, kubeClient)
+        pwClient, err := pw.getPowerClient(ctx, kubeClient)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("failed to create an authenticated base service: %w", err)
         }</span>
 
-        <span class="cov0" title="0">pvmInstancesCollection, err := pw.listInstances(ctx, service)
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">pvmInstancesCollection, err := pwClient.listInstances(ctx)
+        if err != nil </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("failed to fetch Power Systems instances: %w", err)
         }</span>
 
-        <span class="cov0" title="0">vmInstances := make([]cloud.CloudVMInstance, 0, len(pvmInstancesCollection.PvmInstances))
-        // Ensure all listed instances have a reachable IP address
-        for _, instance := range pvmInstancesCollection.PvmInstances </span><span class="cov0" title="0">{
-                if !strings.HasPrefix(*instance.ServerName, instanceTag) </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">pingFn := pw.pingFunc
+        if pingFn == nil </span><span class="cov0" title="0">{
+                pingFn = checkIfIpIsLive
+        }</span>
+
+        <span class="cov8" title="1">vmInstances := make([]cloud.CloudVMInstance, 0, len(pvmInstancesCollection.PvmInstances))
+        for _, instance := range pvmInstancesCollection.PvmInstances </span><span class="cov8" title="1">{
+                if !strings.HasPrefix(*instance.ServerName, instanceTag) </span><span class="cov8" title="1">{
                         continue</span>
                 }
-                <span class="cov0" title="0">identifier := cloud.InstanceIdentifier(*instance.PvmInstanceID)
+                <span class="cov8" title="1">identifier := cloud.InstanceIdentifier(*instance.PvmInstanceID)
                 createdAt := time.Time(instance.CreationDate)
-                ip, err := retrieveInstanceIp(*instance.PvmInstanceID, instance.Networks)
-                if err != nil </span><span class="cov0" title="0">{
+
+                if time.Since(createdAt) &gt; staleInstanceThreshold </span><span class="cov8" title="1">{
+                        log.Info("WARN: instance creation date is over one year old — possible data integrity issue",
+                                "instanceID", identifier,
+                                "creationDate", createdAt,
+                        )
+                }</span>
+                <span class="cov8" title="1">ip, err := retrieveInstanceIp(*instance.PvmInstanceID, instance.Networks)
+                if err != nil </span><span class="cov8" title="1">{
                         msg := fmt.Sprintf("WARN: failed to retrieve IP address - %s; not listing instance", err.Error())
                         log.Info(msg, "instanceID", identifier)
                         continue</span>
                 }
-                <span class="cov0" title="0">if err = checkIfIpIsLive(ctx, ip); err != nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if err = pingFn(ctx, ip); err != nil </span><span class="cov8" title="1">{
                         msg := fmt.Sprintf("WARN: failed to check if IP address is live - %s; not listing instance", err.Error())
                         log.Info(msg, "instanceID", identifier)
                         continue</span>
                 }
-                <span class="cov0" title="0">newVmInstance := cloud.CloudVMInstance{InstanceId: identifier, Address: ip, StartTime: createdAt}
+                <span class="cov8" title="1">newVmInstance := cloud.CloudVMInstance{InstanceId: identifier, Address: ip, StartTime: createdAt}
                 vmInstances = append(vmInstances, newVmInstance)</span>
         }
-        <span class="cov0" title="0">log.Info("Finished listing Power Systems instances.", "count", len(vmInstances))
+        <span class="cov8" title="1">log.Info("Finished listing Power Systems instances.", "count", len(vmInstances))
         return vmInstances, nil</span>
 }
 
 // TerminateInstance tries to delete a specific Power Systems VM instance on the pw cloud for 10 minutes
 // or until the instance is deleted.
-func (pw IBMPowerDynamicConfig) TerminateInstance(kubeClient client.Client, ctx context.Context, instanceID cloud.InstanceIdentifier) error <span class="cov0" title="0">{
+func (pw IBMPowerDynamicConfig) TerminateInstance(kubeClient client.Client, ctx context.Context, instanceID cloud.InstanceIdentifier) error <span class="cov8" title="1">{
         log := logr.FromContextOrDiscard(ctx)
         log.Info("attempting to terminate power server", "instance", instanceID)
-        service, err := pw.createAuthenticatedBaseService(ctx, kubeClient)
+        pwClient, err := pw.getPowerClient(ctx, kubeClient)
         if err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("failed to create an authenticated base service: %w", err)
         }</span>
 
-        <span class="cov0" title="0">_ = pw.deleteInstance(ctx, service, string(instanceID))
+        <span class="cov8" title="1">_ = pwClient.deleteInstance(ctx, string(instanceID))
 
         // Iterate for 10 minutes
         timeout := time.Now().Add(time.Minute * 10)
-        go func() </span><span class="cov0" title="0">{
+        go func() </span><span class="cov8" title="1">{
                 localCtx := context.WithoutCancel(ctx)
-                service, err := pw.createAuthenticatedBaseService(localCtx, kubeClient)
-                if err != nil </span><span class="cov0" title="0">{
-                        return
-                }</span>
-
-                <span class="cov0" title="0">for </span><span class="cov0" title="0">{
-                        _, err := pw.getInstance(localCtx, service, string(instanceID))
+                for </span><span class="cov8" title="1">{
+                        _, err := pwClient.getInstance(localCtx, string(instanceID))
                         // Instance has already been deleted
                         if err != nil </span><span class="cov0" title="0">{
                                 return
                         }</span>
                         //TODO: clarify comment -&gt;we want to make really sure it is gone, delete opts don't
                         // really work when the server is starting so we just try in a loop
-                        <span class="cov0" title="0">err = pw.deleteInstance(localCtx, service, string(instanceID))
-                        if err != nil </span><span class="cov0" title="0">{
+                        <span class="cov8" title="1">err = pwClient.deleteInstance(localCtx, string(instanceID))
+                        if err != nil </span><span class="cov8" title="1">{
                                 log.Error(err, "failed to delete Power System instance")
                         }</span>
-                        <span class="cov0" title="0">if timeout.Before(time.Now()) </span><span class="cov0" title="0">{
+                        <span class="cov8" title="1">if timeout.Before(time.Now()) </span><span class="cov0" title="0">{
                                 return
                         }</span>
 
                         // Sleep 10 seconds between each execution
-                        <span class="cov0" title="0">time.Sleep(time.Second * 10)</span>
+                        <span class="cov8" title="1">time.Sleep(time.Second * 10)</span>
                 }
         }()
-        <span class="cov0" title="0">return nil</span>
+        <span class="cov8" title="1">return nil</span>
 }
 
 // GetState returns instanceID's VM state from the pw cloud on the IBM Power Systems Virtual Server service.
 // See https://cloud.ibm.com/apidocs/power-cloud#pcloud-pvminstances-get for more information.
-func (pw IBMPowerDynamicConfig) GetState(kubeClient client.Client, ctx context.Context, instanceID cloud.InstanceIdentifier) (cloud.VMState, error) <span class="cov0" title="0">{
-        service, err := pw.createAuthenticatedBaseService(ctx, kubeClient)
+func (pw IBMPowerDynamicConfig) GetState(kubeClient client.Client, ctx context.Context, instanceID cloud.InstanceIdentifier) (cloud.VMState, error) <span class="cov8" title="1">{
+        pwClient, err := pw.getPowerClient(ctx, kubeClient)
         if err != nil </span><span class="cov0" title="0">{
                 return "", fmt.Errorf("failed to create an authenticated base service: %w", err)
         }</span>
 
-        <span class="cov0" title="0">instance, err := pw.getInstance(ctx, service, string(instanceID))
+        <span class="cov8" title="1">instance, err := pwClient.getInstance(ctx, string(instanceID))
         // Probably still waiting for the instance to come up
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return "", nil
         }</span>
 
         // An instance in a failed state has a status of "ERROR" and a health of "CRITICAL"
-        <span class="cov0" title="0">if *instance.Status == "ERROR" &amp;&amp; instance.Health.Status == "CRITICAL" </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if *instance.Status == "ERROR" &amp;&amp; instance.Health.Status == "CRITICAL" </span><span class="cov8" title="1">{
                 return cloud.FailedState, nil
         }</span>
-        <span class="cov0" title="0">return cloud.OKState, nil</span>
+        <span class="cov8" title="1">return cloud.OKState, nil</span>
 }
 
-func (pw IBMPowerDynamicConfig) SshUser() string <span class="cov0" title="0">{
-        return "root"
+func (pw IBMPowerDynamicConfig) SshUser() string <span class="cov8" title="1">{
+        return defaultSSHUser
 }</span>
 
 // An IBMPowerDynamicConfig represents a configuration for an IBM Power Systems cloud instance.
@@ -2068,6 +2104,14 @@ type IBMPowerDynamicConfig struct {
         // ProcessorType is the processor type to be used in the instance.
         // Possible values are "dedicated", "shared", and "capped".
         ProcType string
+
+        // pClient allows tests to inject a mock Power API client.
+        // When nil, getPowerClient builds a real client from IBM credentials.
+        pClient powerAPI
+
+        // pingFunc allows tests to inject a mock for SSH connectivity checks.
+        // When nil, the real checkIfIpIsLive (TCP dial to port 22) is used.
+        pingFunc func(ctx context.Context, ip string) error
 }
 </pre>
 		
@@ -2078,7 +2122,7 @@ import (
         "encoding/json"
         "errors"
         "fmt"
-        "os"
+        "net/http"
         "strings"
         "time"
 
@@ -2086,6 +2130,296 @@ import (
         "github.com/IBM/go-sdk-core/v5/core"
         "github.com/go-logr/logr"
         "github.com/konflux-ci/multi-platform-controller/pkg/cloud"
+)
+
+const (
+        acceptHeader   = "application/json"
+        crnHeader      = "CRN"
+        pvmBasePath    = `/pcloud/v1/cloud-instances/{cloud}/pvm-instances`
+        pvmByIDPath    = pvmBasePath + `/{pvm_instance_id}`
+        volumeByIDPath = `/pcloud/v1/cloud-instances/{cloud}/volumes/{volume}`
+)
+
+// powerClient implements powerAPI using the IBM Power Virtual Server REST API
+// via core.BaseService.
+type powerClient struct {
+        service   *core.BaseService
+        config    IBMPowerDynamicConfig
+        requestFn func(req *http.Request, result interface{}) (*core.DetailedResponse, error)
+}
+
+func (pc *powerClient) listInstances(ctx context.Context) (models.PVMInstances, error) <span class="cov0" title="0">{
+        requestBuilder := core.NewRequestBuilder(core.GET).WithContext(ctx)
+        requestBuilder.EnableGzipCompression = pc.service.GetEnableGzipCompression()
+
+        cloudId, err := pc.config.parseCRN()
+        if err != nil </span><span class="cov0" title="0">{
+                return models.PVMInstances{}, fmt.Errorf("failed to retrieve cloud service instance ID: %w", err)
+        }</span>
+        <span class="cov0" title="0">pathParamsMap := map[string]string{
+                "cloud": cloudId,
+        }
+        _, err = requestBuilder.ResolveRequestURL(pc.config.Url, pvmBasePath, pathParamsMap)
+        if err != nil </span><span class="cov0" title="0">{
+                return models.PVMInstances{}, fmt.Errorf("failed to encode the request with parameters: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">requestBuilder.AddHeader(crnHeader, pc.config.CRN)
+        requestBuilder.AddHeader("Accept", acceptHeader)
+        request, err := requestBuilder.Build()
+        if err != nil </span><span class="cov0" title="0">{
+                return models.PVMInstances{}, fmt.Errorf("failed to build the HTTP request: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">instances := models.PVMInstances{}
+        _, err = pc.service.Request(request, &amp;instances)
+        if err != nil </span><span class="cov0" title="0">{
+                return models.PVMInstances{},
+                        fmt.Errorf("failed to list all Power Systems VM instances on cloud %s: %w", cloudId, err)
+        }</span>
+        <span class="cov0" title="0">return instances, nil</span>
+}
+
+func (pc *powerClient) launchInstance(ctx context.Context, additionalInfo map[string]string) (cloud.InstanceIdentifier, error) <span class="cov0" title="0">{
+        log := logr.FromContextOrDiscard(ctx)
+        requestBuilder := core.NewRequestBuilder(core.POST)
+        requestBuilder = requestBuilder.WithContext(ctx)
+        requestBuilder.EnableGzipCompression = pc.service.GetEnableGzipCompression()
+
+        cloudId, err := pc.config.parseCRN()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to retrieve cloud service instance ID: %w", err)
+        }</span>
+        <span class="cov0" title="0">pathParamsMap := map[string]string{
+                "cloud": cloudId,
+        }
+        _, err = requestBuilder.ResolveRequestURL(pc.config.Url, pvmBasePath, pathParamsMap)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to encode the request with parameters: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">name, ok := additionalInfo["name"]
+        if !ok </span><span class="cov0" title="0">{
+                return "", errors.New("failed to find the server instance's name")
+        }</span>
+        <span class="cov0" title="0">taskRunTag, ok := additionalInfo[cloud.TaskRunTagKey]
+        if !ok </span><span class="cov0" title="0">{
+                return "", errors.New("failed to find the server instance's full TaskRun ID")
+        }</span>
+
+        <span class="cov0" title="0">network := strings.Split(pc.config.Network, ",")
+        body := models.PVMInstanceCreate{
+                ServerName:  &amp;name,
+                ImageID:     &amp;pc.config.ImageId,
+                Processors:  &amp;pc.config.Cores,
+                ProcType:    &amp;pc.config.ProcType,
+                Memory:      &amp;pc.config.Memory,
+                NetworkIDs:  network,
+                KeyPairName: pc.config.Key,
+                SysType:     pc.config.System,
+                UserData:    pc.config.UserData,
+                UserTags:    []string{taskRunTag},
+        }
+        _, err = requestBuilder.SetBodyContentJSON(&amp;body)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to set the body of the request: %w", err)
+        }</span>
+        <span class="cov0" title="0">requestBuilder.AddHeader(crnHeader, pc.config.CRN)
+        requestBuilder.AddHeader("Content-Type", acceptHeader)
+        requestBuilder.AddHeader("Accept", acceptHeader)
+
+        request, err := requestBuilder.Build()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to build the HTTP request: %w", err)
+        }</span>
+        <span class="cov0" title="0">instances := make([]models.PVMInstance, 1)
+        _, err = pc.service.Request(request, &amp;instances)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to launch a Power Systems VM instance: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">instanceID := instances[0].PvmInstanceID
+        log.Info("Launched Power Systems VM instance", "instanceID", instanceID)
+        pc.resizeInstanceVolume(ctx, instanceID)
+        return cloud.InstanceIdentifier(*instanceID), nil</span>
+}
+
+func (pc *powerClient) getInstance(ctx context.Context, pvmId string) (*models.PVMInstance, error) <span class="cov8" title="1">{
+        requestBuilder := core.NewRequestBuilder(core.GET)
+        requestBuilder = requestBuilder.WithContext(ctx)
+        requestBuilder.EnableGzipCompression = pc.service.GetEnableGzipCompression()
+
+        cloudId, err := pc.config.parseCRN()
+        if err != nil </span><span class="cov0" title="0">{
+                return &amp;models.PVMInstance{}, fmt.Errorf("failed to retrieve cloud service instance ID: %w", err)
+        }</span>
+        <span class="cov8" title="1">pathParamsMap := map[string]string{
+                "cloud":           cloudId,
+                "pvm_instance_id": pvmId,
+        }
+        _, err = requestBuilder.ResolveRequestURL(pc.config.Url, pvmByIDPath, pathParamsMap)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to encode the request with parameters: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">requestBuilder.AddHeader(crnHeader, pc.config.CRN)
+        requestBuilder.AddHeader("Accept", acceptHeader)
+        request, err := requestBuilder.Build()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to build the HTTP request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">reqFn := pc.requestFn
+        if reqFn == nil </span><span class="cov0" title="0">{
+                reqFn = pc.service.Request
+        }</span>
+
+        <span class="cov8" title="1">instance := models.PVMInstance{}
+        _, err = reqFn(request, &amp;instance)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get the Power Systems VM instance %s: %w", pvmId, err)
+        }</span>
+        <span class="cov8" title="1">return &amp;instance, nil</span>
+}
+
+func (pc *powerClient) deleteInstance(ctx context.Context, pvmId string) error <span class="cov0" title="0">{
+        requestBuilder := core.NewRequestBuilder(core.DELETE)
+        requestBuilder = requestBuilder.WithContext(ctx)
+        requestBuilder.EnableGzipCompression = pc.service.GetEnableGzipCompression()
+
+        cloudId, err := pc.config.parseCRN()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to retrieve cloud service instance ID: %w", err)
+        }</span>
+        <span class="cov0" title="0">pathParamsMap := map[string]string{
+                "cloud":           cloudId,
+                "pvm_instance_id": pvmId,
+        }
+        _, err = requestBuilder.ResolveRequestURL(pc.config.Url, pvmByIDPath, pathParamsMap)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to encode the request with parameters: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">requestBuilder.AddQuery("delete_data_volumes", "true")
+        requestBuilder.AddHeader(crnHeader, pc.config.CRN)
+        requestBuilder.AddHeader("Accept", acceptHeader)
+        request, err := requestBuilder.Build()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to build the HTTP request: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">var rawResponse map[string]json.RawMessage
+        _, err = pc.service.Request(request, &amp;rawResponse)
+        if err != nil </span><span class="cov0" title="0">{
+                err = fmt.Errorf("failed to delete the Power System VM instance %s: %w", pvmId, err)
+        }</span>
+        <span class="cov0" title="0">return err</span>
+}
+
+// resizeInstanceVolume asynchronously resizes the id instance's volume.
+func (pc *powerClient) resizeInstanceVolume(ctx context.Context, id *string) <span class="cov8" title="1">{
+        log := logr.FromContextOrDiscard(ctx)
+        sleepTime := 10
+        timeout := time.Now().Add(time.Minute * 10)
+        go func() </span><span class="cov8" title="1">{
+                localCtx := context.WithoutCancel(ctx)
+                for </span><span class="cov8" title="1">{
+                        time.Sleep(time.Duration(sleepTime) * time.Second)
+                        if timeout.Before(time.Now()) </span><span class="cov0" title="0">{
+                                log.Info("Resizing timeout reached")
+                                return
+                        }</span>
+                        <span class="cov8" title="1">instance, err := pc.getInstance(localCtx, *id)
+                        if err != nil </span><span class="cov0" title="0">{
+                                log.Info("WARN: failed to get Power Systems VM instance for resize; retrying...",
+                                        "err", err,
+                                        "retry", time.Duration(sleepTime)*time.Second,
+                                )
+                                continue</span>
+                        }
+                        <span class="cov8" title="1">if len(instance.VolumeIDs) == 0 </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+
+                        <span class="cov8" title="1">log.Info("Current volume", "size", *instance.DiskSize, "instanceID", *id)
+                        if *instance.DiskSize == pc.config.Disk </span><span class="cov8" title="1">{
+                                return
+                        }</span>
+
+                        // This API is quite unstable and randomly throws conflicts or bad requests. Try multiple times.
+                        <span class="cov8" title="1">log.Info("Resizing instance volume", "instanceID", *id, "volumeID", instance.VolumeIDs[0], "size", pc.config.Disk)
+                        err = pc.updateVolume(localCtx, instance.VolumeIDs[0])
+                        if err != nil </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+                        <span class="cov8" title="1">log.Info("Successfully resized instance volume", "instanceID", *id, "volumeID", instance.VolumeIDs[0], "size", pc.config.Disk)
+                        return</span>
+                }
+        }()
+}
+
+// updateVolume changes volumeID's size to the configured disk size via HTTP.
+func (pc *powerClient) updateVolume(ctx context.Context, volumeID string) error <span class="cov8" title="1">{
+        log := logr.FromContextOrDiscard(ctx)
+        requestBuilder := core.NewRequestBuilder(core.PUT)
+        requestBuilder = requestBuilder.WithContext(ctx)
+        requestBuilder.EnableGzipCompression = pc.service.GetEnableGzipCompression()
+
+        cloudID, err := pc.config.parseCRN()
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to retrieve cloud service instance ID: %w", err)
+        }</span>
+        <span class="cov8" title="1">pathParamsMap := map[string]string{
+                "cloud":  cloudID,
+                "volume": volumeID,
+        }
+        _, err = requestBuilder.ResolveRequestURL(pc.config.Url, volumeByIDPath, pathParamsMap)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to encode the request with parameters: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">body := models.UpdateVolume{
+                Size: pc.config.Disk,
+        }
+        _, err = requestBuilder.SetBodyContentJSON(&amp;body)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">requestBuilder.AddHeader(crnHeader, pc.config.CRN)
+        requestBuilder.AddHeader("Content-Type", acceptHeader)
+        requestBuilder.AddHeader("Accept", acceptHeader)
+
+        request, err := requestBuilder.Build()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to build the HTTP request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">reqFn := pc.requestFn
+        if reqFn == nil </span><span class="cov0" title="0">{
+                reqFn = pc.service.Request
+        }</span>
+
+        <span class="cov8" title="1">var vRef models.VolumeReference
+        _, err = reqFn(request, &amp;vRef)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to update volume %s: %w", volumeID, err)
+        }</span>
+        <span class="cov8" title="1">log.Info("Volume size updated", "volumeID", vRef.VolumeID, "size", vRef.Size)
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package ibm
+
+import (
+        "context"
+        "errors"
+        "fmt"
+        "os"
+        "strings"
+
+        "github.com/IBM-Cloud/power-go-client/power/models"
+        "github.com/IBM/go-sdk-core/v5/core"
         "github.com/konflux-ci/multi-platform-controller/pkg/config"
         v1 "k8s.io/api/core/v1"
         types2 "k8s.io/apimachinery/pkg/types"
@@ -2163,42 +2497,6 @@ func (pw IBMPowerDynamicConfig) createAuthenticatedBaseService(ctx context.Conte
         return baseService, err</span>
 }
 
-// listInstances returns all of the Power Systems VM instances on the pw cloud instance.
-func (pw IBMPowerDynamicConfig) listInstances(ctx context.Context, service *core.BaseService) (models.PVMInstances, error) <span class="cov0" title="0">{
-        requestBuilder := core.NewRequestBuilder(core.GET).WithContext(ctx)
-        requestBuilder.EnableGzipCompression = service.GetEnableGzipCompression()
-
-        // Parameterize the request
-        cloudId, err := pw.parseCRN()
-        if err != nil </span><span class="cov0" title="0">{
-                return models.PVMInstances{}, fmt.Errorf("failed to retrieve cloud service instance ID: %w", err)
-        }</span>
-        <span class="cov0" title="0">pathParamsMap := map[string]string{
-                "cloud": cloudId,
-        }
-        _, err = requestBuilder.ResolveRequestURL(pw.Url, `/pcloud/v1/cloud-instances/{cloud}/pvm-instances`, pathParamsMap)
-        if err != nil </span><span class="cov0" title="0">{
-                return models.PVMInstances{}, fmt.Errorf("failed to encode the request with parameters: %w", err)
-        }</span>
-
-        // Add headers and build request
-        <span class="cov0" title="0">requestBuilder.AddHeader("CRN", pw.CRN)
-        requestBuilder.AddHeader("Accept", "application/json")
-        request, err := requestBuilder.Build()
-        if err != nil </span><span class="cov0" title="0">{
-                return models.PVMInstances{}, fmt.Errorf("failed to build the HTTP request: %w", err)
-        }</span>
-
-        // Execute the GET request
-        <span class="cov0" title="0">instances := models.PVMInstances{}
-        _, err = service.Request(request, &amp;instances)
-        if err != nil </span><span class="cov0" title="0">{
-                return models.PVMInstances{},
-                        fmt.Errorf("failed to list all Power Systems VM instances on cloud %s: %w", cloudId, err)
-        }</span>
-        <span class="cov0" title="0">return instances, nil</span>
-}
-
 // parseCRN returns the service instance of pw's Cloud Resource Name.
 // See the [IBM CRN docs](https://cloud.ibm.com/docs/account?topic=account-crn#service-instance-crn)
 // for more information on CRN formatting.
@@ -2231,246 +2529,9 @@ func (pw IBMPowerDynamicConfig) parseCRN() (string, error) <span class="cov8" ti
 
         <span class="cov8" title="1">return serviceInstance, nil</span>
 }
-
-// launchInstance returns the instance ID of the Power Systems VM instance created with an HTTP
-// request on the pw cloud instance.
-func (pw IBMPowerDynamicConfig) launchInstance(ctx context.Context, service *core.BaseService, additionalInfo map[string]string) (cloud.InstanceIdentifier, error) <span class="cov0" title="0">{
-        log := logr.FromContextOrDiscard(ctx)
-        requestBuilder := core.NewRequestBuilder(core.POST)
-        requestBuilder = requestBuilder.WithContext(ctx)
-        requestBuilder.EnableGzipCompression = service.GetEnableGzipCompression()
-
-        // Parameterize the request
-        cloudId, err := pw.parseCRN()
-        if err != nil </span><span class="cov0" title="0">{
-                return "", fmt.Errorf("failed to retrieve cloud service instance ID: %w", err)
-        }</span>
-        <span class="cov0" title="0">pathParamsMap := map[string]string{
-                "cloud": cloudId,
-        }
-        _, err = requestBuilder.ResolveRequestURL(pw.Url, `/pcloud/v1/cloud-instances/{cloud}/pvm-instances`, pathParamsMap)
-        if err != nil </span><span class="cov0" title="0">{
-                return "", fmt.Errorf("failed to encode the request with parameters: %w", err)
-        }</span>
-
-        // Set body content and headers
-        <span class="cov0" title="0">name, ok := additionalInfo["name"]
-        if !ok </span><span class="cov0" title="0">{
-                return "", errors.New("failed to find the server instance's name")
-        }</span>
-        <span class="cov0" title="0">taskRunTag, ok := additionalInfo[cloud.TaskRunTagKey]
-        if !ok </span><span class="cov0" title="0">{
-                return "", errors.New("failed to find the server instance's full TaskRun ID")
-        }</span>
-
-        <span class="cov0" title="0">network := strings.Split(pw.Network, ",")
-        body := models.PVMInstanceCreate{
-                ServerName:  &amp;name,
-                ImageID:     &amp;pw.ImageId,
-                Processors:  &amp;pw.Cores,
-                ProcType:    &amp;pw.ProcType,
-                Memory:      &amp;pw.Memory,
-                NetworkIDs:  network,
-                KeyPairName: pw.Key,
-                SysType:     pw.System,
-                UserData:    pw.UserData,
-                UserTags:    []string{taskRunTag},
-        }
-        _, err = requestBuilder.SetBodyContentJSON(&amp;body)
-        if err != nil </span><span class="cov0" title="0">{
-                return "", fmt.Errorf("failed to set the body of the request: %w", err)
-        }</span>
-        <span class="cov0" title="0">requestBuilder.AddHeader("CRN", pw.CRN)
-        requestBuilder.AddHeader("Content-Type", "application/json")
-        requestBuilder.AddHeader("Accept", "application/json")
-
-        // Create and send the POST request
-        request, err := requestBuilder.Build()
-        if err != nil </span><span class="cov0" title="0">{
-                return "", fmt.Errorf("failed to build the HTTP request: %w", err)
-        }</span>
-        <span class="cov0" title="0">instances := make([]models.PVMInstance, 1)
-        _, err = service.Request(request, &amp;instances)
-        if err != nil </span><span class="cov0" title="0">{
-                return "", fmt.Errorf("failed to launch a Power Systems VM instance: %w", err)
-        }</span>
-
-        <span class="cov0" title="0">instanceID := instances[0].PvmInstanceID
-        log.Info("Launched Power Systems VM instance", "instanceID", instanceID)
-        pw.resizeInstanceVolume(ctx, service, instanceID)
-        return cloud.InstanceIdentifier(*instanceID), nil</span>
-}
-
-// getInstance returns the specified Power Systems VM instance on the pw cloud instance.
-func (pw IBMPowerDynamicConfig) getInstance(ctx context.Context, service *core.BaseService, pvmId string) (*models.PVMInstance, error) <span class="cov0" title="0">{
-        requestBuilder := core.NewRequestBuilder(core.GET)
-        requestBuilder = requestBuilder.WithContext(ctx)
-        requestBuilder.EnableGzipCompression = service.GetEnableGzipCompression()
-
-        // Parameterize the request
-        cloudId, err := pw.parseCRN()
-        if err != nil </span><span class="cov0" title="0">{
-                return &amp;models.PVMInstance{}, fmt.Errorf("failed to retrieve cloud service instance ID: %w", err)
-        }</span>
-        <span class="cov0" title="0">pathParamsMap := map[string]string{
-                "cloud":           cloudId,
-                "pvm_instance_id": pvmId,
-        }
-        _, err = requestBuilder.ResolveRequestURL(pw.Url, `/pcloud/v1/cloud-instances/{cloud}/pvm-instances/{pvm_instance_id}`, pathParamsMap)
-        if err != nil </span><span class="cov0" title="0">{
-                return nil, fmt.Errorf("failed to encode the request with parameters: %w", err)
-        }</span>
-
-        // Add headers and build the request
-        <span class="cov0" title="0">requestBuilder.AddHeader("CRN", pw.CRN)
-        requestBuilder.AddHeader("Accept", "application/json")
-        request, err := requestBuilder.Build()
-        if err != nil </span><span class="cov0" title="0">{
-                return nil, fmt.Errorf("failed to build the HTTP request: %w", err)
-        }</span>
-
-        // Execute the GET request
-        <span class="cov0" title="0">instance := models.PVMInstance{}
-        _, err = service.Request(request, &amp;instance)
-        if err != nil </span><span class="cov0" title="0">{
-                return nil, fmt.Errorf("failed to get the Power Systems VM instance %s: %w", pvmId, err)
-        }</span>
-        <span class="cov0" title="0">return &amp;instance, nil</span>
-}
-
-// deleteInstance removes the specified Power Systems VM instance from the pw cloud instance.
-func (pw IBMPowerDynamicConfig) deleteInstance(ctx context.Context, service *core.BaseService, pvmId string) error <span class="cov0" title="0">{
-        requestBuilder := core.NewRequestBuilder(core.DELETE)
-        requestBuilder = requestBuilder.WithContext(ctx)
-        requestBuilder.EnableGzipCompression = service.GetEnableGzipCompression()
-
-        // Parameterize the request
-        cloudId, err := pw.parseCRN()
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to retrieve cloud service instance ID: %w", err)
-        }</span>
-        <span class="cov0" title="0">pathParamsMap := map[string]string{
-                "cloud":           cloudId,
-                "pvm_instance_id": pvmId,
-        }
-        _, err = requestBuilder.ResolveRequestURL(pw.Url, `/pcloud/v1/cloud-instances/{cloud}/pvm-instances/{pvm_instance_id}`, pathParamsMap)
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to encode the request with parameters: %w", err)
-        }</span>
-
-        // Add headers/queries and build the request
-        <span class="cov0" title="0">requestBuilder.AddQuery("delete_data_volumes", "true")
-        requestBuilder.AddHeader("CRN", pw.CRN)
-        requestBuilder.AddHeader("Accept", "application/json")
-        request, err := requestBuilder.Build()
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to build the HTTP request: %w", err)
-        }</span>
-
-        // Execute the DELETE request
-        <span class="cov0" title="0">var rawResponse map[string]json.RawMessage
-        _, err = service.Request(request, &amp;rawResponse)
-        if err != nil </span><span class="cov0" title="0">{
-                err = fmt.Errorf("failed to delete the Power System VM instance %s: %w", pvmId, err)
-        }</span>
-        <span class="cov0" title="0">return err</span>
-}
-
-// resizeInstanceVolume asynchronously resizes the id instance's volume.
-func (pw IBMPowerDynamicConfig) resizeInstanceVolume(ctx context.Context, service *core.BaseService, id *string) <span class="cov0" title="0">{
-        log := logr.FromContextOrDiscard(ctx)
-        sleepTime := 10
-        // Iterate for 10 minutes
-        timeout := time.Now().Add(time.Minute * 10)
-        go func() </span><span class="cov0" title="0">{
-                localCtx := context.WithoutCancel(ctx)
-                for </span><span class="cov0" title="0">{
-                        // Sleep 10 seconds between each execution
-                        time.Sleep(time.Duration(sleepTime) * time.Second)
-                        if timeout.Before(time.Now()) </span><span class="cov0" title="0">{
-                                log.Info("Resizing timeout reached")
-                                return
-                        }</span>
-                        <span class="cov0" title="0">instance, err := pw.getInstance(localCtx, service, *id)
-                        if err != nil </span><span class="cov0" title="0">{
-                                log.Info("WARN: failed to get Power Systems VM instance for resize; retrying...",
-                                        "err", err,
-                                        "retry", time.Duration(sleepTime),
-                                )
-                                continue</span>
-                        }
-                        // No volumes yet, try again in 10 seconds
-                        <span class="cov0" title="0">if len(instance.VolumeIDs) == 0 </span><span class="cov0" title="0">{
-                                continue</span>
-                        }
-
-                        <span class="cov0" title="0">log.Info("Current volume", "size", *instance.DiskSize, "instanceID", *id)
-                        // Nothing to do since the volume size is the same as the specified size
-                        if *instance.DiskSize == pw.Disk </span><span class="cov0" title="0">{
-                                return
-                        }</span>
-
-                        // This API is quite unstable and randomly throws conflicts or bad requests. Try multiple times.
-                        <span class="cov0" title="0">log.Info("Resizing instance volume", "instanceID", *id, "volumeID", instance.VolumeIDs[0], "size", pw.Disk)
-                        err = pw.updateVolume(localCtx, service, instance.VolumeIDs[0])
-                        if err != nil </span><span class="cov0" title="0">{
-                                continue</span>
-                        }
-                        <span class="cov0" title="0">log.Info("Successfully resized instance volume", "instanceID", *id, "volumeID", instance.VolumeIDs[0], "size", pw.Disk)
-                        return</span>
-                }
-        }()
-}
-
-// updateVolume changes volumeID's size to pw's disk size via HTTP.
-func (pw IBMPowerDynamicConfig) updateVolume(ctx context.Context, service *core.BaseService, volumeID string) error <span class="cov0" title="0">{
-        log := logr.FromContextOrDiscard(ctx)
-        requestBuilder := core.NewRequestBuilder(core.PUT)
-        requestBuilder = requestBuilder.WithContext(ctx)
-        requestBuilder.EnableGzipCompression = service.GetEnableGzipCompression()
-
-        // Parameterize the request
-        cloudID, err := pw.parseCRN()
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to retrieve cloud service instance ID: %w", err)
-        }</span>
-        <span class="cov0" title="0">pathParamsMap := map[string]string{
-                "cloud":  cloudID,
-                "volume": volumeID,
-        }
-        _, err = requestBuilder.ResolveRequestURL(pw.Url, `/pcloud/v1/cloud-instances/{cloud}/volumes/{volume}`, pathParamsMap)
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to encode the request with parameters: %w", err)
-        }</span>
-
-        // Set request body and headers
-        <span class="cov0" title="0">body := models.UpdateVolume{
-                Size: pw.Disk,
-        }
-        _, err = requestBuilder.SetBodyContentJSON(&amp;body)
-        if err != nil </span><span class="cov0" title="0">{
-                return err
-        }</span>
-        <span class="cov0" title="0">requestBuilder.AddHeader("CRN", pw.CRN)
-        requestBuilder.AddHeader("Content-Type", "application/json")
-        requestBuilder.AddHeader("Accept", "application/json")
-
-        // Build and execute PUT request
-        request, err := requestBuilder.Build()
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to build the HTTP request: %w", err)
-        }</span>
-        <span class="cov0" title="0">var vRef models.VolumeReference
-        _, err = service.Request(request, &amp;vRef)
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to update volume %s: %w", volumeID, err)
-        }</span>
-        <span class="cov0" title="0">log.Info("Volume size updated", "volumeID", vRef.VolumeID, "size", vRef.Size)
-        return nil</span>
-}
 </pre>
 		
-		<pre class="file" id="file9" style="display: none">package ibm
+		<pre class="file" id="file10" style="display: none">package ibm
 
 import (
         "context"
@@ -2766,7 +2827,7 @@ func (iz IBMZDynamicConfig) GetState(kubeClient client.Client, ctx context.Conte
 }
 
 func (iz IBMZDynamicConfig) SshUser() string <span class="cov0" title="0">{
-        return "root"
+        return defaultSSHUser
 }</span>
 
 // An IBMZDynamicConfig represents a configuration for an IBM System Z virtual server
@@ -2817,7 +2878,7 @@ type IBMZDynamicConfig struct {
 }
 </pre>
 		
-		<pre class="file" id="file10" style="display: none">package ibm
+		<pre class="file" id="file11" style="display: none">package ibm
 
 import (
         "context"
@@ -2914,7 +2975,7 @@ func checkIfIpIsLive(ctx context.Context, ip string) error <span class="cov0" ti
         <span class="cov0" title="0">return nil</span>
 }
 
-func ptr[V any](s V) *V <span class="cov0" title="0">{
+func ptr[V any](s V) *V <span class="cov8" title="1">{
         return &amp;s
 }</span>
 
@@ -3142,7 +3203,7 @@ func (iz IBMZDynamicConfig) assignIPToInstance(instance *vpcv1.Instance, vpcServ
 }
 </pre>
 		
-		<pre class="file" id="file11" style="display: none">package mpcmetrics
+		<pre class="file" id="file12" style="display: none">package mpcmetrics
 
 import (
         "context"
@@ -3277,7 +3338,7 @@ func HandleMetrics(platform string, f func(*PlatformMetrics)) <span class="cov8"
 }
 </pre>
 		
-		<pre class="file" id="file12" style="display: none">package mpcmetrics
+		<pre class="file" id="file13" style="display: none">package mpcmetrics
 
 import (
         "context"
@@ -3410,7 +3471,7 @@ func exportWaitingTasks(ctx context.Context, c client.Client) error <span class=
 }
 </pre>
 		
-		<pre class="file" id="file13" style="display: none">package taskrun
+		<pre class="file" id="file14" style="display: none">package taskrun
 
 import (
         v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -3427,7 +3488,7 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager, operatorNamespace string, o
 }</span>
 </pre>
 		
-		<pre class="file" id="file14" style="display: none">package taskrun
+		<pre class="file" id="file15" style="display: none">package taskrun
 
 import (
         "context"
@@ -3494,6 +3555,8 @@ func (r DynamicResolver) Allocate(taskRun *ReconcileTaskRun, ctx context.Context
                                 terr := r.TerminateInstance(taskRun.client, ctx, cloud.InstanceIdentifier(tr.Annotations[CloudInstanceId]))
                                 if terr != nil </span><span class="cov0" title="0">{
                                         log.Error(err, "Failed to terminate instance")
+                                }</span> else<span class="cov8" title="1"> {
+                                        delete(tr.Annotations, CloudInstanceId)
                                 }</span>
                                 <span class="cov8" title="1">unassignErr := r.removeInstanceFromTask(taskRun, ctx, tr)
                                 if unassignErr != nil </span><span class="cov0" title="0">{
@@ -3519,6 +3582,8 @@ func (r DynamicResolver) Allocate(taskRun *ReconcileTaskRun, ctx context.Context
                                 message := fmt.Sprintf("failed to terminate %s instance for %s", r.instanceTag, tr.Name)
                                 r.eventRecorder.Event(tr, "Normal", "TerminateFailed", message)
                                 log.Error(terr, message)
+                        }</span> else<span class="cov8" title="1"> {
+                                delete(tr.Annotations, CloudInstanceId)
                         }</span>
                         <span class="cov8" title="1">unassignErr := r.removeInstanceFromTask(taskRun, ctx, tr)
                         if unassignErr != nil </span><span class="cov0" title="0">{
@@ -3542,6 +3607,8 @@ func (r DynamicResolver) Allocate(taskRun *ReconcileTaskRun, ctx context.Context
                                 if terr != nil </span><span class="cov0" title="0">{
                                         message := fmt.Sprintf("failed to terminate %s instance for %s", r.instanceTag, tr.Name)
                                         log.Error(terr, message)
+                                }</span> else<span class="cov0" title="0"> {
+                                        delete(tr.Annotations, CloudInstanceId)
                                 }</span>
                                 <span class="cov0" title="0">unassignErr := r.removeInstanceFromTask(taskRun, ctx, tr)
                                 if unassignErr != nil </span><span class="cov0" title="0">{
@@ -3569,6 +3636,8 @@ func (r DynamicResolver) Allocate(taskRun *ReconcileTaskRun, ctx context.Context
                                         message := fmt.Sprintf("failed to terminate %s instance for %s", r.instanceTag, tr.Name)
                                         r.eventRecorder.Event(tr, "Normal", "TerminateFailed", message)
                                         log.Error(terr, message)
+                                }</span> else<span class="cov8" title="1"> {
+                                        delete(tr.Annotations, CloudInstanceId)
                                 }</span>
                                 <span class="cov8" title="1">unassignErr := r.removeInstanceFromTask(taskRun, ctx, tr)
                                 if unassignErr != nil </span><span class="cov0" title="0">{
@@ -3665,13 +3734,12 @@ func (r DynamicResolver) Allocate(taskRun *ReconcileTaskRun, ctx context.Context
 // Tries to remove the instance information from the task and returns a non-nil error if it was unable to.
 func (dr DynamicResolver) removeInstanceFromTask(reconcileTaskRun *ReconcileTaskRun, ctx context.Context, taskRun *v1.TaskRun) error <span class="cov8" title="1">{
         delete(taskRun.Labels, constant.AssignedHost)
-        delete(taskRun.Annotations, CloudInstanceId)
         delete(taskRun.Annotations, CloudDynamicPlatform)
         return UpdateTaskRunWithRetry(ctx, reconcileTaskRun.client, reconcileTaskRun.apiReader, taskRun)
 }</span>
 </pre>
 		
-		<pre class="file" id="file15" style="display: none">package taskrun
+		<pre class="file" id="file16" style="display: none">package taskrun
 
 import (
         "context"
@@ -3834,7 +3902,7 @@ func getRandomString(length int) (string, error) <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file16" style="display: none">package taskrun
+		<pre class="file" id="file17" style="display: none">package taskrun
 
 import (
         "context"
@@ -4044,7 +4112,7 @@ func (hp HostPool) Deallocate(r *ReconcileTaskRun, ctx context.Context, tr *v1.T
 }
 </pre>
 		
-		<pre class="file" id="file17" style="display: none">package taskrun
+		<pre class="file" id="file18" style="display: none">package taskrun
 
 import (
         "context"
@@ -4104,7 +4172,7 @@ func createUserTaskSecret(r *ReconcileTaskRun, ctx context.Context, tr *pipeline
 }
 </pre>
 		
-		<pre class="file" id="file18" style="display: none">package taskrun
+		<pre class="file" id="file19" style="display: none">package taskrun
 
 import (
         "context"
@@ -5274,7 +5342,7 @@ func mergeKeysInMaps(latest, mutation map[string]string, keys []string) map[stri
 }
 </pre>
 		
-		<pre class="file" id="file19" style="display: none">package taskrun
+		<pre class="file" id="file20" style="display: none">package taskrun
 
 import (
         "context"
@@ -5387,7 +5455,7 @@ func UpdateHostPools(operatorNamespace string, client client.Client, log *logr.L
 }
 </pre>
 		
-		<pre class="file" id="file20" style="display: none">/*
+		<pre class="file" id="file21" style="display: none">/*
 Copyright 2026 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -5523,7 +5591,7 @@ func NewRetryClient(client client.Client, backoff wait.Backoff) client.Client <s
 }</span>
 </pre>
 		
-		<pre class="file" id="file21" style="display: none">/*
+		<pre class="file" id="file22" style="display: none">/*
 Copyright 2026 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -5586,7 +5654,7 @@ func (r *retrySubresourceClient) Update(ctx context.Context, obj client.Object, 
 var _ client.SubResourceClient = &amp;retrySubresourceClient{}
 </pre>
 		
-		<pre class="file" id="file22" style="display: none">/*
+		<pre class="file" id="file23" style="display: none">/*
 Copyright 2026 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
