@@ -55,7 +55,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/smee-sidecar/cmd/main.go (57.1%)</option>
+				<option value="file0">github.com/konflux-ci/smee-sidecar/cmd/main.go (58.4%)</option>
 				
 				</select>
 			</div>
@@ -273,7 +273,7 @@ func writeHealthStatus(status *HealthStatus, filePath string) error <span class=
 
         // Atomic write: write to temp file, then rename
         tmpPath := filePath + ".tmp"
-        if err := os.WriteFile(tmpPath, []byte(content), 0644); err != nil </span><span class="cov0" title="0">{
+        if err := os.WriteFile(tmpPath, []byte(content), 0644); err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("failed to write temp file: %v", err)
         }</span>
 
@@ -370,7 +370,7 @@ func runHealthChecker(ctx context.Context, smeeChannelURL, healthFilePath string
                 case &lt;-ticker.C:<span class="cov8" title="1">
                         status := performHealthCheck(smeeChannelURL, timeoutSeconds)
 
-                        if err := writeHealthStatus(status, healthFilePath); err != nil </span><span class="cov0" title="0">{
+                        if err := writeHealthStatus(status, healthFilePath); err != nil </span><span class="cov8" title="1">{
                                 log.Printf("Failed to write health status: %v", err)
                         }</span> else<span class="cov8" title="1"> {
                                 log.Printf("Health check completed: %s (%s)", status.Status, status.Message)
