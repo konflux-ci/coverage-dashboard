@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/25650341008",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/25713098551",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 60.8,
+      "coverage": 60.9,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 82.0
+          "coverage": 82.2
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/common",
@@ -99,12 +99,12 @@
           "coverage": 72.0
         },
         {
-          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
-          "coverage": 9.5
-        },
-        {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/pr",
           "coverage": 16.8
+        },
+        {
+          "package": "github.com/konflux-ci/coverage-dashboard/internal/discover",
+          "coverage": 9.5
         },
         {
           "package": "github.com/konflux-ci/coverage-dashboard/internal/config",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 73.4,
+      "coverage": 73.6,
       "status": "ok",
       "packages": [
         {
@@ -145,7 +145,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 73.9
+          "coverage": 74.2
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -179,7 +179,7 @@
       "packages": [
         {
           "package": "github.com/konflux-ci/integration-service/snapshot",
-          "coverage": 70.9
+          "coverage": 70.0
         },
         {
           "package": "github.com/konflux-ci/integration-service/status",
@@ -489,7 +489,7 @@
     },
     {
       "repo": "konflux-ci/release-service",
-      "coverage": 63.3,
+      "coverage": 63.7,
       "status": "failed",
       "packages": [
         {
@@ -562,7 +562,7 @@
         },
         {
           "package": "github.com/konflux-ci/release-service/tekton",
-          "coverage": 92.1
+          "coverage": 93.4
         }
       ]
     },
