@@ -55,11 +55,11 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (74.8%)</option>
+				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (76.1%)</option>
 				
-				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.4%)</option>
+				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (85.1%)</option>
 				
-				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (83.1%)</option>
+				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (82.7%)</option>
 				
 				<option value="file3">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pipeline.go (86.2%)</option>
 				
@@ -67,11 +67,11 @@
 				
 				<option value="file5">github.com/konflux-ci/build-service/internal/controller/component_build_controller_service_account.go (72.3%)</option>
 				
-				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2.go (86.6%)</option>
+				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2.go (86.3%)</option>
 				
 				<option value="file7">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2_validations.go (87.8%)</option>
 				
-				<option value="file8">github.com/konflux-ci/build-service/internal/controller/component_dependency_update_controller.go (76.0%)</option>
+				<option value="file8">github.com/konflux-ci/build-service/internal/controller/component_dependency_update_controller.go (75.1%)</option>
 				
 				<option value="file9">github.com/konflux-ci/build-service/internal/controller/pac_pipelinerun_pruner_controller.go (72.2%)</option>
 				
@@ -151,7 +151,7 @@ import (
         "k8s.io/apimachinery/pkg/api/errors"
         "k8s.io/apimachinery/pkg/runtime"
         "k8s.io/apimachinery/pkg/types"
-        "k8s.io/client-go/tools/record"
+        "k8s.io/client-go/tools/events"
         ctrl "sigs.k8s.io/controller-runtime"
         "sigs.k8s.io/controller-runtime/pkg/builder"
         "sigs.k8s.io/controller-runtime/pkg/client"
@@ -232,7 +232,7 @@ type PaCBuildStatus struct {
 type ComponentBuildReconciler struct {
         Client             client.Client
         Scheme             *runtime.Scheme
-        EventRecorder      record.EventRecorder
+        EventRecorder      events.EventRecorder
         CredentialProvider *k8s.GitCredentialProvider
         PaCWebhookMapping  *pacwebhook.PaCWebhookMapping
 }
@@ -675,8 +675,8 @@ func (r *ComponentBuildReconciler) WaitForCacheUpdateOldModel(ctx context.Contex
                                 break</span>
                         }
                         // Outdated version of the component, wait more.
-                } else<span class="cov0" title="0"> {
-                        if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                } else<span class="cov8" title="1"> {
+                        if errors.IsNotFound(err) </span><span class="cov8" title="1">{
                                 // The component was deleted
                                 isComponentInCacheUpToDate = true
                                 break</span>
@@ -838,7 +838,7 @@ func (r *ComponentBuildReconciler) GetPacSecrets(ctx context.Context, component 
         }</span>
 
         <span class="cov8" title="1">if err := validatePaCConfiguration(gitProvider, *pacSecret); err != nil </span><span class="cov0" title="0">{
-                r.EventRecorder.Event(pacSecret, "Warning", "ErrorValidatingPaCSecret", err.Error())
+                r.EventRecorder.Eventf(pacSecret, nil, "Warning", "ErrorValidatingPaCSecret", "ValidatePaCSecret", err.Error())
                 // Do not reconcile, because configuration must be fixed before it is possible to proceed.
                 return "", nil, boerrors.NewBuildOpError(boerrors.EPaCSecretInvalid,
                         fmt.Errorf("invalid configuration in Pipelines as Code secret: %w", err))
@@ -892,7 +892,7 @@ func (r *ComponentBuildReconciler) ProvisionPaCForComponentOldModel(ctx context.
         }</span>
 
         <span class="cov8" title="1">if err := validatePaCConfiguration(gitProvider, *pacSecret); err != nil </span><span class="cov8" title="1">{
-                r.EventRecorder.Event(pacSecret, "Warning", "ErrorValidatingPaCSecret", err.Error())
+                r.EventRecorder.Eventf(pacSecret, nil, "Warning", "ErrorValidatingPaCSecret", "ValidatePaCSecret", err.Error())
                 // Do not reconcile, because configuration must be fixed before it is possible to proceed.
                 return "", boerrors.NewBuildOpError(boerrors.EPaCSecretInvalid,
                         fmt.Errorf("invalid configuration in Pipelines as Code secret: %w", err))
@@ -923,7 +923,7 @@ func (r *ComponentBuildReconciler) ProvisionPaCForComponentOldModel(ctx context.
         // Manage merge request for Pipelines as Code configuration
         mrUrl, err := r.ConfigureRepositoryForPaCOldModel(ctx, component, pacSecret.Data, webhookTargetUrl, webhookSecretString)
         if err != nil </span><span class="cov8" title="1">{
-                r.EventRecorder.Event(component, "Warning", "ErrorConfiguringPaCForComponentRepository", err.Error())
+                r.EventRecorder.Eventf(component, nil, "Warning", "ErrorConfiguringPaCForComponentRepository", "ConfigurePaCRepository", err.Error())
                 return "", err
         }</span>
         <span class="cov8" title="1">var mrMessage string
@@ -933,12 +933,12 @@ func (r *ComponentBuildReconciler) ProvisionPaCForComponentOldModel(ctx context.
                 mrMessage = "Pipelines as Code configuration is up to date"
         }</span>
         <span class="cov8" title="1">log.Info(mrMessage)
-        r.EventRecorder.Event(component, "Normal", "PipelinesAsCodeConfiguration", mrMessage)
+        r.EventRecorder.Eventf(component, nil, "Normal", "PipelinesAsCodeConfiguration", "ConfigurePaCRepository", mrMessage)
 
         return mrUrl, nil</span>
 }
 
-func getHttpClient() *http.Client <span class="cov0" title="0">{ // #nosec G402 // dev instances need insecure, because they have self signed certificates
+func getHttpClient() *http.Client <span class="cov8" title="1">{ // #nosec G402 // dev instances need insecure, because they have self signed certificates
         tr := &amp;http.Transport{
                 TLSClientConfig: &amp;tls.Config{
                         InsecureSkipVerify: gp.IsInsecureSSL(),
@@ -1479,7 +1479,7 @@ func (r *ComponentBuildReconciler) CreatePipelineRunsInRepository(ctx context.Co
                 mrMessage = fmt.Sprintf("Pipelines as Code configuration is up to date for component: %s, version: %s", component.Name, versionInfo.SanitizedVersion)
         }</span>
         <span class="cov8" title="1">log.Info(mrMessage)
-        r.EventRecorder.Event(component, "Normal", "PipelinesAsCodeConfiguration", mrMessage)
+        r.EventRecorder.Eventf(component, nil, "Normal", "PipelinesAsCodeConfiguration", "ConfigurePaCRepository", mrMessage)
         return mrUrl, nil</span>
 }
 
@@ -1909,7 +1909,11 @@ func getGitProvider(component compapiv1alpha1.Component, newModel bool) (string,
         }
 
         <span class="cov8" title="1">gitProvider := component.GetAnnotations()[GitProviderAnnotationName]
-        if gitProvider != "" &amp;&amp; !slices.Contains(allowedGitProviders, gitProvider) </span><span class="cov8" title="1">{
+        // Gitea is API-compatible with Forgejo, treat "gitea" as "forgejo"
+        if gitProvider == "gitea" </span><span class="cov8" title="1">{
+                gitProvider = "forgejo"
+        }</span>
+        <span class="cov8" title="1">if gitProvider != "" &amp;&amp; !slices.Contains(allowedGitProviders, gitProvider) </span><span class="cov8" title="1">{
                 return "", boerrors.NewBuildOpError(boerrors.EUnknownGitProvider, fmt.Errorf(`unsupported "%s" annotation value: %s`, GitProviderAnnotationName, gitProvider))
         }</span>
 
@@ -1935,6 +1939,10 @@ func getGitProvider(component compapiv1alpha1.Component, newModel bool) (string,
                                 break</span>
                         }
                 }
+                // Gitea is API-compatible with Forgejo, detect "gitea" in hostname as "forgejo"
+                <span class="cov8" title="1">if gitProvider == "" &amp;&amp; strings.Contains(host, "gitea") </span><span class="cov8" title="1">{
+                        gitProvider = "forgejo"
+                }</span>
         }
 
         <span class="cov8" title="1">if gitProvider == "" </span><span class="cov8" title="1">{
@@ -2122,6 +2130,13 @@ func (r *ComponentBuildReconciler) ensurePaCRepository(ctx context.Context, comp
                         return "", err
                 }</span>
 
+                // Normalize legacy "gitea" provider type to "forgejo" (gitea is an alias for forgejo in PaC)
+                <span class="cov8" title="1">gitProviderTypeUpdated := false
+                if repository.Spec.GitProvider != nil &amp;&amp; repository.Spec.GitProvider.Type == "gitea" </span><span class="cov0" title="0">{
+                        repository.Spec.GitProvider.Type = "forgejo"
+                        gitProviderTypeUpdated = true
+                }</span>
+
                 <span class="cov8" title="1">repositorySettingsUpdated := false
                 repositoryParamsUpdated := false
                 if newModel </span><span class="cov8" title="1">{
@@ -2168,7 +2183,7 @@ func (r *ComponentBuildReconciler) ensurePaCRepository(ctx context.Context, comp
                         }</span>
                 }
 
-                <span class="cov8" title="1">if (len(repository.OwnerReferences) &gt; pacRepositoryOwnersNumber) || repositorySettingsUpdated || repositoryParamsUpdated </span><span class="cov8" title="1">{
+                <span class="cov8" title="1">if (len(repository.OwnerReferences) &gt; pacRepositoryOwnersNumber) || repositorySettingsUpdated || repositoryParamsUpdated || gitProviderTypeUpdated </span><span class="cov8" title="1">{
                         if err := r.Client.Update(ctx, repository); err != nil </span><span class="cov0" title="0">{
                                 log.Error(err, "failed to update existing PaC repository with component owner reference", "PaCRepositoryName", repository.Name)
                                 return "", err
@@ -2312,12 +2327,7 @@ func generatePACRepository(component compapiv1alpha1.Component, config *corev1.S
 
                 // gitProviderType is needed for incoming webhook handling
                 gitProviderType := gitProvider
-                // TODO it's a temp workaround; PaC will release full support in March 2026; drop this then
-                if gitProvider == "forgejo" </span><span class="cov8" title="1">{
-                        // Forgejo is API-compatible with Gitea, and PaC supports Gitea
-                        gitProviderType = "gitea"
-                }</span>
-                <span class="cov8" title="1">gitProviderConfig.Type = gitProviderType
+                gitProviderConfig.Type = gitProviderType
 
                 var gitProviderUrl string
                 if providerUrlFromAnnotation, configured := component.Annotations[GitProviderAnnotationURL]; configured </span><span class="cov8" title="1">{
@@ -2870,7 +2880,7 @@ func (r *ComponentBuildReconciler) generatePaCPipelineRunConfigsOldModel(ctx con
         // Get pipeline from the bundle to be expanded to the PipelineRun
         pipelineSpec, err := retrievePipelineSpec(ctx, pipelineBundle, pipelineName)
         if err != nil </span><span class="cov0" title="0">{
-                r.EventRecorder.Event(component, "Warning", "ErrorGettingPipelineFromBundle", err.Error())
+                r.EventRecorder.Eventf(component, nil, "Warning", "ErrorGettingPipelineFromBundle", "GetPipelineFromBundle", err.Error())
                 return nil, nil, err
         }</span>
 
@@ -3796,11 +3806,11 @@ func (r *ComponentBuildReconciler) lookupGHAppSecret(ctx context.Context) (*core
         globalPaCSecretKey := types.NamespacedName{Namespace: common.BuildServiceNamespaceName, Name: common.PipelinesAsCodeGitHubAppSecretName}
         if err := r.Client.Get(ctx, globalPaCSecretKey, pacSecret); err != nil </span><span class="cov8" title="1">{
                 if !errors.IsNotFound(err) </span><span class="cov0" title="0">{
-                        r.EventRecorder.Event(pacSecret, "Warning", "ErrorReadingPaCSecret", err.Error())
+                        r.EventRecorder.Eventf(pacSecret, nil, "Warning", "ErrorReadingPaCSecret", "ReadPaCSecret", err.Error())
                         return nil, fmt.Errorf("failed to get Pipelines as Code secret in %s namespace: %w", globalPaCSecretKey.Namespace, err)
                 }</span>
 
-                <span class="cov8" title="1">r.EventRecorder.Event(pacSecret, "Warning", "PaCSecretNotFound", err.Error())
+                <span class="cov8" title="1">r.EventRecorder.Eventf(pacSecret, nil, "Warning", "PaCSecretNotFound", "ReadPaCSecret", err.Error())
                 // Do not trigger a new reconcile. The PaC secret must be created first.
                 return nil, boerrors.NewBuildOpError(boerrors.EPaCSecretNotFound, fmt.Errorf(" Pipelines as Code secret not found in %s ", globalPaCSecretKey.Namespace))</span>
         }
@@ -4578,7 +4588,7 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                 // Add finalizer so we can clean up PaC resources (webhooks, repository configurations) upon component removal
                 if !controllerutil.ContainsFinalizer(&amp;component, PaCProvisionFinalizer) </span><span class="cov8" title="1">{
                         controllerutil.AddFinalizer(&amp;component, PaCProvisionFinalizer)
-                        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
+                        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
                                 log.Error(err, "failed to add PaC finalizer to the Component", l.Action, l.ActionUpdate)
                                 return ctrl.Result{}, err
                         }</span>
@@ -4603,7 +4613,7 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                 }
 
                 // Update component status with PaC repository information
-                <span class="cov8" title="1">if err := r.setStatusPacRepository(ctx, &amp;component, pacRepositoryName, &amp;component.Spec.RepositorySettings); err != nil </span><span class="cov8" title="1">{
+                <span class="cov8" title="1">if err := r.setStatusPacRepository(ctx, &amp;component, pacRepositoryName, &amp;component.Spec.RepositorySettings); err != nil </span><span class="cov0" title="0">{
                         return ctrl.Result{}, err
                 }</span>
         }
@@ -4965,8 +4975,8 @@ func (r *ComponentBuildReconciler) waitForCacheUpdate(ctx context.Context, names
                                 break</span>
                         }
                         // Cache still has outdated value, continue waiting.
-                } else<span class="cov0" title="0"> {
-                        if k8serrors.IsNotFound(err) </span><span class="cov0" title="0">{
+                } else<span class="cov8" title="1"> {
+                        if k8serrors.IsNotFound(err) </span><span class="cov8" title="1">{
                                 // Component was deleted, no need to wait for cache update.
                                 isComponentInCacheUpToDate = true
                                 break</span>
@@ -5524,7 +5534,7 @@ func (r *ComponentBuildReconciler) setStatusPacRepository(ctx context.Context, c
         <span class="cov8" title="1">component.Status.PacRepository = repositoryName
         component.Status.RepositorySettings = *repositorySettings
 
-        if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov8" title="1">{
+        if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "failed to update component status PaC repository", l.Action, l.ActionUpdate, l.Audit, "true")
                 return err
         }</span>
@@ -6392,7 +6402,7 @@ import (
         "k8s.io/apimachinery/pkg/api/errors"
         "k8s.io/apimachinery/pkg/runtime"
         "k8s.io/apimachinery/pkg/types"
-        "k8s.io/client-go/tools/record"
+        "k8s.io/client-go/tools/events"
         "knative.dev/pkg/apis"
         ctrl "sigs.k8s.io/controller-runtime"
         "sigs.k8s.io/controller-runtime/pkg/builder"
@@ -6444,7 +6454,7 @@ type ComponentDependencyUpdateReconciler struct {
         Client                       client.Client
         ApiReader                    client.Reader
         Scheme                       *runtime.Scheme
-        EventRecorder                record.EventRecorder
+        EventRecorder                events.EventRecorder
         ComponentDependenciesUpdater ComponentDependenciesUpdater
 }
 
@@ -6492,16 +6502,17 @@ func (r *ComponentDependencyUpdateReconciler) SetupWithManager(manager ctrl.Mana
                                 }</span>
 
                                 // Ensure we have not finished processing
-                                <span class="cov8" title="1">if new.ObjectMeta.Annotations != nil &amp;&amp; new.ObjectMeta.Annotations[NudgeProcessedAnnotationName] != "" </span><span class="cov8" title="1">{
+                                // when finalizer is there together with annotation that means some other controller updated finalizers and there was race
+                                <span class="cov8" title="1">if new.ObjectMeta.Annotations != nil &amp;&amp; new.ObjectMeta.Annotations[NudgeProcessedAnnotationName] != "" &amp;&amp; !controllerutil.ContainsFinalizer(new, NudgeFinalizer)</span><span class="cov8" title="1">{
                                         return false
                                 }</span>
                                 <span class="cov8" title="1">return true</span>
                         },
                         DeleteFunc: func(e event.DeleteEvent) bool <span class="cov8" title="1">{
-                                return true
+                                return false
                         }</span>,
                         GenericFunc: func(e event.GenericEvent) bool <span class="cov0" title="0">{
-                                return true
+                                return false
                         }</span>,
                 })).
                 Named("ComponentDependencyUpdateReconciler").
@@ -6525,8 +6536,8 @@ func (r *ComponentDependencyUpdateReconciler) Reconcile(ctx context.Context, req
 
         pipelineRun := &amp;tektonapi.PipelineRun{}
         err := r.Client.Get(ctx, req.NamespacedName, pipelineRun)
-        if err != nil </span><span class="cov8" title="1">{
-                if errors.IsNotFound(err) </span><span class="cov8" title="1">{
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
                         return ctrl.Result{}, nil
                 }</span>
                 <span class="cov0" title="0">log.Error(err, "Failed to get pipelineRun")
@@ -6535,6 +6546,12 @@ func (r *ComponentDependencyUpdateReconciler) Reconcile(ctx context.Context, req
         <span class="cov8" title="1">if pipelineRun.CreationTimestamp.Add(delayTime).After(time.Now()) </span><span class="cov0" title="0">{
                 // These objects are super contested at creation, we just wait 10s before attempting anything
                 return ctrl.Result{RequeueAfter: delayTime}, nil
+        }</span>
+
+        // pipeline run was already processed, but finalizer was added again due to race by other controller, remove it again
+        <span class="cov8" title="1">if controllerutil.ContainsFinalizer(pipelineRun, NudgeFinalizer) &amp;&amp; pipelineRun.Annotations != nil &amp;&amp; pipelineRun.Annotations[NudgeProcessedAnnotationName] != "" </span><span class="cov0" title="0">{
+                patch := client.MergeFrom(pipelineRun.DeepCopy())
+                return r.removePipelineFinalizer(ctx, pipelineRun, patch)
         }</span>
 
         <span class="cov8" title="1">component, err := GetComponentFromPipelineRun(r.Client, ctx, pipelineRun)
@@ -6828,7 +6845,7 @@ func (r *ComponentDependencyUpdateReconciler) handleCompletedBuild(ctx context.C
 
                 pipelineRun.Annotations[FailureCountAnnotationName] = strconv.Itoa(failureCount)
 
-                r.EventRecorder.Event(updatedComponent, corev1.EventTypeWarning, ComponentNudgeFailedEventType, fmt.Sprintf("component update failed as a result of a build for %s, retry %d/%d", updatedComponent.Name, failureCount, MaxAttempts))
+                r.EventRecorder.Eventf(updatedComponent, nil, corev1.EventTypeWarning, ComponentNudgeFailedEventType, "NudgeComponent", fmt.Sprintf("component update failed as a result of a build for %s, retry %d/%d", updatedComponent.Name, failureCount, MaxAttempts))
 
                 if failureCount &gt;= MaxAttempts </span><span class="cov8" title="1">{
                         // We are at the failure limit, nothing much we can do
@@ -6908,7 +6925,7 @@ func (r *ComponentDependencyUpdateReconciler) removePipelineFinalizer(ctx contex
                         // We don't log/fire events on conflicts, they are part of normal operation,
                         // especially as these are highly contended objects
                         log.Error(err, "unable to remove pipeline run finalizer")
-                        r.EventRecorder.Event(pipelineRun, corev1.EventTypeWarning, ComponentNudgedEventType, fmt.Sprintf("failed to remove finalizer from %s", pipelineRun.Name))
+                        r.EventRecorder.Eventf(pipelineRun, nil, corev1.EventTypeWarning, ComponentNudgedEventType, "RemoveFinalizer", fmt.Sprintf("failed to remove finalizer from %s", pipelineRun.Name))
                 }</span>
                 <span class="cov0" title="0">return ctrl.Result{}, err</span>
         }
@@ -7156,7 +7173,7 @@ import (
         "k8s.io/apimachinery/pkg/labels"
         "k8s.io/apimachinery/pkg/runtime"
         "k8s.io/apimachinery/pkg/selection"
-        "k8s.io/client-go/tools/record"
+        "k8s.io/client-go/tools/events"
         ctrl "sigs.k8s.io/controller-runtime"
         "sigs.k8s.io/controller-runtime/pkg/builder"
         "sigs.k8s.io/controller-runtime/pkg/client"
@@ -7174,7 +7191,7 @@ import (
 type PaCPipelineRunPrunerReconciler struct {
         Client        client.Client
         Scheme        *runtime.Scheme
-        EventRecorder record.EventRecorder
+        EventRecorder events.EventRecorder
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -7278,7 +7295,7 @@ import (
         metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
         "k8s.io/apimachinery/pkg/runtime"
         "k8s.io/apimachinery/pkg/types"
-        "k8s.io/client-go/tools/record"
+        "k8s.io/client-go/tools/events"
         "sigs.k8s.io/controller-runtime/pkg/client"
         "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
         logger "sigs.k8s.io/controller-runtime/pkg/log"
@@ -7355,7 +7372,7 @@ type updateTarget struct {
 type ComponentDependenciesUpdater struct {
         Client             client.Client
         Scheme             *runtime.Scheme
-        EventRecorder      record.EventRecorder
+        EventRecorder      events.EventRecorder
         CredentialProvider *k8s.GitCredentialProvider
 }
 
@@ -7414,7 +7431,7 @@ var DisableAllPackageRules = PackageRule{MatchPackagePatterns: []string{"*"}, En
 
 var GenerateRenovateConfigForNudge func(target updateTarget, buildResult *BuildResult, gitRepoAtShaLink string, simpleBranchName bool) (RenovateConfig, error) = generateRenovateConfigForNudge
 
-func NewComponentDependenciesUpdater(client client.Client, scheme *runtime.Scheme, eventRecorder record.EventRecorder) *ComponentDependenciesUpdater <span class="cov8" title="1">{
+func NewComponentDependenciesUpdater(client client.Client, scheme *runtime.Scheme, eventRecorder events.EventRecorder) *ComponentDependenciesUpdater <span class="cov8" title="1">{
         return &amp;ComponentDependenciesUpdater{Client: client, Scheme: scheme, EventRecorder: eventRecorder, CredentialProvider: k8s.NewGitCredentialProvider(client)}
 }</span>
 
@@ -7513,7 +7530,7 @@ func (u ComponentDependenciesUpdater) GetUpdateTargetsGithubApp(ctx context.Cont
         pacSecret := corev1.Secret{}
         globalPaCSecretKey := types.NamespacedName{Namespace: common.BuildServiceNamespaceName, Name: common.PipelinesAsCodeGitHubAppSecretName}
         if err := u.Client.Get(ctx, globalPaCSecretKey, &amp;pacSecret); err != nil </span><span class="cov0" title="0">{
-                u.EventRecorder.Event(&amp;pacSecret, "Warning", "ErrorReadingPaCSecret", err.Error())
+                u.EventRecorder.Eventf(&amp;pacSecret, nil, "Warning", "ErrorReadingPaCSecret", "ReadPaCSecret", err.Error())
                 if errors.IsNotFound(err) </span><span class="cov0" title="0">{
                         log.Error(err, "not found Pipelines as Code secret in %s namespace: %w", globalPaCSecretKey.Namespace, err, l.Action, l.ActionView)
                 }</span> else<span class="cov0" title="0"> {
@@ -11785,9 +11802,9 @@ import (
         "k8s.io/apimachinery/pkg/runtime"
         "k8s.io/apimachinery/pkg/types"
         "k8s.io/client-go/tools/record"
-        "k8s.io/utils/strings/slices"
         "sigs.k8s.io/controller-runtime/pkg/client"
         ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
+        "slices"
 
         "github.com/konflux-ci/build-service/pkg/boerrors"
         "github.com/konflux-ci/build-service/pkg/common"
@@ -11925,7 +11942,7 @@ func bestMatchingSecret(ctx context.Context, componentRepository string, secrets
                 componentRepoParts := strings.Split(componentRepository, "/")
 
                 // Find wildcard repositories
-                wildcardRepos := slices.Filter(nil, secretRepositories, func(s string) bool </span><span class="cov8" title="1">{ return strings.HasSuffix(s, "*") }</span>)
+                wildcardRepos := slices.DeleteFunc(slices.Clone(secretRepositories), func(s string) bool </span><span class="cov8" title="1">{ return !strings.HasSuffix(s, "*") }</span>)
 
                 <span class="cov8" title="1">for _, repo := range wildcardRepos </span><span class="cov8" title="1">{
                         i := bslices.Intersection(componentRepoParts, strings.Split(strings.TrimSuffix(repo, "*"), "/"))
