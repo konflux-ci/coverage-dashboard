@@ -55,19 +55,19 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (76.1%)</option>
+				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (75.7%)</option>
 				
-				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (85.1%)</option>
+				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.5%)</option>
 				
-				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (82.7%)</option>
+				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (83.2%)</option>
 				
 				<option value="file3">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pipeline.go (86.2%)</option>
 				
-				<option value="file4">github.com/konflux-ci/build-service/internal/controller/component_build_controller_secrets.go (74.4%)</option>
+				<option value="file4">github.com/konflux-ci/build-service/internal/controller/component_build_controller_secrets.go (76.7%)</option>
 				
-				<option value="file5">github.com/konflux-ci/build-service/internal/controller/component_build_controller_service_account.go (72.3%)</option>
+				<option value="file5">github.com/konflux-ci/build-service/internal/controller/component_build_controller_service_account.go (73.3%)</option>
 				
-				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2.go (86.3%)</option>
+				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2.go (87.2%)</option>
 				
 				<option value="file7">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2_validations.go (87.8%)</option>
 				
@@ -639,7 +639,7 @@ func (r *ComponentBuildReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
         <span class="cov8" title="1">delete(component.Annotations, BuildRequestAnnotationName)
 
-        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
+        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
                 log.Error(err, fmt.Sprintf("failed to update component after build request: %s", requestedAction), l.Action, l.ActionUpdate, l.Audit, "true")
                 return ctrl.Result{}, err
         }</span>
@@ -675,8 +675,8 @@ func (r *ComponentBuildReconciler) WaitForCacheUpdateOldModel(ctx context.Contex
                                 break</span>
                         }
                         // Outdated version of the component, wait more.
-                } else<span class="cov8" title="1"> {
-                        if errors.IsNotFound(err) </span><span class="cov8" title="1">{
+                } else<span class="cov0" title="0"> {
+                        if errors.IsNotFound(err) </span><span class="cov0" title="0">{
                                 // The component was deleted
                                 isComponentInCacheUpToDate = true
                                 break</span>
@@ -938,7 +938,7 @@ func (r *ComponentBuildReconciler) ProvisionPaCForComponentOldModel(ctx context.
         return mrUrl, nil</span>
 }
 
-func getHttpClient() *http.Client <span class="cov8" title="1">{ // #nosec G402 // dev instances need insecure, because they have self signed certificates
+func getHttpClient() *http.Client <span class="cov0" title="0">{ // #nosec G402 // dev instances need insecure, because they have self signed certificates
         tr := &amp;http.Transport{
                 TLSClientConfig: &amp;tls.Config{
                         InsecureSkipVerify: gp.IsInsecureSSL(),
@@ -2488,7 +2488,7 @@ func (r *ComponentBuildReconciler) cleanupPaCRepositoryIncomingsAndSkipBuildPara
         }
 
         <span class="cov8" title="1">if updateRequired </span><span class="cov8" title="1">{
-                if err := r.Client.Update(ctx, repository); err != nil </span><span class="cov0" title="0">{
+                if err := r.Client.Update(ctx, repository); err != nil </span><span class="cov8" title="1">{
                         log.Error(err, "failed to update PaC repository incomings and skip build params", "PaCRepositoryName", repository.Name)
                         return err
                 }</span>
@@ -2690,23 +2690,22 @@ func generatePaCRepositoryNameFromGitUrl(urlStr string) (string, error) <span cl
         // Convert to lowercase and combine host and path
         <span class="cov8" title="1">sanitized := strings.ToLower(u.Host + u.Path)
 
-        // Replace slashes with dots
-        sanitized = strings.ReplaceAll(sanitized, "/", ".")
+        // Replace slashes with hyphens
+        sanitized = strings.ReplaceAll(sanitized, "/", "-")
 
-        // Replace invalid characters with hyphens, keep only alphanumeric, hyphens, and dots
-        reg := regexp.MustCompile(`[^a-z0-9\-.]`)
+        // Replace dots with hyphens
+        sanitized = strings.ReplaceAll(sanitized, ".", "-")
+
+        // Replace invalid characters with hyphens, keep only alphanumeric and hyphens
+        reg := regexp.MustCompile(`[^a-z0-9\-]`)
         sanitized = reg.ReplaceAllString(sanitized, "-")
-
-        // Remove duplicated dots
-        dupDotsReg := regexp.MustCompile(`\.+`)
-        sanitized = dupDotsReg.ReplaceAllString(sanitized, ".")
 
         // Remove duplicated hyphens
         dupHyphensReg := regexp.MustCompile(`-+`)
         sanitized = dupHyphensReg.ReplaceAllString(sanitized, "-")
 
-        // Remove leading/trailing dots and hyphens
-        sanitized = strings.Trim(sanitized, "-.")
+        // Remove leading/trailing hyphens
+        sanitized = strings.Trim(sanitized, "-")
 
         // Ensure length is not bigger than 230 chars
         if len(sanitized) &gt; 230 </span><span class="cov0" title="0">{
@@ -3785,7 +3784,7 @@ func (r *ComponentBuildReconciler) lookupPaCSecret(ctx context.Context, componen
         }</span>
         // find the best matching secret, starting from BasicAuth type
         <span class="cov8" title="1">secret, err = r.CredentialProvider.LookupSecret(ctx, scmComponent, corev1.SecretTypeBasicAuth)
-        if err != nil &amp;&amp; !boerrors.IsBuildOpError(err, boerrors.EComponentGitSecretMissing) </span><span class="cov0" title="0">{
+        if err != nil &amp;&amp; !boerrors.IsBuildOpError(err, boerrors.EComponentGitSecretMissing) </span><span class="cov8" title="1">{
                 log.Error(err, "failed to get Pipelines as Code BasicAuth secret", "scmComponent", scmComponent)
                 return nil, err
         }</span>
@@ -4301,7 +4300,7 @@ func (r *ComponentBuildReconciler) removeBuildPipelineServiceAccountBinding(ctx 
                 }
         } else<span class="cov8" title="1"> {
                 // No subjects left, remove whole Role Binding
-                if err := r.Client.Delete(ctx, buildPipelinesRoleBinding); err != nil </span><span class="cov0" title="0">{
+                if err := r.Client.Delete(ctx, buildPipelinesRoleBinding); err != nil </span><span class="cov8" title="1">{
                         log.Error(err, "failed to delete common build pipelines Role Binding", l.Action, l.ActionDelete)
                         return err
                 }</span>
@@ -4502,7 +4501,7 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                 }
 
                 // Clean up common build pipelines Role Binding
-                <span class="cov8" title="1">if err := r.removeBuildPipelineServiceAccountBinding(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if err := r.removeBuildPipelineServiceAccountBinding(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
                         log.Info("Error during component cleanup: failed to remove build pipeline service account binding", "error", err)
                 }</span>
 
@@ -4588,7 +4587,7 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                 // Add finalizer so we can clean up PaC resources (webhooks, repository configurations) upon component removal
                 if !controllerutil.ContainsFinalizer(&amp;component, PaCProvisionFinalizer) </span><span class="cov8" title="1">{
                         controllerutil.AddFinalizer(&amp;component, PaCProvisionFinalizer)
-                        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
+                        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
                                 log.Error(err, "failed to add PaC finalizer to the Component", l.Action, l.ActionUpdate)
                                 return ctrl.Result{}, err
                         }</span>
@@ -4613,7 +4612,7 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                 }
 
                 // Update component status with PaC repository information
-                <span class="cov8" title="1">if err := r.setStatusPacRepository(ctx, &amp;component, pacRepositoryName, &amp;component.Spec.RepositorySettings); err != nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if err := r.setStatusPacRepository(ctx, &amp;component, pacRepositoryName, &amp;component.Spec.RepositorySettings); err != nil </span><span class="cov8" title="1">{
                         return ctrl.Result{}, err
                 }</span>
         }
@@ -4718,7 +4717,7 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                 for _, versionName := range versionsToOnboard </span><span class="cov8" title="1">{
                         onboardedVersions = append(onboardedVersions, onboardedVersionInfo{name: versionName})
                 }</span>
-                <span class="cov8" title="1">if err := r.updateVersionsStatus(ctx, &amp;component, onboardedVersions, existingSpecVersions, true, ""); err != nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if err := r.updateVersionsStatus(ctx, &amp;component, onboardedVersions, existingSpecVersions, true, ""); err != nil </span><span class="cov8" title="1">{
                         log.Error(err, "Failed to update status for versions onboarding", "Versions", versionsToOnboard)
                         return ctrl.Result{}, err
                 }</span>
@@ -4975,8 +4974,8 @@ func (r *ComponentBuildReconciler) waitForCacheUpdate(ctx context.Context, names
                                 break</span>
                         }
                         // Cache still has outdated value, continue waiting.
-                } else<span class="cov8" title="1"> {
-                        if k8serrors.IsNotFound(err) </span><span class="cov8" title="1">{
+                } else<span class="cov0" title="0"> {
+                        if k8serrors.IsNotFound(err) </span><span class="cov0" title="0">{
                                 // Component was deleted, no need to wait for cache update.
                                 isComponentInCacheUpToDate = true
                                 break</span>
@@ -5037,7 +5036,7 @@ func (r *ComponentBuildReconciler) handlePersistentError(ctx context.Context, co
                 errMsg := fmt.Sprintf("%s: %s", errorContext, boErr.ShortError())
                 log.Error(err, errorContext)
 
-                if err := r.setStatusMessage(ctx, component, errMsg); err != nil </span><span class="cov8" title="1">{
+                if err := r.setStatusMessage(ctx, component, errMsg); err != nil </span><span class="cov0" title="0">{
                         return err
                 }</span>
                 <span class="cov8" title="1">r.WaitForCacheUpdateRes(ctx, types.NamespacedName{Namespace: component.Namespace, Name: component.Name}, component)
@@ -5088,7 +5087,7 @@ func (r *ComponentBuildReconciler) cleanupComponentPaCResources(ctx context.Cont
         }
 
         // Clean up repository incomings and skip build params for offboarded versions
-        <span class="cov8" title="1">if err := r.cleanupPaCRepositoryIncomingsAndSkipBuildParams(ctx, component); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := r.cleanupPaCRepositoryIncomingsAndSkipBuildParams(ctx, component); err != nil </span><span class="cov8" title="1">{
                 log.Info("Error during component cleanup: failed to cleanup repository incomings", "error", err)
         }</span>
 }
@@ -5497,7 +5496,7 @@ func (r *ComponentBuildReconciler) updateVersionsStatus(ctx context.Context, com
         }
 
         // Update the component status
-        <span class="cov8" title="1">if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov8" title="1">{
                 log.Error(err, "failed to update component version status", l.Action, l.ActionUpdate, l.Audit, "true")
                 return err
         }</span>
@@ -5515,7 +5514,7 @@ func (r *ComponentBuildReconciler) setStatusMessage(ctx context.Context, compone
         }</span>
 
         <span class="cov8" title="1">component.Status.Message = msg
-        if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov8" title="1">{
+        if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "failed to update component status message", l.Action, l.ActionUpdate, l.Audit, "true")
                 return err
         }</span>
@@ -5534,7 +5533,7 @@ func (r *ComponentBuildReconciler) setStatusPacRepository(ctx context.Context, c
         <span class="cov8" title="1">component.Status.PacRepository = repositoryName
         component.Status.RepositorySettings = *repositorySettings
 
-        if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov0" title="0">{
+        if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov8" title="1">{
                 log.Error(err, "failed to update component status PaC repository", l.Action, l.ActionUpdate, l.Audit, "true")
                 return err
         }</span>
@@ -6503,7 +6502,7 @@ func (r *ComponentDependencyUpdateReconciler) SetupWithManager(manager ctrl.Mana
 
                                 // Ensure we have not finished processing
                                 // when finalizer is there together with annotation that means some other controller updated finalizers and there was race
-                                <span class="cov8" title="1">if new.ObjectMeta.Annotations != nil &amp;&amp; new.ObjectMeta.Annotations[NudgeProcessedAnnotationName] != "" &amp;&amp; !controllerutil.ContainsFinalizer(new, NudgeFinalizer)</span><span class="cov8" title="1">{
+                                <span class="cov8" title="1">if new.ObjectMeta.Annotations != nil &amp;&amp; new.ObjectMeta.Annotations[NudgeProcessedAnnotationName] != "" &amp;&amp; !controllerutil.ContainsFinalizer(new, NudgeFinalizer) </span><span class="cov8" title="1">{
                                         return false
                                 }</span>
                                 <span class="cov8" title="1">return true</span>
