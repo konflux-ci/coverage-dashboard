@@ -55,13 +55,13 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (75.7%)</option>
+				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (77.0%)</option>
 				
-				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.5%)</option>
+				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (84.7%)</option>
 				
 				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (83.2%)</option>
 				
-				<option value="file3">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pipeline.go (86.2%)</option>
+				<option value="file3">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pipeline.go (86.5%)</option>
 				
 				<option value="file4">github.com/konflux-ci/build-service/internal/controller/component_build_controller_secrets.go (76.7%)</option>
 				
@@ -71,7 +71,7 @@
 				
 				<option value="file7">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2_validations.go (87.8%)</option>
 				
-				<option value="file8">github.com/konflux-ci/build-service/internal/controller/component_dependency_update_controller.go (75.1%)</option>
+				<option value="file8">github.com/konflux-ci/build-service/internal/controller/component_dependency_update_controller.go (75.2%)</option>
 				
 				<option value="file9">github.com/konflux-ci/build-service/internal/controller/pac_pipelinerun_pruner_controller.go (72.2%)</option>
 				
@@ -89,9 +89,9 @@
 				
 				<option value="file16">github.com/konflux-ci/build-service/pkg/git/apiendpoint.go (100.0%)</option>
 				
-				<option value="file17">github.com/konflux-ci/build-service/pkg/git/forgejo/forgejo_client.go (29.0%)</option>
+				<option value="file17">github.com/konflux-ci/build-service/pkg/git/forgejo/forgejo_client.go (29.5%)</option>
 				
-				<option value="file18">github.com/konflux-ci/build-service/pkg/git/forgejo/forgejo_helper.go (12.6%)</option>
+				<option value="file18">github.com/konflux-ci/build-service/pkg/git/forgejo/forgejo_helper.go (12.4%)</option>
 				
 				<option value="file19">github.com/konflux-ci/build-service/pkg/git/github/github_app.go (0.0%)</option>
 				
@@ -298,7 +298,7 @@ func isComponentUsingNewModel(component *compapiv1alpha1.Component) bool <span c
 //+kubebuilder:rbac:groups=tekton.dev,resources=pipelineruns,verbs=create
 //+kubebuilder:rbac:groups=pipelinesascode.tekton.dev,resources=repositories,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
-// The following line is needed for component_dependency_update_controller since config there is overriden from here.
+// The following line is needed for component_dependency_update_controller since config there is overridden from here.
 //+kubebuilder:rbac:groups=core,resources=configmaps,verbs=create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;patch;update;delete
 //+kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
@@ -427,8 +427,9 @@ func (r *ComponentBuildReconciler) Reconcile(ctx context.Context, req ctrl.Reque
         if err != nil </span><span class="cov8" title="1">{
                 buildStatus := readBuildStatus(&amp;component)
                 // when reading pipeline annotation fails, we should end reconcile, unless transient error
-                if boErr, ok := err.(*boerrors.BuildOpError); ok &amp;&amp; boErr.IsPersistent() </span><span class="cov8" title="1">{
-                        buildStatus.Message = fmt.Sprintf("%d: %s", err.(*boerrors.BuildOpError).GetErrorId(), err.(*boerrors.BuildOpError).ShortError())
+                boErr, ok := err.(*boerrors.BuildOpError)
+                if ok &amp;&amp; boErr.IsPersistent() </span><span class="cov8" title="1">{
+                        buildStatus.Message = fmt.Sprintf("%d: %s", boErr.GetErrorId(), boErr.ShortError())
                 }</span> else<span class="cov0" title="0"> {
                         // transient error, retry
                         return ctrl.Result{}, err
@@ -437,15 +438,14 @@ func (r *ComponentBuildReconciler) Reconcile(ctx context.Context, req ctrl.Reque
                 // when pipeline annotation is missing, we will update component with default annotation
                 // so this reconcile will finish without error, and updated component will trigger new reconcile which already has pipeline annotation
                 // we don't want to update neither status or remove annotation, because that will be handled by next reconcile
-                <span class="cov8" title="1">missingPipelineAnnotationError := boerrors.NewBuildOpError(boerrors.EMissingPipelineAnnotation, nil)
-                if err.(*boerrors.BuildOpError).GetErrorId() == missingPipelineAnnotationError.GetErrorId() </span><span class="cov8" title="1">{
+                <span class="cov8" title="1">if boErr.GetErrorId() == int(boerrors.EMissingPipelineAnnotation) </span><span class="cov8" title="1">{
                         err = r.SetDefaultBuildPipelineComponentAnnotation(ctx, &amp;component)
                         if err == nil </span><span class="cov8" title="1">{
                                 return ctrl.Result{}, nil
                         }</span>
 
                         <span class="cov0" title="0">if boErr, ok := err.(*boerrors.BuildOpError); ok &amp;&amp; boErr.IsPersistent() </span><span class="cov0" title="0">{
-                                buildStatus.Message = fmt.Sprintf("%d: %s", err.(*boerrors.BuildOpError).GetErrorId(), err.(*boerrors.BuildOpError).ShortError())
+                                buildStatus.Message = fmt.Sprintf("%d: %s", boErr.GetErrorId(), boErr.ShortError())
                         }</span> else<span class="cov0" title="0"> {
                                 // transient error, retry
                                 return ctrl.Result{}, err
@@ -675,8 +675,8 @@ func (r *ComponentBuildReconciler) WaitForCacheUpdateOldModel(ctx context.Contex
                                 break</span>
                         }
                         // Outdated version of the component, wait more.
-                } else<span class="cov0" title="0"> {
-                        if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                } else<span class="cov8" title="1"> {
+                        if errors.IsNotFound(err) </span><span class="cov8" title="1">{
                                 // The component was deleted
                                 isComponentInCacheUpToDate = true
                                 break</span>
@@ -1066,11 +1066,11 @@ func (r *ComponentBuildReconciler) TriggerPaCBuild(
         bytesParam := []byte(fmt.Sprintf(jsonTemplate, repoUrl, secretValue, repository.Name, targetBranch, pipelineRunName, repository.Namespace))
 
         resp, err := HttpClient.Post(triggerURL, "application/json", bytes.NewBuffer(bytesParam))
-
         if err != nil </span><span class="cov8" title="1">{
                 log.Error(err, "error from incoming webhook trigger POST")
                 return nil
         }</span>
+        <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{ _ = resp.Body.Close() }</span>()
 
         <span class="cov8" title="1">if resp.StatusCode != 200 &amp;&amp; resp.StatusCode != 202 </span><span class="cov8" title="1">{
                 // ignore 503 and 504 for now, until PAC fixes issue https://issues.redhat.com/browse/SRVKP-4352
@@ -1173,11 +1173,11 @@ func (r *ComponentBuildReconciler) TriggerPaCBuildOldModel(ctx context.Context, 
         bytesParam := []byte(fmt.Sprintf(jsonTemplate, repoUrl, secretValue, repository.Name, targetBranch, pipelineRunName, repository.Namespace))
 
         resp, err := HttpClient.Post(triggerURL, "application/json", bytes.NewBuffer(bytesParam))
-
         if err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "error from incoming webhook trigger POST")
                 return false, nil
         }</span>
+        <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{ _ = resp.Body.Close() }</span>()
 
         <span class="cov8" title="1">if resp.StatusCode != 200 &amp;&amp; resp.StatusCode != 202 </span><span class="cov8" title="1">{
                 // ignore 503 and 504 for now, until PAC fixes issue https://issues.redhat.com/browse/SRVKP-4352
@@ -1273,7 +1273,7 @@ func (r *ComponentBuildReconciler) getPaCWebhookTargetUrl(ctx context.Context, r
         <span class="cov8" title="1">return webhookTargetUrl, nil</span>
 }
 
-// getPaCRoutePublicUrl returns Pipelines as Code public route that recieves events to trigger new pipeline runs.
+// getPaCRoutePublicUrl returns Pipelines as Code public route that receives events to trigger new pipeline runs.
 // It checks "openshift-pipelines", "pipelines-as-code" namespaces
 // and namespace defined in PAC_NAMESPACE environment variable, if any (takes precedence).
 // Note, it makes sense only for Openshift as in pure k8s PaC doesn't have Ingress by default.
@@ -1513,7 +1513,7 @@ func (r *ComponentBuildReconciler) ConfigureRepositoryForPaCOldModel(ctx context
                 baseBranch = defaultBranch
         }</span>
 
-        <span class="cov8" title="1">pipelineRunOnPushYaml, pipelineRunOnPRYaml, err := r.generatePaCPipelineRunConfigsOldModel(ctx, component, gitClient, baseBranch, newModel)
+        <span class="cov8" title="1">pipelineRunOnPushYaml, pipelineRunOnPRYaml, err := r.generatePaCPipelineRunConfigsOldModel(ctx, component, gitClient, baseBranch)
         if err != nil </span><span class="cov0" title="0">{
                 return "", err
         }</span>
@@ -2603,7 +2603,8 @@ func (r *ComponentBuildReconciler) cleanupPaCRepositoryIncomingsAndSecretOldMode
 // if repository contains multiple incoming entries, it will merge them to one, and combine Targets and add incoming secret to incoming
 // if repository contains one incoming entry, it will add new target and add incoming secret to incoming
 // if repository doesn't have any incoming entry, it will add new incoming entry with target and add incoming secret to incoming
-// Returns bool, indicating if incomings in repository was updated or not
+// Returns bool, indicating if incomings in repository was updated or not.
+// nolint:unparam // pacIncomingSecretKey is a parameter for generalization.
 func updateIncoming(repository *pacv1alpha1.Repository, incomingSecretName string, pacIncomingSecretKey string, targetBranch string) bool <span class="cov8" title="1">{
         foundSecretName := false
         foundTarget := false
@@ -2845,10 +2846,10 @@ func getPipelineSpec(ctx context.Context, pipelineDef *PipelineDef, component *c
                         pipelineType, component.Name, pipelineDef.PipelineRefGit.Url, pipelineDef.PipelineRefGit.Revision, pipelineDef.PipelineRefGit.PathInRepo), l.Audit, "true")</span>
         } else<span class="cov8" title="1"> {
                 repoUrl := getGitRepoUrl(*component, newModel)
-                if pipelineSpec, err = retrievePipelineSpecByName(ctx, repoUrl, versionInfo.Revision, pipelineDef.PipelineRefName, gitClient); err != nil </span><span class="cov0" title="0">{
-                        return nil, err
+                pipelineSpec = retrievePipelineSpecByName(ctx, repoUrl, versionInfo.Revision, pipelineDef.PipelineRefName, gitClient)
+                if pipelineSpec != nil </span><span class="cov8" title="1">{
+                        log.Info(fmt.Sprintf("Got %s pipeline spec from Pipeline Name for %s component, pipeline name %s", pipelineType, component.Name, pipelineDef.PipelineRefName), l.Audit, "true")
                 }</span>
-                <span class="cov8" title="1">log.Info(fmt.Sprintf("Got %s pipeline spec from Pipeline Name for %s component, pipeline name %s", pipelineType, component.Name, pipelineDef.PipelineRefName), l.Audit, "true")</span>
         }
 
         <span class="cov8" title="1">return pipelineSpec, nil</span>
@@ -2857,7 +2858,7 @@ func getPipelineSpec(ctx context.Context, pipelineDef *PipelineDef, component *c
 // TODO remove after only new model is used
 // generatePaCPipelineRunConfigsOldModel generates PipelineRun YAML configs for given component.
 // The generated PipelineRun Yaml content are returned in byte string and in the order of push and pull request.
-func (r *ComponentBuildReconciler) generatePaCPipelineRunConfigsOldModel(ctx context.Context, component *compapiv1alpha1.Component, gitClient gp.GitProviderClient, pacTargetBranch string, newModel bool) ([]byte, []byte, error) <span class="cov8" title="1">{
+func (r *ComponentBuildReconciler) generatePaCPipelineRunConfigsOldModel(ctx context.Context, component *compapiv1alpha1.Component, gitClient gp.GitProviderClient, pacTargetBranch string) ([]byte, []byte, error) <span class="cov8" title="1">{
         log := ctrllog.FromContext(ctx)
 
         var pipelineName string
@@ -2939,7 +2940,7 @@ func retrievePipelineSpecFromGit(ctx context.Context, pipelineRefGit *compapiv1a
 
 // retrievePipelineSpecByName retrieves pipeline definition by searching for it by name in the .tekton directory.
 // It tries common file naming patterns.
-func retrievePipelineSpecByName(ctx context.Context, gitRepoUrl, revision, pipelineName string, gitClient gp.GitProviderClient) (*tektonapi.PipelineSpec, error) <span class="cov8" title="1">{
+func retrievePipelineSpecByName(ctx context.Context, gitRepoUrl, revision, pipelineName string, gitClient gp.GitProviderClient) *tektonapi.PipelineSpec <span class="cov8" title="1">{
         log := ctrllog.FromContext(ctx)
 
         // Common file naming patterns to try in .tekton directory
@@ -2952,10 +2953,7 @@ func retrievePipelineSpecByName(ctx context.Context, gitRepoUrl, revision, pipel
                 ".tekton/pipeline.yaml",
         }
 
-        log.Info("Searching for pipeline by name in .tekton directory",
-                "PipelineName", pipelineName,
-                "URL", gitRepoUrl,
-                "Revision", revision)
+        log.Info("Searching for pipeline by name in .tekton directory", "PipelineName", pipelineName, "URL", gitRepoUrl, "Revision", revision)
 
         // Try each pattern
         for _, filePath := range pipelineFilePatterns </span><span class="cov8" title="1">{
@@ -2981,13 +2979,13 @@ func retrievePipelineSpecByName(ctx context.Context, gitRepoUrl, revision, pipel
                         // Check if the pipeline name matches
                         if v1Pipeline.Name == pipelineName || v1Pipeline.GenerateName == pipelineName </span><span class="cov8" title="1">{
                                 log.Info("Found matching v1 pipeline", "Name", v1Pipeline.Name, "FilePath", filePath)
-                                return &amp;v1Pipeline.Spec, nil
+                                return &amp;v1Pipeline.Spec
                         }</span>
                 }
         }
 
-        // Pipeline not found, don't report error
-        <span class="cov0" title="0">return nil, nil</span>
+        // Pipeline not found
+        <span class="cov0" title="0">return nil</span>
 }
 
 // retrievePipelineSpec retrieves pipeline definition with given name from the given bundle.
@@ -3869,7 +3867,7 @@ func (r *ComponentBuildReconciler) ensureWebhookSecret(ctx context.Context, comp
 func getWebhookSecretKeyForComponent(component compapiv1alpha1.Component, newModel bool) string <span class="cov8" title="1">{
         gitRepoUrl := getGitRepoUrl(component, newModel)
 
-        notAllowedCharRegex, _ := regexp.Compile("[^-._a-zA-Z0-9]{1}")
+        notAllowedCharRegex := regexp.MustCompile("[^-._a-zA-Z0-9]{1}")
         return notAllowedCharRegex.ReplaceAllString(gitRepoUrl, "_")
 }</span>
 
@@ -4130,7 +4128,7 @@ func (r *ComponentBuildReconciler) cleanUpNudgingPullSecrets(ctx context.Context
                 }
 
                 <span class="cov8" title="1">oldSecrets := nudgedComponentBuildPipelineServiceAccount.Secrets
-                newSecrets := append(oldSecrets[:pullSecretIndex], oldSecrets[pullSecretIndex+1:]...)
+                newSecrets := append(oldSecrets[:pullSecretIndex], oldSecrets[pullSecretIndex+1:]...) //nolint:gocritic
                 nudgedComponentBuildPipelineServiceAccount.Secrets = newSecrets
 
                 if err := r.Client.Update(ctx, nudgedComponentBuildPipelineServiceAccount); err != nil </span><span class="cov0" title="0">{
@@ -4273,7 +4271,7 @@ func (r *ComponentBuildReconciler) removeBuildPipelineServiceAccountBinding(ctx 
                 }</span> else<span class="cov8" title="1"> {
                         // Remove subject by its index
                         oldSubjects := buildPipelinesRoleBinding.Subjects
-                        newSubjects := append(oldSubjects[:subjectIndex], oldSubjects[subjectIndex+1:]...)
+                        newSubjects := append(oldSubjects[:subjectIndex], oldSubjects[subjectIndex+1:]...) //nolint:gocritic
                         buildPipelinesRoleBinding.Subjects = newSubjects
                 }</span>
         }
@@ -6390,6 +6388,7 @@ import (
         "encoding/json"
         "fmt"
         "regexp"
+        "slices"
         "strconv"
         "strings"
         "time"
@@ -6411,7 +6410,6 @@ import (
         ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
         "sigs.k8s.io/controller-runtime/pkg/predicate"
         "sigs.k8s.io/controller-runtime/pkg/reconcile"
-        "slices"
 
         l "github.com/konflux-ci/build-service/pkg/logs"
 )
@@ -6623,7 +6621,7 @@ func (r *ComponentDependencyUpdateReconciler) Reconcile(ctx context.Context, req
                 }</span>
                 <span class="cov8" title="1">log.Info("adding finalizer for component nudge")
                 // We add a finalizer to make sure we see the run before it is deleted
-                // As tekton results should aggressivly delete when pruning is enabled
+                // As tekton results should aggressively delete when pruning is enabled
                 patch := client.MergeFrom(pipelineRun.DeepCopy())
                 controllerutil.AddFinalizer(pipelineRun, NudgeFinalizer)
                 err = r.Client.Patch(ctx, pipelineRun, patch)
@@ -6840,7 +6838,7 @@ func (r *ComponentDependencyUpdateReconciler) handleCompletedBuild(ctx context.C
                         log.Error(err, "failed to parse retry count, not retrying")
                         return r.removePipelineFinalizer(ctx, pipelineRun, patch)
                 }</span>
-                <span class="cov8" title="1">failureCount = failureCount + 1
+                <span class="cov8" title="1">failureCount++
 
                 pipelineRun.Annotations[FailureCountAnnotationName] = strconv.Itoa(failureCount)
 
@@ -6966,7 +6964,7 @@ func (r *ComponentDependencyUpdateReconciler) getImageRepositoryCredentials(ctx 
         if err := r.Client.List(ctx, allImageRepoSecrets, client.InNamespace(namespace), opts); err != nil </span><span class="cov0" title="0">{
                 return "", "", fmt.Errorf("failed to list secrets of type %s in %s namespace: %w", corev1.SecretTypeDockerConfigJson, namespace, err)
         }</span>
-        <span class="cov8" title="1">log.Info("found docker config secrets secrets", "count", len(allImageRepoSecrets.Items))
+        <span class="cov8" title="1">log.Info("found docker config secrets", "count", len(allImageRepoSecrets.Items))
 
         type DockerConfigJson struct {
                 ConfigAuths map[string]RepositoryConfigAuth `json:"auths"`
@@ -7119,24 +7117,18 @@ func GetComponentFromPipelineRun(c client.Client, ctx context.Context, pipelineR
         <span class="cov0" title="0">return nil, nil</span>
 }
 
+var stageRegex = regexp.MustCompile(`^quay.io/redhat-pending/(.*)----(.*)$`)
+var prodRegex = regexp.MustCompile(`^quay.io/redhat-prod/(.*)----(.*)$`)
+
 // See https://issues.redhat.com/browse/KFLUXBUGS-1233
 // This will map repsitories of the form 'quay.io/redhat-prod/foo----bar' to 'registry.redhat.io/foo/bar'
 func mapToRegistryRedhatIo(repo string) string <span class="cov8" title="1">{
-        prodRegex, err := regexp.Compile(`^quay.io/redhat-prod/(.*)----(.*)$`)
-        if err != nil </span><span class="cov0" title="0">{
-                return ""
-        }</span>
-
-        <span class="cov8" title="1">results := prodRegex.FindStringSubmatch(repo)
+        results := prodRegex.FindStringSubmatch(repo)
         if results != nil </span><span class="cov8" title="1">{
                 return "registry.redhat.io/" + results[1] + "/" + results[2]
         }</span>
 
         // try handling the stage registry
-        <span class="cov8" title="1">stageRegex, err := regexp.Compile(`^quay.io/redhat-pending/(.*)----(.*)$`)
-        if err != nil </span><span class="cov0" title="0">{
-                return ""
-        }</span>
         <span class="cov8" title="1">results = stageRegex.FindStringSubmatch(repo)
         if results != nil </span><span class="cov8" title="1">{
                 return "registry.stage.redhat.io/" + results[1] + "/" + results[2]
@@ -7227,7 +7219,7 @@ func (r *PaCPipelineRunPrunerReconciler) Reconcile(ctx context.Context, req ctrl
                 return ctrl.Result{}, nil
         }</span>
         <span class="cov8" title="1">if !errors.IsNotFound(err) </span><span class="cov0" title="0">{
-                log.Error(err, "failed to check Component existance")
+                log.Error(err, "failed to check Component existence")
                 return ctrl.Result{}, err
         }</span>
 
@@ -7546,7 +7538,7 @@ func (u ComponentDependenciesUpdater) GetUpdateTargetsGithubApp(ctx context.Cont
         // Load GitHub App and get GitHub Installations
         <span class="cov8" title="1">githubAppIdStr := string(pacSecret.Data[common.PipelinesAsCodeGithubAppIdKey])
         privateKey := pacSecret.Data[common.PipelinesAsCodeGithubPrivateKey]
-        pacConfig := map[string][]byte{common.PipelinesAsCodeGithubPrivateKey: []byte(privateKey), common.PipelinesAsCodeGithubAppIdKey: []byte(githubAppIdStr)}
+        pacConfig := map[string][]byte{common.PipelinesAsCodeGithubPrivateKey: privateKey, common.PipelinesAsCodeGithubAppIdKey: []byte(githubAppIdStr)}
 
         // Match installed repositories with Components and get custom branch if defined
         targetsToUpdate := []updateTarget{}
@@ -7951,6 +7943,7 @@ func (u ComponentDependenciesUpdater) CreateRenovaterPipeline(ctx context.Contex
                 // we are passing host rules via variable, because we can't resolve variable in json config
                 // also this way we can use custom provided config without any modifications
                 renovateCmds = append(renovateCmds,
+                        // nolint:misspell // Environment variables names are correct according to the docs.
                         fmt.Sprintf("RENOVATE_X_GITLAB_MERGE_REQUEST_DELAY=5000 RENOVATE_X_GITLAB_AUTO_MERGEABLE_CHECK_ATTEMPS=11 RENOVATE_PR_HOURLY_LIMIT=0 RENOVATE_PR_CONCURRENT_LIMIT=0 RENOVATE_TOKEN=$TOKEN_%s RENOVATE_CONFIG_FILE=/configs/%s-%s.%s RENOVATE_HOST_RULES=%s renovate", randomStr2, target.ComponentName, randomStr1, configType, hostRules),
                 )</span>
         }
@@ -8230,7 +8223,7 @@ const (
         EPaCSecretNotFound BOErrorId = 50
         // Validation of 'pipelines-as-code-secret' secret failed
         EPaCSecretInvalid BOErrorId = 51
-        // Pipelines as Code public route to recieve webhook events doesn't exist in expected namespaces.
+        // Pipelines as Code public route to receive webhook events doesn't exist in expected namespaces.
         EPaCRouteDoesNotExist BOErrorId = 52
         // An attempt to create another PaC repository object that references the same git repository.
         EPaCDuplicateRepository BOErrorId = 53
@@ -8846,8 +8839,7 @@ func (f *ForgejoClient) EnsurePaCMergeRequest(repoUrl string, d *gp.MergeRequest
                 <span class="cov0" title="0">return f.createPullRequestWithinRepository(owner, repository, d.BranchName, d.BaseBranchName, d.Title, d.Text)</span>
         } else<span class="cov0" title="0"> {
                 // Branch doesn't exist - create it
-                _, err = f.createBranch(owner, repository, d.BranchName, d.BaseBranchName)
-                if err != nil </span><span class="cov0" title="0">{
+                if err := f.createBranch(owner, repository, d.BranchName, d.BaseBranchName); err != nil </span><span class="cov0" title="0">{
                         return "", err
                 }</span>
 
@@ -8916,8 +8908,7 @@ func (f *ForgejoClient) UndoPaCMergeRequest(repoUrl string, d *gp.MergeRequestDa
         }
 
         // Create new branch
-        <span class="cov0" title="0">_, err = f.createBranch(owner, repository, d.BranchName, d.BaseBranchName)
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov0" title="0">if err := f.createBranch(owner, repository, d.BranchName, d.BaseBranchName); err != nil </span><span class="cov0" title="0">{
                 return "", err
         }</span>
 
@@ -9009,8 +9000,7 @@ func (f *ForgejoClient) SetupPaCWebhook(repoUrl string, webhookUrl string, webho
                 BranchFilter: "*",
         }
 
-        _, err = f.updateWebhook(owner, repository, existingWebhook.ID, updateOpt)
-        return err</span>
+        return f.updateWebhook(owner, repository, existingWebhook.ID, updateOpt)</span>
 }
 
 // DeletePaCWebhook deletes the Pipelines as Code webhook from the repository.
@@ -9301,7 +9291,7 @@ func (f *ForgejoClient) branchExist(owner, repository, branchName string) (bool,
         <span class="cov0" title="0">return true, nil</span>
 }
 
-func (f *ForgejoClient) createBranch(owner, repository, branchName, baseBranchName string) (*forgejo.Branch, error) <span class="cov0" title="0">{
+func (f *ForgejoClient) createBranch(owner, repository, branchName, baseBranchName string) error <span class="cov0" title="0">{
         opts := forgejo.CreateBranchOption{
                 BranchName: branchName,
         }
@@ -9309,16 +9299,16 @@ func (f *ForgejoClient) createBranch(owner, repository, branchName, baseBranchNa
         // Get the base branch to get the commit SHA
         baseBranch, resp, err := f.getBranch(owner, repository, baseBranchName)
         if err != nil </span><span class="cov0" title="0">{
-                return nil, refineGitHostingServiceError(resp.Response, err)
+                return refineGitHostingServiceError(resp.Response, err)
         }</span>
         <span class="cov0" title="0">if baseBranch == nil </span><span class="cov0" title="0">{
-                return nil, fmt.Errorf("base branch '%s' not found", baseBranchName)
+                return fmt.Errorf("base branch '%s' not found", baseBranchName)
         }</span>
 
         <span class="cov0" title="0">opts.OldBranchName = baseBranchName
 
-        branch, resp, err := f.client.CreateBranch(owner, repository, opts)
-        return branch, refineGitHostingServiceError(resp.Response, err)</span>
+        _, resp, err = f.client.CreateBranch(owner, repository, opts)
+        return refineGitHostingServiceError(resp.Response, err)</span>
 }
 
 func (f *ForgejoClient) deleteBranch(owner, repository, branchName string) (bool, error) <span class="cov0" title="0">{
@@ -9639,10 +9629,13 @@ func (f *ForgejoClient) createWebhook(owner, repository string, hook *forgejo.Cr
 }</span>
 
 // updateWebhook updates an existing webhook
-func (f *ForgejoClient) updateWebhook(owner, repository string, webhookID int64, hook *forgejo.EditHookOption) (*forgejo.Hook, error) <span class="cov0" title="0">{
+func (f *ForgejoClient) updateWebhook(owner, repository string, webhookID int64, hook *forgejo.EditHookOption) error <span class="cov0" title="0">{
         resp, err := f.client.EditRepoHook(owner, repository, webhookID, *hook)
-        return nil, refineGitHostingServiceError(resp.Response, err)
-}</span>
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">return refineGitHostingServiceError(resp.Response, err)</span>
+}
 
 // deleteWebhook deletes a webhook
 func (f *ForgejoClient) deleteWebhook(owner, repository string, webhookID int64) error <span class="cov0" title="0">{
@@ -9778,16 +9771,13 @@ type ApplicationInstallation struct {
         Repositories []*github.Repository
 }
 
+var ghUrlRegex = regexp.MustCompile(`github.com/([^/]+)/([^/]+)(\.git)?$`)
+
 func getAppInstallationsForRepository(githubAppIdStr string, appPrivateKeyPem []byte, repoUrl string) (*ApplicationInstallation, string, error) <span class="cov0" title="0">{
         githubAppId, err := strconv.ParseInt(githubAppIdStr, 10, 64)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, "", boerrors.NewBuildOpError(boerrors.EGitHubAppMalformedId,
                         fmt.Errorf("failed to convert %s to int: %w", githubAppIdStr, err))
-        }</span>
-
-        <span class="cov0" title="0">ghUrlRegex, err := regexp.Compile(`github.com/([^/]+)/([^/]+)(\.git)?$`)
-        if err != nil </span><span class="cov0" title="0">{
-                return nil, "", err
         }</span>
 
         <span class="cov0" title="0">match := ghUrlRegex.FindStringSubmatch(repoUrl)
@@ -10510,6 +10500,8 @@ func (g *GithubClient) deleteFromTree(owner, repository string, baseRef *github.
         return tree, refineGitHostingServiceError(resp.Response, err)</span>
 }
 
+// addCommitToBranch creates commit on top of the given branch reference with provided files.
+// nolint:dupl // Extracting create the commit using the tree doesn't make sense now.
 func (g *GithubClient) addCommitToBranch(owner, repository, authorName, authorEmail, commitMessage string, signedOff bool, files []gp.RepositoryFile, ref *github.Reference) error <span class="cov0" title="0">{
         // Get the parent commit to attach the commit to.
         parent, resp, err := g.client.Repositories.GetCommit(g.ctx, owner, repository, *ref.Object.SHA, nil)
@@ -10543,6 +10535,7 @@ func (g *GithubClient) addCommitToBranch(owner, repository, authorName, authorEm
 }
 
 // Creates commit into specified branch that deletes given files.
+// nolint:dupl // Extracting create the commit using the tree doesn't make sense now.
 func (g *GithubClient) addDeleteCommitToBranch(owner, repository, authorName, authorEmail, commitMessage string, signedOff bool, files []gp.RepositoryFile, ref *github.Reference) error <span class="cov0" title="0">{
         // Get the parent commit to attach the commit to.
         parent, resp, err := g.client.Repositories.GetCommit(g.ctx, owner, repository, *ref.Object.SHA, nil)
@@ -10828,7 +10821,7 @@ func (g *GitlabClient) EnsurePaCMergeRequest(repoUrl string, d *gp.MergeRequestD
 
 // UndoPaCMergeRequest creates or updates existing Pipelines as Code configuration removal merge request.
 // Returns the merge request web URL.
-// If there is no error and web URL is empty, it means that the merge request is not needed (the configuraton has already been deleted).
+// If there is no error and web URL is empty, it means that the merge request is not needed (the configuration has already been deleted).
 func (g *GitlabClient) UndoPaCMergeRequest(repoUrl string, d *gp.MergeRequestData) (webUrl string, err error) <span class="cov0" title="0">{
         projectPath, err := getProjectPathFromRepoUrl(repoUrl)
         if err != nil </span><span class="cov0" title="0">{
@@ -11794,6 +11787,7 @@ func HostToComponentMap(components []*ScmComponent) map[string][]*ScmComponent <
 import (
         "context"
         "fmt"
+        "slices"
         "strconv"
         "strings"
 
@@ -11803,7 +11797,6 @@ import (
         "k8s.io/client-go/tools/record"
         "sigs.k8s.io/controller-runtime/pkg/client"
         ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
-        "slices"
 
         "github.com/konflux-ci/build-service/pkg/boerrors"
         "github.com/konflux-ci/build-service/pkg/common"
@@ -11827,7 +11820,7 @@ func NewGithubAppConfigReader(client client.Client, scheme *runtime.Scheme, even
 }</span>
 
 func (k ConfigReader) GetConfig(ctx context.Context) (githubAppIdStr string, appPrivateKeyPem []byte, err error) <span class="cov0" title="0">{
-        //Check if GitHub Application is used, if not then skip
+        // Check if GitHub Application is used, if not then skip
         pacSecret := corev1.Secret{}
         globalPaCSecretKey := types.NamespacedName{Namespace: common.BuildServiceNamespaceName, Name: common.PipelinesAsCodeGitHubAppSecretName}
         if err := k.client.Get(ctx, globalPaCSecretKey, &amp;pacSecret); err != nil </span><span class="cov0" title="0">{
@@ -11868,7 +11861,7 @@ func (k *GitCredentialProvider) GetBasicAuthCredentials(ctx context.Context, com
 
 func (k *GitCredentialProvider) GetSSHCredentials(ctx context.Context, component *git.ScmComponent) (*credentials.SSHCredentials, error) <span class="cov0" title="0">{
         secretWithCredentials, err := k.LookupSecret(ctx, component, corev1.SecretTypeSSHAuth)
-        if err == nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov0" title="0">{
                 return nil, err
         }</span>
         <span class="cov0" title="0">return &amp;credentials.SSHCredentials{
@@ -11925,7 +11918,7 @@ func bestMatchingSecret(ctx context.Context, componentRepository string, secrets
                 }
                 <span class="cov8" title="1">secretRepositories := strings.Split(repositoryAnnotation, ",")
                 log.Info("found secret repositories", "repositories", secretRepositories)
-                //trim possible slashes at the beginning of the repository path
+                // Trim possible slashes at the beginning of the repository path.
                 for i, repository := range secretRepositories </span><span class="cov8" title="1">{
                         secretRepositories[i] = strings.TrimPrefix(repository, "/")
                 }</span>
@@ -12033,7 +12026,9 @@ func readMapping(webhookConfigPath string) (map[string]string, error) <span clas
                 return nil, nil
         }</span>
 
-        <span class="cov8" title="1">content, err := os.ReadFile(webhookConfigPath)
+        // webhookConfigPath comes from binary parameters, not user input.
+        // #nosec G304
+        <span class="cov8" title="1">content, err := os.ReadFile(webhookConfigPath) //nolint:gosec
         if err != nil </span><span class="cov8" title="1">{
                 return nil, err
         }</span>
