@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/25981310928",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/26013670069",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 61.0,
+      "coverage": 60.8,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 82.3
+          "coverage": 81.9
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
@@ -179,7 +179,7 @@
       "packages": [
         {
           "package": "github.com/konflux-ci/integration-service/snapshot",
-          "coverage": 70.0
+          "coverage": 70.9
         },
         {
           "package": "github.com/konflux-ci/integration-service/status",
@@ -392,12 +392,12 @@
           "coverage": 17.9
         },
         {
-          "package": "github.com/konflux-ci/operator-toolkit/utils",
-          "coverage": 100.0
-        },
-        {
           "package": "github.com/konflux-ci/operator-toolkit/predicates",
           "coverage": 4.8
+        },
+        {
+          "package": "github.com/konflux-ci/operator-toolkit/utils",
+          "coverage": 100.0
         },
         {
           "package": "github.com/konflux-ci/operator-toolkit/conditions",
@@ -474,16 +474,16 @@
           "coverage": 32.3
         },
         {
-          "package": "github.com/konflux-ci/qe-tools/cmd",
-          "coverage": 72.2
-        },
-        {
           "package": "github.com/konflux-ci/qe-tools/cmd/analyzetestresults",
           "coverage": 41.7
         },
         {
           "package": "github.com/konflux-ci/qe-tools/cmd/coffeebreak",
           "coverage": 5.8
+        },
+        {
+          "package": "github.com/konflux-ci/qe-tools/cmd",
+          "coverage": 72.2
         }
       ]
     },
@@ -534,7 +534,7 @@
         },
         {
           "package": "github.com/konflux-ci/release-service/loader",
-          "coverage": 79.6
+          "coverage": 79.1
         },
         {
           "package": "github.com/konflux-ci/release-service/syncer",
