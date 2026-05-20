@@ -59,9 +59,9 @@
 				
 				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/application_controller.go (81.2%)</option>
 				
-				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (71.2%)</option>
+				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (72.1%)</option>
 				
-				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (70.4%)</option>
+				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (69.9%)</option>
 				
 				<option value="file4">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller_service_account.go (78.9%)</option>
 				
@@ -1213,7 +1213,7 @@ func (r *ComponentReconciler) waitComponentUpdateInCache(ctx context.Context, co
                         }
                         <span class="cov0" title="0">log.Error(err, "failed to get the component for annotation update check", l.Action, l.ActionView)</span>
                 }
-                <span class="cov0" title="0">time.Sleep(100 * time.Millisecond)</span>
+                <span class="cov8" title="1">time.Sleep(100 * time.Millisecond)</span>
         }
         <span class="cov8" title="1">if !isComponentInCacheUpToDate </span><span class="cov0" title="0">{
                 log.Info("failed to wait for updated cache. Requested action could be repeated.", l.Audit, "true")
@@ -1648,7 +1648,7 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
         // Change image visibility if requested
         <span class="cov8" title="1">if imageRepository.Spec.Image.Visibility != imageRepository.Status.Image.Visibility &amp;&amp; imageRepository.Spec.Image.Visibility != "" </span><span class="cov8" title="1">{
-                if err := r.ChangeImageRepositoryVisibility(ctx, imageRepository); err != nil </span><span class="cov8" title="1">{
+                if err := r.ChangeImageRepositoryVisibility(ctx, imageRepository); err != nil </span><span class="cov0" title="0">{
                         return ctrl.Result{}, err
                 }</span>
                 <span class="cov8" title="1">return ctrl.Result{}, nil</span>
@@ -2139,7 +2139,7 @@ func (r *ImageRepositoryReconciler) ChangeImageRepositoryVisibility(ctx context.
         if err == nil </span><span class="cov8" title="1">{
                 imageRepository.Status.Image.Visibility = imageRepository.Spec.Image.Visibility
                 imageRepository.Status.Message = ""
-                if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov8" title="1">{
+                if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov0" title="0">{
                         log.Error(err, "failed to update imageRepository status", l.Action, l.ActionUpdate)
                         return err
                 }</span>
