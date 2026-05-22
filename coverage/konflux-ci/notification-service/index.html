@@ -57,7 +57,7 @@
 				
 				<option value="file0">github.com/konflux-ci/notification-service/internal/controller/metrics.go (100.0%)</option>
 				
-				<option value="file1">github.com/konflux-ci/notification-service/internal/controller/notificationservice_controller.go (73.3%)</option>
+				<option value="file1">github.com/konflux-ci/notification-service/internal/controller/notificationservice_controller.go (63.0%)</option>
 				
 				<option value="file2">github.com/konflux-ci/notification-service/internal/controller/pipelinerun_helper.go (97.3%)</option>
 				
@@ -175,18 +175,26 @@ func (r *NotificationServiceReconciler) Reconcile(ctx context.Context, req ctrl.
                         logger.Info("Pipelinerun was deleted, removing finalizer", "Name", pipelineRun.Name)
                         err = RemoveFinalizerFromPipelineRun(ctx, pipelineRun, r, NotificationPipelineRunFinalizer)
                         if err != nil </span><span class="cov8" title="1">{
-                                logger.Error(err, "Failed to remove finalizer", "pipelineRun", pipelineRun.Name)
-                                return ctrl.Result{}, err
-                        }</span>
+                                if errors.IsConflict(err) </span><span class="cov0" title="0">{
+                                        logger.Info("Conflict removing finalizer on deleted run, will retry on re-fetch", "pipelineRun", pipelineRun.Name)
+                                        return ctrl.Result{}, err
+                                }</span>
+                                <span class="cov8" title="1">logger.Error(err, "Failed to remove finalizer", "pipelineRun", pipelineRun.Name)
+                                return ctrl.Result{}, err</span>
+                        }
                 } else<span class="cov8" title="1"> {
                         // If pipeline is running and was not deleted
                         // Add finalizer
                         logger.Info("Pipelinerun is running, Trying to add finalizer", "Name", pipelineRun.Name)
                         err = AddFinalizerToPipelineRun(ctx, pipelineRun, r, NotificationPipelineRunFinalizer)
                         if err != nil </span><span class="cov0" title="0">{
-                                logger.Error(err, "Failed to add finalizer", "pipelineRun", pipelineRun.Name)
-                                return ctrl.Result{}, err
-                        }</span>
+                                if errors.IsConflict(err) </span><span class="cov0" title="0">{
+                                        logger.Info("Conflict adding finalizer, will retry on re-fetch", "pipelineRun", pipelineRun.Name)
+                                        return ctrl.Result{}, err
+                                }</span>
+                                <span class="cov0" title="0">logger.Error(err, "Failed to add finalizer", "pipelineRun", pipelineRun.Name)
+                                return ctrl.Result{}, err</span>
+                        }
                 }
         }
 
@@ -214,9 +222,13 @@ func (r *NotificationServiceReconciler) Reconcile(ctx context.Context, req ctrl.
                 }
                 <span class="cov8" title="1">err = RemoveFinalizerFromPipelineRun(ctx, pipelineRun, r, NotificationPipelineRunFinalizer)
                 if err != nil </span><span class="cov0" title="0">{
-                        logger.Error(err, "Failed to remove finalizer", "pipelineRun", pipelineRun.Name)
-                        return ctrl.Result{}, err
-                }</span>
+                        if errors.IsConflict(err) </span><span class="cov0" title="0">{
+                                logger.Info("Conflict removing finalizer on ended run, will retry on re-fetch", "pipelineRun", pipelineRun.Name)
+                                return ctrl.Result{}, err
+                        }</span>
+                        <span class="cov0" title="0">logger.Error(err, "Failed to remove finalizer", "pipelineRun", pipelineRun.Name)
+                        return ctrl.Result{}, err</span>
+                }
         }
 
         <span class="cov8" title="1">return ctrl.Result{}, nil</span>
@@ -264,7 +276,7 @@ const AppLabelKey string = "appstudio.openshift.io/application"
 // If finalizer was not added successfully, a non-nil error is returned.
 func AddFinalizerToPipelineRun(ctx context.Context, pipelineRun *tektonv1.PipelineRun, r *NotificationServiceReconciler, finalizer string) error <span class="cov8" title="1">{
         r.Log.Info("Adding finalizer", "pipelineRun", pipelineRun.Name)
-        patch := client.MergeFrom(pipelineRun.DeepCopy())
+        patch := client.MergeFromWithOptions(pipelineRun.DeepCopy(), client.MergeFromWithOptimisticLock{})
         if ok := controllerutil.AddFinalizer(pipelineRun, finalizer); ok </span><span class="cov8" title="1">{
                 err := r.Client.Patch(ctx, pipelineRun, patch)
                 if err != nil </span><span class="cov8" title="1">{
@@ -279,7 +291,7 @@ func AddFinalizerToPipelineRun(ctx context.Context, pipelineRun *tektonv1.Pipeli
 // If finalizer was not removed successfully, a non-nil error is returned.
 func RemoveFinalizerFromPipelineRun(ctx context.Context, pipelineRun *tektonv1.PipelineRun, r *NotificationServiceReconciler, finalizer string) error <span class="cov8" title="1">{
         r.Log.Info("Removing finalizer", "pipelineRun", pipelineRun.Name)
-        patch := client.MergeFrom(pipelineRun.DeepCopy())
+        patch := client.MergeFromWithOptions(pipelineRun.DeepCopy(), client.MergeFromWithOptimisticLock{})
         if ok := controllerutil.RemoveFinalizer(pipelineRun, finalizer); ok </span><span class="cov8" title="1">{
                 err := r.Client.Patch(ctx, pipelineRun, patch)
                 if err != nil </span><span class="cov8" title="1">{
