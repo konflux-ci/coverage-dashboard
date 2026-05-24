@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/26323294234",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/26351933209",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 82.0
+          "coverage": 81.9
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 73.3,
+      "coverage": 73.2,
       "status": "ok",
       "packages": [
         {
@@ -145,7 +145,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 73.9
+          "coverage": 73.7
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -179,7 +179,7 @@
       "packages": [
         {
           "package": "github.com/konflux-ci/integration-service/snapshot",
-          "coverage": 70.9
+          "coverage": 70.0
         },
         {
           "package": "github.com/konflux-ci/integration-service/status",
@@ -365,7 +365,7 @@
     },
     {
       "repo": "konflux-ci/notification-service",
-      "coverage": 67.6,
+      "coverage": 69.0,
       "status": "ok",
       "packages": [
         {
@@ -374,7 +374,7 @@
         },
         {
           "package": "github.com/konflux-ci/notification-service/internal/controller",
-          "coverage": 82.9
+          "coverage": 84.9
         }
       ]
     },
@@ -474,16 +474,16 @@
           "coverage": 32.3
         },
         {
-          "package": "github.com/konflux-ci/qe-tools/cmd",
-          "coverage": 72.2
-        },
-        {
           "package": "github.com/konflux-ci/qe-tools/cmd/analyzetestresults",
           "coverage": 41.7
         },
         {
           "package": "github.com/konflux-ci/qe-tools/cmd/coffeebreak",
           "coverage": 5.8
+        },
+        {
+          "package": "github.com/konflux-ci/qe-tools/cmd",
+          "coverage": 72.2
         }
       ]
     },
@@ -600,12 +600,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 57.1,
+      "coverage": 58.4,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 57.1
+          "coverage": 58.4
         }
       ]
     },
