@@ -57,7 +57,7 @@
 				
 				<option value="file0">github.com/konflux-ci/notification-service/internal/controller/metrics.go (100.0%)</option>
 				
-				<option value="file1">github.com/konflux-ci/notification-service/internal/controller/notificationservice_controller.go (63.0%)</option>
+				<option value="file1">github.com/konflux-ci/notification-service/internal/controller/notificationservice_controller.go (77.8%)</option>
 				
 				<option value="file2">github.com/konflux-ci/notification-service/internal/controller/pipelinerun_helper.go (97.3%)</option>
 				
@@ -175,7 +175,7 @@ func (r *NotificationServiceReconciler) Reconcile(ctx context.Context, req ctrl.
                         logger.Info("Pipelinerun was deleted, removing finalizer", "Name", pipelineRun.Name)
                         err = RemoveFinalizerFromPipelineRun(ctx, pipelineRun, r, NotificationPipelineRunFinalizer)
                         if err != nil </span><span class="cov8" title="1">{
-                                if errors.IsConflict(err) </span><span class="cov0" title="0">{
+                                if errors.IsConflict(err) </span><span class="cov8" title="1">{
                                         logger.Info("Conflict removing finalizer on deleted run, will retry on re-fetch", "pipelineRun", pipelineRun.Name)
                                         return ctrl.Result{}, err
                                 }</span>
@@ -187,8 +187,8 @@ func (r *NotificationServiceReconciler) Reconcile(ctx context.Context, req ctrl.
                         // Add finalizer
                         logger.Info("Pipelinerun is running, Trying to add finalizer", "Name", pipelineRun.Name)
                         err = AddFinalizerToPipelineRun(ctx, pipelineRun, r, NotificationPipelineRunFinalizer)
-                        if err != nil </span><span class="cov0" title="0">{
-                                if errors.IsConflict(err) </span><span class="cov0" title="0">{
+                        if err != nil </span><span class="cov8" title="1">{
+                                if errors.IsConflict(err) </span><span class="cov8" title="1">{
                                         logger.Info("Conflict adding finalizer, will retry on re-fetch", "pipelineRun", pipelineRun.Name)
                                         return ctrl.Result{}, err
                                 }</span>
@@ -221,8 +221,8 @@ func (r *NotificationServiceReconciler) Reconcile(ctx context.Context, req ctrl.
                         }</span>
                 }
                 <span class="cov8" title="1">err = RemoveFinalizerFromPipelineRun(ctx, pipelineRun, r, NotificationPipelineRunFinalizer)
-                if err != nil </span><span class="cov0" title="0">{
-                        if errors.IsConflict(err) </span><span class="cov0" title="0">{
+                if err != nil </span><span class="cov8" title="1">{
+                        if errors.IsConflict(err) </span><span class="cov8" title="1">{
                                 logger.Info("Conflict removing finalizer on ended run, will retry on re-fetch", "pipelineRun", pipelineRun.Name)
                                 return ctrl.Result{}, err
                         }</span>
