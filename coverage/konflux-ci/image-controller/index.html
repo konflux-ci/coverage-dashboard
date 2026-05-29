@@ -61,7 +61,7 @@
 				
 				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (72.1%)</option>
 				
-				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (70.4%)</option>
+				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (70.2%)</option>
 				
 				<option value="file4">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller_service_account.go (78.9%)</option>
 				
@@ -652,12 +652,12 @@ func (r *ApplicationPullSecretCreator) Reconcile(ctx context.Context, req ctrl.R
                         return ctrl.Result{}, err
                 }</span>
 
-                <span class="cov8" title="1">if err := r.createApplicationPullSecret(ctx, applicationPullSecretName, application, pullSecretNames); err != nil </span><span class="cov8" title="1">{
+                <span class="cov8" title="1">if err := r.createApplicationPullSecret(ctx, applicationPullSecretName, application, pullSecretNames); err != nil </span><span class="cov0" title="0">{
                         return ctrl.Result{}, err
                 }</span>
         }
 
-        <span class="cov8" title="1">if err := r.updateIntegrationServiceAccountWithApplicationPullSecret(ctx, applicationPullSecretName, application.Namespace); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := r.updateIntegrationServiceAccountWithApplicationPullSecret(ctx, applicationPullSecretName, application.Namespace); err != nil </span><span class="cov8" title="1">{
                 return ctrl.Result{}, err
         }</span>
 
@@ -798,7 +798,7 @@ func (r *ApplicationPullSecretCreator) createApplicationPullSecret(ctx context.C
                 return err
         }</span>
 
-        <span class="cov8" title="1">if err := r.Client.Create(ctx, applicationPullSecret); err != nil </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if err := r.Client.Create(ctx, applicationPullSecret); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, "failed to create application pull secret", "secretName", applicationPullSecretName, l.Action, l.ActionAdd)
                 return err
         }</span>
@@ -852,7 +852,7 @@ func (r *ApplicationPullSecretCreator) updateIntegrationServiceAccountWithApplic
         }</span>
 
         <span class="cov8" title="1">if shouldUpdateServiceAccount </span><span class="cov8" title="1">{
-                if err := r.Client.Update(ctx, namespaceServiceAccount); err != nil </span><span class="cov0" title="0">{
+                if err := r.Client.Update(ctx, namespaceServiceAccount); err != nil </span><span class="cov8" title="1">{
                         log.Error(err, "failed to update Service Account with application pull secret", l.Action, l.ActionUpdate)
                         return err
                 }</span>
@@ -1626,7 +1626,7 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
                 if imageRepository.Status.Message != imageNameDiffersMessage </span><span class="cov8" title="1">{
                         imageRepository.Status.Message = imageNameDiffersMessage
-                        if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov0" title="0">{
+                        if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov8" title="1">{
                                 log.Error(err, "failed to update imageRepository status message with image name change", l.Action, l.ActionUpdate)
                                 return ctrl.Result{}, err
                         }</span>
@@ -1648,7 +1648,7 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
         // Change image visibility if requested
         <span class="cov8" title="1">if imageRepository.Spec.Image.Visibility != imageRepository.Status.Image.Visibility &amp;&amp; imageRepository.Spec.Image.Visibility != "" </span><span class="cov8" title="1">{
-                if err := r.ChangeImageRepositoryVisibility(ctx, imageRepository); err != nil </span><span class="cov8" title="1">{
+                if err := r.ChangeImageRepositoryVisibility(ctx, imageRepository); err != nil </span><span class="cov0" title="0">{
                         return ctrl.Result{}, err
                 }</span>
                 <span class="cov8" title="1">return ctrl.Result{}, nil</span>
@@ -2139,7 +2139,7 @@ func (r *ImageRepositoryReconciler) ChangeImageRepositoryVisibility(ctx context.
         if err == nil </span><span class="cov8" title="1">{
                 imageRepository.Status.Image.Visibility = imageRepository.Spec.Image.Visibility
                 imageRepository.Status.Message = ""
-                if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov8" title="1">{
+                if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov0" title="0">{
                         log.Error(err, "failed to update imageRepository status", l.Action, l.ActionUpdate)
                         return err
                 }</span>
