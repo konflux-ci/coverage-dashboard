@@ -57,7 +57,7 @@
 				
 				<option value="file0">github.com/konflux-ci/notification-service/internal/controller/metrics.go (100.0%)</option>
 				
-				<option value="file1">github.com/konflux-ci/notification-service/internal/controller/notificationservice_controller.go (74.1%)</option>
+				<option value="file1">github.com/konflux-ci/notification-service/internal/controller/notificationservice_controller.go (77.8%)</option>
 				
 				<option value="file2">github.com/konflux-ci/notification-service/internal/controller/pipelinerun_helper.go (97.3%)</option>
 				
@@ -179,7 +179,7 @@ func (r *NotificationServiceReconciler) Reconcile(ctx context.Context, req ctrl.
                                         logger.Info("Conflict removing finalizer on deleted run, will retry on re-fetch", "pipelineRun", pipelineRun.Name)
                                         return ctrl.Result{}, err
                                 }</span>
-                                <span class="cov0" title="0">logger.Error(err, "Failed to remove finalizer", "pipelineRun", pipelineRun.Name)
+                                <span class="cov8" title="1">logger.Error(err, "Failed to remove finalizer", "pipelineRun", pipelineRun.Name)
                                 return ctrl.Result{}, err</span>
                         }
                 } else<span class="cov8" title="1"> {
