@@ -61,7 +61,7 @@
 				
 				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (72.1%)</option>
 				
-				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (69.9%)</option>
+				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (70.2%)</option>
 				
 				<option value="file4">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller_service_account.go (78.9%)</option>
 				
@@ -1626,7 +1626,7 @@ func (r *ImageRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
                 if imageRepository.Status.Message != imageNameDiffersMessage </span><span class="cov8" title="1">{
                         imageRepository.Status.Message = imageNameDiffersMessage
-                        if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov0" title="0">{
+                        if err := r.Client.Status().Update(ctx, imageRepository); err != nil </span><span class="cov8" title="1">{
                                 log.Error(err, "failed to update imageRepository status message with image name change", l.Action, l.ActionUpdate)
                                 return ctrl.Result{}, err
                         }</span>
