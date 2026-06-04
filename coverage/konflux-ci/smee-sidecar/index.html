@@ -55,7 +55,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/smee-sidecar/cmd/main.go (57.1%)</option>
+				<option value="file0">github.com/konflux-ci/smee-sidecar/cmd/main.go (58.1%)</option>
 				
 				</select>
 			</div>
@@ -151,7 +151,8 @@ type HealthCheckPayload struct {
 func createOptimizedTransport() *http.Transport <span class="cov8" title="1">{
         return &amp;http.Transport{
                 TLSClientConfig: &amp;tls.Config{
-                        InsecureSkipVerify: "true" == os.Getenv("INSECURE_SKIP_VERIFY"),
+                        //nolint:gosec // G402: INSECURE_SKIP_VERIFY is an explicit operator opt-in for health checks
+                        InsecureSkipVerify: os.Getenv("INSECURE_SKIP_VERIFY") == "true",
                 },
                 DisableKeepAlives:     false,
                 MaxIdleConns:          10,
@@ -230,7 +231,9 @@ func forwardHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" t
         proxy.ServeHTTP(w, r)</span>
 }
 
-// writeScriptsToVolume writes the embedded probe scripts to the shared volume
+// writeScriptsToVolume writes the embedded probe scripts to the shared volume.
+//
+//nolint:gosec // G302,G306,G703,G706: probe scripts need executable perms; paths use fixed filenames under sharedPath
 func writeScriptsToVolume(sharedPath string) error <span class="cov8" title="1">{
         scripts := map[string][]byte{
                 "check-smee-health.sh":    smeeHealthScript,
@@ -263,7 +266,9 @@ func writeScriptsToVolume(sharedPath string) error <span class="cov8" title="1">
         <span class="cov8" title="1">return nil</span>
 }
 
-// writeHealthStatus writes health status to file atomically
+// writeHealthStatus writes health status to file atomically.
+//
+//nolint:gosec // G306,G703: atomic health status write to operator-configured HEALTH_FILE_PATH
 func writeHealthStatus(status *HealthStatus, filePath string) error <span class="cov8" title="1">{
         // Simple format with only fields used by probe scripts
         content := fmt.Sprintf("status=%s\nmessage=%s\n",
@@ -273,7 +278,7 @@ func writeHealthStatus(status *HealthStatus, filePath string) error <span class=
 
         // Atomic write: write to temp file, then rename
         tmpPath := filePath + ".tmp"
-        if err := os.WriteFile(tmpPath, []byte(content), 0644); err != nil </span><span class="cov0" title="0">{
+        if err := os.WriteFile(tmpPath, []byte(content), 0644); err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("failed to write temp file: %v", err)
         }</span>
 
@@ -284,7 +289,9 @@ func writeHealthStatus(status *HealthStatus, filePath string) error <span class=
         <span class="cov8" title="1">return nil</span>
 }
 
-// performHealthCheck executes a single end-to-end health check
+// performHealthCheck executes a single end-to-end health check.
+//
+//nolint:gosec // G704: intentional POST to operator-configured SMEE_CHANNEL_URL
 func performHealthCheck(smeeChannelURL string, timeoutSeconds int) *HealthStatus <span class="cov8" title="1">{
         ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSeconds)*time.Second)
         defer cancel()
@@ -339,7 +346,7 @@ func performHealthCheck(smeeChannelURL string, timeoutSeconds int) *HealthStatus
                 if resp != nil &amp;&amp; resp.Body != nil </span><span class="cov8" title="1">{
                         // Drain and close the body to ensure resources are freed
                         _, _ = io.Copy(io.Discard, resp.Body)
-                        resp.Body.Close()
+                        _ = resp.Body.Close()
                 }</span>
         }()
 
@@ -370,7 +377,7 @@ func runHealthChecker(ctx context.Context, smeeChannelURL, healthFilePath string
                 case &lt;-ticker.C:<span class="cov8" title="1">
                         status := performHealthCheck(smeeChannelURL, timeoutSeconds)
 
-                        if err := writeHealthStatus(status, healthFilePath); err != nil </span><span class="cov0" title="0">{
+                        if err := writeHealthStatus(status, healthFilePath); err != nil </span><span class="cov8" title="1">{
                                 log.Printf("Failed to write health status: %v", err)
                         }</span> else<span class="cov8" title="1"> {
                                 log.Printf("Health check completed: %s (%s)", status.Status, status.Message)
@@ -426,7 +433,7 @@ func main() <span class="cov0" title="0">{
         }
 
         // Check if pprof endpoints should be enabled (disabled by default for security)
-        <span class="cov0" title="0">enablePprof := "true" == os.Getenv("ENABLE_PPROF")
+        <span class="cov0" title="0">enablePprof := os.Getenv("ENABLE_PPROF") == "true"
 
         // HTTP clients will be initialized lazily when first needed
 
@@ -490,13 +497,23 @@ func main() <span class="cov0" title="0">{
                 log.Println("pprof endpoints disabled (set ENABLE_PPROF=true to enable)")
         }</span>
 
-        <span class="cov0" title="0">go func() </span><span class="cov0" title="0">{
+        // WriteTimeout must exceed pprof CPU profile duration (default 30s) plus response overhead.
+        <span class="cov0" title="0">mgmtServer := &amp;http.Server{
+                Addr:              ":9100",
+                Handler:           mgmtMux,
+                ReadHeaderTimeout: 10 * time.Second,
+                ReadTimeout:       30 * time.Second,
+                WriteTimeout:      65 * time.Second,
+                IdleTimeout:       120 * time.Second,
+        }
+
+        go func() </span><span class="cov0" title="0">{
                 if enablePprof </span><span class="cov0" title="0">{
                         log.Println("Management server (metrics &amp; pprof) listening on :9100")
                 }</span> else<span class="cov0" title="0"> {
                         log.Println("Management server (metrics) listening on :9100")
                 }</span>
-                <span class="cov0" title="0">if err := http.ListenAndServe(":9100", mgmtMux); err != nil </span><span class="cov0" title="0">{
+                <span class="cov0" title="0">if err := mgmtServer.ListenAndServe(); err != nil </span><span class="cov0" title="0">{
                         log.Fatalf("FATAL: Management server failed: %v", err)
                 }</span>
         }()
