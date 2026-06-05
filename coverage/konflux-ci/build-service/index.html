@@ -55,9 +55,9 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (75.7%)</option>
+				<option value="file0">github.com/konflux-ci/build-service/internal/controller/component_build_controller.go (74.8%)</option>
 				
-				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (85.2%)</option>
+				<option value="file1">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac.go (85.5%)</option>
 				
 				<option value="file2">github.com/konflux-ci/build-service/internal/controller/component_build_controller_pac_repository.go (82.6%)</option>
 				
@@ -69,7 +69,7 @@
 				
 				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2.go (86.1%)</option>
 				
-				<option value="file7">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2_validations.go (87.8%)</option>
+				<option value="file7">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2_validations.go (87.3%)</option>
 				
 				<option value="file8">github.com/konflux-ci/build-service/internal/controller/component_dependency_update_controller.go (75.2%)</option>
 				
@@ -639,7 +639,7 @@ func (r *ComponentBuildReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
         <span class="cov8" title="1">delete(component.Annotations, BuildRequestAnnotationName)
 
-        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov8" title="1">{
+        if err := r.Client.Update(ctx, &amp;component); err != nil </span><span class="cov0" title="0">{
                 log.Error(err, fmt.Sprintf("failed to update component after build request: %s", requestedAction), l.Action, l.ActionUpdate, l.Audit, "true")
                 return ctrl.Result{}, err
         }</span>
@@ -1073,13 +1073,9 @@ func (r *ComponentBuildReconciler) TriggerPaCBuild(
         <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{ _ = resp.Body.Close() }</span>()
 
         <span class="cov8" title="1">if resp.StatusCode != 200 &amp;&amp; resp.StatusCode != 202 </span><span class="cov8" title="1">{
-                // ignore 503 and 504 for now, until PAC fixes issue https://issues.redhat.com/browse/SRVKP-4352
                 log.Info(fmt.Sprintf("PaC incoming endpoint %s with params %s returned HTTP %d", triggerURL, string(bytesParam), resp.StatusCode))
-                if resp.StatusCode == 503 || resp.StatusCode == 504 </span><span class="cov0" title="0">{
-                        return nil
-                }</span>
-                <span class="cov8" title="1">return fmt.Errorf("PaC incoming endpoint %s with params %s returned HTTP %d", triggerURL, string(bytesParam), resp.StatusCode)</span>
-        }
+                return fmt.Errorf("PaC incoming endpoint %s with params %s returned HTTP %d", triggerURL, string(bytesParam), resp.StatusCode)
+        }</span>
 
         <span class="cov8" title="1">log.Info(fmt.Sprintf("PaC build manually triggered push pipeline for component: %s, version: %s, endpoint %s with params %s", component.Name, sanitizedVersionName, triggerURL, string(bytesParam)))
         return nil</span>
@@ -1180,13 +1176,9 @@ func (r *ComponentBuildReconciler) TriggerPaCBuildOldModel(ctx context.Context, 
         <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{ _ = resp.Body.Close() }</span>()
 
         <span class="cov8" title="1">if resp.StatusCode != 200 &amp;&amp; resp.StatusCode != 202 </span><span class="cov8" title="1">{
-                // ignore 503 and 504 for now, until PAC fixes issue https://issues.redhat.com/browse/SRVKP-4352
                 log.Info(fmt.Sprintf("PaC incoming endpoint %s with params %s returned HTTP %d", triggerURL, string(bytesParam), resp.StatusCode))
-                if resp.StatusCode == 503 || resp.StatusCode == 504 </span><span class="cov0" title="0">{
-                        return false, nil
-                }</span>
-                <span class="cov8" title="1">return false, fmt.Errorf("PaC incoming endpoint %s with params %s returned HTTP %d", triggerURL, string(bytesParam), resp.StatusCode)</span>
-        }
+                return false, fmt.Errorf("PaC incoming endpoint %s with params %s returned HTTP %d", triggerURL, string(bytesParam), resp.StatusCode)
+        }</span>
 
         <span class="cov8" title="1">log.Info(fmt.Sprintf("PaC build manually triggered push pipeline for component: %s, endpoint %s with params %s", component.Name, triggerURL, string(bytesParam)))
         return false, nil</span>
@@ -2770,11 +2762,11 @@ import (
 )
 
 type BuildPipeline struct {
-        Name                   string                                 `json:"name,omitempty"`
-        Bundle                 string                                 `json:"bundle,omitempty"`
-        AdditionalParams       []string                               `json:"additional-params,omitempty"`
-        PipelineRefGit         compapiv1alpha1.PipelineRefGit         `json:"pipelineref-by-git-resolver,omitempty"`
-        PipelineSpecFromBundle compapiv1alpha1.PipelineSpecFromBundle `json:"pipelinespec-from-bundle,omitempty"`
+        Name                   string                                  `json:"name,omitempty"`
+        Bundle                 string                                  `json:"bundle,omitempty"`
+        AdditionalParams       []string                                `json:"additional-params,omitempty"`
+        PipelineRefGit         *compapiv1alpha1.PipelineRefGit         `json:"pipelineref-by-git-resolver,omitempty"`
+        PipelineSpecFromBundle *compapiv1alpha1.PipelineSpecFromBundle `json:"pipelinespec-from-bundle,omitempty"`
 }
 
 type pipelineConfig struct {
@@ -5857,8 +5849,8 @@ func validateVersions(component *compapiv1alpha1.Component) (validationErrors []
 
 // hasPipelineRefGit checks if any PipelineRefGit field is set.
 // Returns true if any field is non-empty, false otherwise.
-func hasPipelineRefGit(refGit compapiv1alpha1.PipelineRefGit) bool <span class="cov8" title="1">{
-        return refGit.Url != "" || refGit.PathInRepo != "" || refGit.Revision != ""
+func hasPipelineRefGit(refGit *compapiv1alpha1.PipelineRefGit) bool <span class="cov8" title="1">{
+        return refGit != nil &amp;&amp; (refGit.Url != "" || refGit.PathInRepo != "" || refGit.Revision != "")
 }</span>
 
 // hasPipelineRefName checks if PipelineRefName is set.
@@ -5869,15 +5861,18 @@ func hasPipelineRefName(refName string) bool <span class="cov8" title="1">{
 
 // hasPipelineSpecFromBundle checks if any PipelineSpecFromBundle field is set.
 // Returns true if any field is non-empty, false otherwise.
-func hasPipelineSpecFromBundle(specFromBundle compapiv1alpha1.PipelineSpecFromBundle) bool <span class="cov8" title="1">{
-        return specFromBundle.Bundle != "" || specFromBundle.Name != ""
+func hasPipelineSpecFromBundle(specFromBundle *compapiv1alpha1.PipelineSpecFromBundle) bool <span class="cov8" title="1">{
+        return specFromBundle != nil &amp;&amp; (specFromBundle.Bundle != "" || specFromBundle.Name != "")
 }</span>
 
 // validatePipelineRefGitFields validates that all PipelineRefGit fields are set.
 // Returns a slice of validation error messages for any missing required fields,
 // or an empty slice if all fields are present.
-func validatePipelineRefGitFields(refGit compapiv1alpha1.PipelineRefGit, errorPrefix string) (errors []string) <span class="cov8" title="1">{
-        if refGit.Url == "" </span><span class="cov8" title="1">{
+func validatePipelineRefGitFields(refGit *compapiv1alpha1.PipelineRefGit, errorPrefix string) (errors []string) <span class="cov8" title="1">{
+        if refGit == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">if refGit.Url == "" </span><span class="cov8" title="1">{
                 errors = append(errors, fmt.Sprintf("%s: pipelineref-by-git-resolver.url is required", errorPrefix))
         }</span>
         <span class="cov8" title="1">if refGit.PathInRepo == "" </span><span class="cov8" title="1">{
@@ -5892,8 +5887,11 @@ func validatePipelineRefGitFields(refGit compapiv1alpha1.PipelineRefGit, errorPr
 // validatePipelineSpecFromBundleFields validates that all PipelineSpecFromBundle fields are set.
 // Returns a slice of validation error messages for any missing required fields,
 // or an empty slice if all fields are present.
-func validatePipelineSpecFromBundleFields(specFromBundle compapiv1alpha1.PipelineSpecFromBundle, errorPrefix string) (errors []string) <span class="cov8" title="1">{
-        if specFromBundle.Bundle == "" </span><span class="cov8" title="1">{
+func validatePipelineSpecFromBundleFields(specFromBundle *compapiv1alpha1.PipelineSpecFromBundle, errorPrefix string) (errors []string) <span class="cov8" title="1">{
+        if specFromBundle == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">if specFromBundle.Bundle == "" </span><span class="cov8" title="1">{
                 errors = append(errors, fmt.Sprintf("%s: pipelinespec-from-bundle.bundle is required", errorPrefix))
         }</span>
         <span class="cov8" title="1">if specFromBundle.Name == "" </span><span class="cov8" title="1">{
@@ -5904,30 +5902,42 @@ func validatePipelineSpecFromBundleFields(specFromBundle compapiv1alpha1.Pipelin
 
 // hasPipelineDefConfig checks if a pipeline definition has any configuration.
 // Returns true if any pipeline configuration is present, false otherwise.
-func hasPipelineDefConfig(pipelineDef compapiv1alpha1.PipelineDefinition) bool <span class="cov8" title="1">{
-        return hasPipelineRefGit(pipelineDef.PipelineRefGit) ||
+func hasPipelineDefConfig(pipelineDef *compapiv1alpha1.PipelineDefinition) bool <span class="cov8" title="1">{
+        if pipelineDef == nil </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">return hasPipelineRefGit(pipelineDef.PipelineRefGit) ||
                 hasPipelineRefName(pipelineDef.PipelineRefName) ||
-                hasPipelineSpecFromBundle(pipelineDef.PipelineSpecFromBundle)
-}</span>
+                hasPipelineSpecFromBundle(pipelineDef.PipelineSpecFromBundle)</span>
+}
 
 // hasPipelineConfig checks if any pipeline configuration is set.
 // Returns true if any pipeline configuration (PullAndPush, Pull, or Push) is present, false otherwise.
-func hasPipelineConfig(pipeline compapiv1alpha1.ComponentBuildPipeline) bool <span class="cov8" title="1">{
-        hasPullAndPush := hasPipelineDefConfig(pipeline.PullAndPush)
+func hasPipelineConfig(pipeline *compapiv1alpha1.ComponentBuildPipeline) bool <span class="cov8" title="1">{
+        if pipeline == nil </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">hasPullAndPush := hasPipelineDefConfig(pipeline.PullAndPush)
         hasPull := hasPipelineDefConfig(pipeline.Pull)
         hasPush := hasPipelineDefConfig(pipeline.Push)
 
-        return hasPullAndPush || hasPull || hasPush
-}</span>
+        return hasPullAndPush || hasPull || hasPush</span>
+}
 
 // extractPipelineDef extracts a PipelineDef from a PipelineDefinition.
 // Returns a pointer to the extracted PipelineDef structure.
-func extractPipelineDef(pipelineDef compapiv1alpha1.PipelineDefinition) *PipelineDef <span class="cov8" title="1">{
-        def := &amp;PipelineDef{}
+// Deep-copies pointer fields to prevent aliasing with the original Component spec.
+func extractPipelineDef(pipelineDef *compapiv1alpha1.PipelineDefinition) *PipelineDef <span class="cov8" title="1">{
+        if pipelineDef == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">def := &amp;PipelineDef{}
 
         // Check if PipelineRefGit is set
         if hasPipelineRefGit(pipelineDef.PipelineRefGit) </span><span class="cov8" title="1">{
-                def.PipelineRefGit = &amp;pipelineDef.PipelineRefGit
+                // Deep copy to prevent aliasing
+                rg := *pipelineDef.PipelineRefGit
+                def.PipelineRefGit = &amp;rg
         }</span>
 
         // Check if PipelineRefName is set
@@ -5937,7 +5947,9 @@ func extractPipelineDef(pipelineDef compapiv1alpha1.PipelineDefinition) *Pipelin
 
         // Check if PipelineSpecFromBundle is set
         <span class="cov8" title="1">if hasPipelineSpecFromBundle(pipelineDef.PipelineSpecFromBundle) </span><span class="cov8" title="1">{
-                def.PipelineSpecFromBundle = &amp;pipelineDef.PipelineSpecFromBundle
+                // Deep copy to prevent aliasing
+                sfb := *pipelineDef.PipelineSpecFromBundle
+                def.PipelineSpecFromBundle = &amp;sfb
         }</span>
 
         <span class="cov8" title="1">return def</span>
@@ -5952,9 +5964,12 @@ func extractPipelineDef(pipelineDef compapiv1alpha1.PipelineDefinition) *Pipelin
 // - Validates that all required fields are set for PipelineRefGit and PipelineSpecFromBundle when used
 // Returns a slice of validation error messages describing any issues found,
 // or an empty slice if all validations pass.
-func validatePipelineConfiguration(pipeline compapiv1alpha1.ComponentBuildPipeline, versionName string) (validationErrors []string) <span class="cov8" title="1">{
+func validatePipelineConfiguration(pipeline *compapiv1alpha1.ComponentBuildPipeline, versionName string) (validationErrors []string) <span class="cov8" title="1">{
+        if pipeline == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
         // Determine the prefix for error messages
-        prefix := "default pipeline"
+        <span class="cov8" title="1">prefix := "default pipeline"
         if versionName != "" </span><span class="cov8" title="1">{
                 prefix = fmt.Sprintf("version '%s' pipeline", versionName)
         }</span>
@@ -5972,7 +5987,7 @@ func validatePipelineConfiguration(pipeline compapiv1alpha1.ComponentBuildPipeli
         }</span>
 
         // Validate each pipeline definition section
-        <span class="cov8" title="1">checkPipelineDef := func(pipelineDef compapiv1alpha1.PipelineDefinition, pipelineType string) </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">checkPipelineDef := func(pipelineDef *compapiv1alpha1.PipelineDefinition, pipelineType string) </span><span class="cov8" title="1">{
                 if !hasPipelineDefConfig(pipelineDef) </span><span class="cov8" title="1">{
                         return // Skip validation if no configuration is set
                 }</span>
@@ -6064,7 +6079,9 @@ func validatePipelines(component *compapiv1alpha1.Component) ([]string, map[stri
                         hasPipeline = true
                 }</span> else<span class="cov8" title="1"> if hasDefaultPipeline &amp;&amp; hasPipelineDefConfig(defaultPipeline.PullAndPush) </span><span class="cov8" title="1">{
                         // Fall back to default PullAndPush only if version doesn't have separate Pull/Push
-                        if !hasPipelineDefConfig(versionPipeline.Pull) &amp;&amp; !hasPipelineDefConfig(versionPipeline.Push) </span><span class="cov8" title="1">{
+                        hasVersionPull := hasVersionPipeline &amp;&amp; hasPipelineDefConfig(versionPipeline.Pull)
+                        hasVersionPush := hasVersionPipeline &amp;&amp; hasPipelineDefConfig(versionPipeline.Push)
+                        if !hasVersionPull &amp;&amp; !hasVersionPush </span><span class="cov8" title="1">{
                                 pipelineDef := extractPipelineDef(defaultPipeline.PullAndPush)
                                 versionPipelineDef.Pull = pipelineDef
                                 versionPipelineDef.Push = pipelineDef
@@ -6175,7 +6192,7 @@ func validatePipelineResolution(versionPipelines map[string]*VersionPipelineDefi
                                 for _, configPipeline := range defaultPipelinesConfig.Pipelines </span><span class="cov8" title="1">{
                                         if configPipeline.Name == pipelineName </span><span class="cov8" title="1">{
                                                 // Check if pipeline in config has bundle defined (either in PipelineSpecFromBundle or directly)
-                                                hasBundle := configPipeline.PipelineSpecFromBundle.Bundle != "" || configPipeline.Bundle != ""
+                                                hasBundle := (configPipeline.PipelineSpecFromBundle != nil &amp;&amp; configPipeline.PipelineSpecFromBundle.Bundle != "") || configPipeline.Bundle != ""
                                                 if !hasBundle </span><span class="cov0" title="0">{
                                                         errors = append(errors, fmt.Sprintf("version '%s' %s pipeline references '%s' with bundle 'latest', but pipeline in config has no bundle specified", versionName, pipelineType, pipelineName))
                                                 }</span>
@@ -6196,13 +6213,18 @@ func validatePipelineResolution(versionPipelines map[string]*VersionPipelineDefi
 
 // resolvePipelineDefinitions resolves missing pipeline definitions to defaults and "latest" bundle references to actual values
 func resolvePipelineDefinitions(versionPipelines map[string]*VersionPipelineDefinition, versionsToOnboardWithPR []string, defaultPipeline *BuildPipeline, defaultPipelinesConfig *pipelineConfig) <span class="cov8" title="1">{
-        // Helper function to create a default PipelineDef from the default pipeline configuration
+        // Helper function to create a default PipelineDef from the default pipeline configuration.
+        // Deep-copies pointer fields to prevent aliasing with the default pipeline configuration.
         createDefaultPipelineDef := func() *PipelineDef </span><span class="cov8" title="1">{
                 def := &amp;PipelineDef{}
-                if defaultPipeline.PipelineRefGit.Url != "" </span><span class="cov0" title="0">{
-                        def.PipelineRefGit = &amp;defaultPipeline.PipelineRefGit
-                }</span> else<span class="cov8" title="1"> if defaultPipeline.PipelineSpecFromBundle.Bundle != "" </span><span class="cov0" title="0">{
-                        def.PipelineSpecFromBundle = &amp;defaultPipeline.PipelineSpecFromBundle
+                if defaultPipeline.PipelineRefGit != nil &amp;&amp; defaultPipeline.PipelineRefGit.Url != "" </span><span class="cov0" title="0">{
+                        // Deep copy to prevent aliasing
+                        rg := *defaultPipeline.PipelineRefGit
+                        def.PipelineRefGit = &amp;rg
+                }</span> else<span class="cov8" title="1"> if defaultPipeline.PipelineSpecFromBundle != nil &amp;&amp; defaultPipeline.PipelineSpecFromBundle.Bundle != "" </span><span class="cov0" title="0">{
+                        // Deep copy to prevent aliasing
+                        sfb := *defaultPipeline.PipelineSpecFromBundle
+                        def.PipelineSpecFromBundle = &amp;sfb
                 }</span> else<span class="cov8" title="1"> {
                         // Fall back to Name &amp; Bundle
                         def.PipelineSpecFromBundle = &amp;compapiv1alpha1.PipelineSpecFromBundle{
@@ -6223,7 +6245,7 @@ func resolvePipelineDefinitions(versionPipelines map[string]*VersionPipelineDefi
                         matched := false
 
                         // Match by PipelineRefGit
-                        if def.PipelineRefGit != nil &amp;&amp; configPipeline.PipelineRefGit.Url != "" </span><span class="cov0" title="0">{
+                        if def.PipelineRefGit != nil &amp;&amp; configPipeline.PipelineRefGit != nil &amp;&amp; configPipeline.PipelineRefGit.Url != "" </span><span class="cov0" title="0">{
                                 if def.PipelineRefGit.Url == configPipeline.PipelineRefGit.Url &amp;&amp;
                                         def.PipelineRefGit.PathInRepo == configPipeline.PipelineRefGit.PathInRepo &amp;&amp;
                                         def.PipelineRefGit.Revision == configPipeline.PipelineRefGit.Revision </span><span class="cov0" title="0">{
@@ -6236,16 +6258,23 @@ func resolvePipelineDefinitions(versionPipelines map[string]*VersionPipelineDefi
                                 // Handle "latest" bundle - resolve to actual bundle and set AdditionalParams
                                 if def.PipelineSpecFromBundle.Bundle == "latest" &amp;&amp; def.PipelineSpecFromBundle.Name == configPipeline.Name </span><span class="cov8" title="1">{
                                         // Check PipelineSpecFromBundle.Bundle first, fall back to Bundle
-                                        bundle := configPipeline.PipelineSpecFromBundle.Bundle
-                                        if bundle == "" </span><span class="cov8" title="1">{
+                                        bundle := ""
+                                        if configPipeline.PipelineSpecFromBundle != nil </span><span class="cov0" title="0">{
+                                                bundle = configPipeline.PipelineSpecFromBundle.Bundle
+                                        }</span>
+                                        <span class="cov8" title="1">if bundle == "" </span><span class="cov8" title="1">{
                                                 bundle = configPipeline.Bundle
                                         }</span>
                                         <span class="cov8" title="1">def.PipelineSpecFromBundle.Bundle = bundle
                                         matched = true</span>
                                 } else<span class="cov8" title="1"> {
-                                        // Match by exact bundle and name
-                                        configBundle := configPipeline.PipelineSpecFromBundle.Bundle
-                                        if configBundle == "" </span><span class="cov8" title="1">{
+                                        // Match by exact bundle and name (to find AdditionalParams for specific bundles)
+                                        // This doesn't mutate the bundle - just checks if this specific pipeline exists in config
+                                        configBundle := ""
+                                        if configPipeline.PipelineSpecFromBundle != nil </span><span class="cov0" title="0">{
+                                                configBundle = configPipeline.PipelineSpecFromBundle.Bundle
+                                        }</span>
+                                        <span class="cov8" title="1">if configBundle == "" </span><span class="cov8" title="1">{
                                                 configBundle = configPipeline.Bundle
                                         }</span>
                                         <span class="cov8" title="1">if def.PipelineSpecFromBundle.Name == configPipeline.Name &amp;&amp;

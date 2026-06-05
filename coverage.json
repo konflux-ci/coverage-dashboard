@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/26930941467",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/26995557986",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 60.8,
+      "coverage": 60.9,
       "status": "ok",
       "packages": [
         {
@@ -22,7 +22,7 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 82.0
+          "coverage": 81.9
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
@@ -145,7 +145,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 73.9
+          "coverage": 73.8
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -474,16 +474,16 @@
           "coverage": 32.3
         },
         {
+          "package": "github.com/konflux-ci/qe-tools/cmd",
+          "coverage": 72.2
+        },
+        {
           "package": "github.com/konflux-ci/qe-tools/cmd/analyzetestresults",
           "coverage": 41.7
         },
         {
           "package": "github.com/konflux-ci/qe-tools/cmd/coffeebreak",
           "coverage": 5.8
-        },
-        {
-          "package": "github.com/konflux-ci/qe-tools/cmd",
-          "coverage": 72.2
         }
       ]
     },
@@ -600,12 +600,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.1,
+      "coverage": 56.8,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.1
+          "coverage": 56.8
         }
       ]
     },

@@ -4886,7 +4886,7 @@ import (
         "github.com/go-logr/logr"
         applicationapiv1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
         "github.com/konflux-ci/operator-toolkit/metadata"
-        gitlab "gitlab.com/gitlab-org/api/client-go"
+        gitlab "gitlab.com/gitlab-org/api/client-go/v2"
         "k8s.io/client-go/util/retry"
         "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -4902,9 +4902,9 @@ type GitLabReporter struct {
         k8sClient       client.Client
         client          *gitlab.Client
         sha             string
-        sourceProjectID int
-        targetProjectID int
-        mergeRequest    int
+        sourceProjectID int64
+        targetProjectID int64
+        mergeRequest    int64
         snapshot        *applicationapiv1alpha1.Snapshot
 }
 
@@ -4980,7 +4980,7 @@ func (r *GitLabReporter) Initialize(ctx context.Context, snapshot *applicationap
                 return 0, unRecoverableError
         }</span>
 
-        <span class="cov8" title="1">r.targetProjectID, err = strconv.Atoi(targetProjectIDstr)
+        <span class="cov8" title="1">r.targetProjectID, err = strconv.ParseInt(targetProjectIDstr, 10, 64)
         if err != nil </span><span class="cov0" title="0">{
                 unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("failed to convert project ID '%s' to integer: %s", targetProjectIDstr, err.Error()))
                 r.logger.Error(unRecoverableError, "snapshot.NameSpace", snapshot.Namespace, "snapshot.Name", snapshot.Name)
@@ -4994,7 +4994,7 @@ func (r *GitLabReporter) Initialize(ctx context.Context, snapshot *applicationap
                 return 0, unRecoverableError
         }</span>
 
-        <span class="cov8" title="1">r.sourceProjectID, err = strconv.Atoi(sourceProjectIDstr)
+        <span class="cov8" title="1">r.sourceProjectID, err = strconv.ParseInt(sourceProjectIDstr, 10, 64)
         if err != nil </span><span class="cov0" title="0">{
                 unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("failed to convert project ID '%s' to integer: %s", sourceProjectIDstr, err.Error()))
                 r.logger.Error(unRecoverableError, "snapshot.NameSpace", snapshot.Namespace, "snapshot.Name", snapshot.Name)
@@ -5009,7 +5009,7 @@ func (r *GitLabReporter) Initialize(ctx context.Context, snapshot *applicationap
         }</span>
 
         <span class="cov8" title="1">if found </span><span class="cov8" title="1">{
-                r.mergeRequest, err = strconv.Atoi(mergeRequestStr)
+                r.mergeRequest, err = strconv.ParseInt(mergeRequestStr, 10, 64)
                 if err != nil &amp;&amp; !gitops.IsSnapshotCreatedByPACPushEvent(snapshot) </span><span class="cov0" title="0">{
                         unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("failed to convert merge request number '%s' to integer: %s", mergeRequestStr, err.Error()))
                         r.logger.Error(unRecoverableError, "snapshot.NameSpace", snapshot.Namespace, "snapshot.Name", snapshot.Name)
@@ -5053,7 +5053,7 @@ func (r *GitLabReporter) setCommitStatus(report TestReport) (int, error) <span c
         // try to find the MR pipeline from target project first since that's the one shown in MR view,
         // if not found, then try to find the pipeline in source project, if still not found, then create commit status without pipeline association
         // Give more tries because the integration status reporter is called after build pipeline is triggered
-        <span class="cov8" title="1">var existingMergeRequestPipelineID int
+        <span class="cov8" title="1">var existingMergeRequestPipelineID int64
         var joinedError error
         err = retry.OnError(reporterRetryBackoff, func(err error) bool </span><span class="cov8" title="1">{
                 // statusCode 0 means no HTTP response was received (network/timeout error), always retry
@@ -5064,9 +5064,9 @@ func (r *GitLabReporter) setCommitStatus(report TestReport) (int, error) <span c
                 <span class="cov8" title="1">return retryable</span>
         }, func() error <span class="cov8" title="1">{
                 statusCode = 0 // reset before each attempt to avoid stale values
-                projectIDs := []int{r.targetProjectID, r.sourceProjectID}
+                projectIDs := []int64{r.targetProjectID, r.sourceProjectID}
                 for _, projectID := range projectIDs </span><span class="cov8" title="1">{
-                        var pID int
+                        var pID int64
                         var getErr error
                         pID, statusCode, getErr = r.GetExistingMergeRequestPipelineID(projectID, r.sha)
                         if getErr != nil </span><span class="cov0" title="0">{
@@ -5174,7 +5174,7 @@ func (r *GitLabReporter) UpdateStatusInComment(commentPrefix, comment string, is
         var response *gitlab.Response
 
         var err error
-        var noteIDs []int
+        var noteIDs []int64
         var allNotes []*gitlab.Note
         err = retry.OnError(reporterRetryBackoff, func(err error) bool </span><span class="cov8" title="1">{
                 // statusCode 0 means no HTTP response was received (network/timeout error), always retry
@@ -5266,8 +5266,8 @@ func (r *GitLabReporter) GetExistingCommitStatus(commitStatuses []*gitlab.Commit
         return nil</span>
 }
 
-func (r *GitLabReporter) GetExistingCommentIDs(notes []*gitlab.Note, commentPrefix string) []int <span class="cov8" title="1">{
-        var commentIDs []int
+func (r *GitLabReporter) GetExistingCommentIDs(notes []*gitlab.Note, commentPrefix string) []int64 <span class="cov8" title="1">{
+        var commentIDs []int64
         for _, note := range notes </span><span class="cov8" title="1">{
                 // get existing note by search commentTitle in report summary
                 // GetExistingCommentIDs for github comment has the similar logic
@@ -5281,7 +5281,7 @@ func (r *GitLabReporter) GetExistingCommentIDs(notes []*gitlab.Note, commentPref
         return commentIDs</span>
 }
 
-func (r *GitLabReporter) GetExistingMergeRequestPipelineID(sourceProjectID int, sha string) (int, int, error) <span class="cov8" title="1">{
+func (r *GitLabReporter) GetExistingMergeRequestPipelineID(sourceProjectID int64, sha string) (int64, int, error) <span class="cov8" title="1">{
         opt := &amp;gitlab.ListProjectPipelinesOptions{
                 SHA:     gitlab.Ptr(sha),
                 OrderBy: gitlab.Ptr("id"),
@@ -5307,7 +5307,7 @@ func (r *GitLabReporter) GetExistingMergeRequestPipelineID(sourceProjectID int, 
 }
 
 // DeleteExistingNotes deletes existing GitLab note with given noteIDs.
-func (r *GitLabReporter) DeleteExistingNotes(noteIDs []int) (int, error) <span class="cov8" title="1">{
+func (r *GitLabReporter) DeleteExistingNotes(noteIDs []int64) (int, error) <span class="cov8" title="1">{
         var lastStatusCode = 0
         var errs []error // collect errors during deletion
 
@@ -5457,7 +5457,7 @@ import (
         intgteststat "github.com/konflux-ci/integration-service/pkg/integrationteststatus"
         "github.com/konflux-ci/operator-toolkit/metadata"
         tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-        gitlab "gitlab.com/gitlab-org/api/client-go"
+        gitlab "gitlab.com/gitlab-org/api/client-go/v2"
         apierrors "k8s.io/apimachinery/pkg/api/errors"
         "k8s.io/apimachinery/pkg/types"
         "sigs.k8s.io/controller-runtime/pkg/client"
@@ -5953,7 +5953,7 @@ func (s Status) IsMRInSnapshotOpened(ctx context.Context, reporter ReporterInter
                 log.Error(unRecoverableError, fmt.Sprintf("target project ID annotation not found %q", gitops.PipelineAsCodeTargetProjectIDAnnotation))
                 return false, statusCode, unRecoverableError
         }</span>
-        <span class="cov8" title="1">targetProjectID, err := strconv.Atoi(targetProjectIDstr)
+        <span class="cov8" title="1">targetProjectID, err := strconv.ParseInt(targetProjectIDstr, 10, 64)
         if err != nil </span><span class="cov0" title="0">{
                 unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("failed to convert project ID '%s' to integer: %s", targetProjectIDstr, err.Error()))
                 log.Error(unRecoverableError, "failed to convert project ID '%s' to integer", targetProjectIDstr)
@@ -5966,7 +5966,7 @@ func (s Status) IsMRInSnapshotOpened(ctx context.Context, reporter ReporterInter
                 log.Error(unRecoverableError, fmt.Sprintf("pull-request annotation not found %q", gitops.PipelineAsCodePullRequestAnnotation))
                 return false, statusCode, unRecoverableError
         }</span>
-        <span class="cov8" title="1">mergeRequest, err := strconv.Atoi(mergeRequestStr)
+        <span class="cov8" title="1">mergeRequest, err := strconv.ParseInt(mergeRequestStr, 10, 64)
         if err != nil </span><span class="cov0" title="0">{
                 unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("failed to convert merge request number '%s' to integer: %s", mergeRequestStr, err.Error()))
                 log.Error(unRecoverableError, fmt.Sprintf("failed to convert merge request number '%s' to integer", mergeRequestStr))
