@@ -91,7 +91,7 @@
 				
 				<option value="file17">github.com/konflux-ci/integration-service/status/reporter_github.go (78.6%)</option>
 				
-				<option value="file18">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (79.3%)</option>
+				<option value="file18">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (86.0%)</option>
 				
 				<option value="file19">github.com/konflux-ci/integration-service/status/status.go (63.3%)</option>
 				
@@ -4981,7 +4981,7 @@ func (r *GitLabReporter) Initialize(ctx context.Context, snapshot *applicationap
         }</span>
 
         <span class="cov8" title="1">r.targetProjectID, err = strconv.ParseInt(targetProjectIDstr, 10, 64)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("failed to convert project ID '%s' to integer: %s", targetProjectIDstr, err.Error()))
                 r.logger.Error(unRecoverableError, "snapshot.NameSpace", snapshot.Namespace, "snapshot.Name", snapshot.Name)
                 return 0, unRecoverableError
@@ -4995,14 +4995,14 @@ func (r *GitLabReporter) Initialize(ctx context.Context, snapshot *applicationap
         }</span>
 
         <span class="cov8" title="1">r.sourceProjectID, err = strconv.ParseInt(sourceProjectIDstr, 10, 64)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("failed to convert project ID '%s' to integer: %s", sourceProjectIDstr, err.Error()))
                 r.logger.Error(unRecoverableError, "snapshot.NameSpace", snapshot.Namespace, "snapshot.Name", snapshot.Name)
                 return 0, unRecoverableError
         }</span>
 
         <span class="cov8" title="1">mergeRequestStr, found := annotations[gitops.PipelineAsCodePullRequestAnnotation]
-        if !found &amp;&amp; !gitops.IsSnapshotCreatedByPACPushEvent(snapshot) </span><span class="cov0" title="0">{
+        if !found &amp;&amp; !gitops.IsSnapshotCreatedByPACPushEvent(snapshot) </span><span class="cov8" title="1">{
                 unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("pull-request annotation not found %q", gitops.PipelineAsCodePullRequestAnnotation))
                 r.logger.Error(unRecoverableError, "snapshot.NameSpace", snapshot.Namespace, "snapshot.Name", snapshot.Name)
                 return 0, unRecoverableError
@@ -5010,7 +5010,7 @@ func (r *GitLabReporter) Initialize(ctx context.Context, snapshot *applicationap
 
         <span class="cov8" title="1">if found </span><span class="cov8" title="1">{
                 r.mergeRequest, err = strconv.ParseInt(mergeRequestStr, 10, 64)
-                if err != nil &amp;&amp; !gitops.IsSnapshotCreatedByPACPushEvent(snapshot) </span><span class="cov0" title="0">{
+                if err != nil &amp;&amp; !gitops.IsSnapshotCreatedByPACPushEvent(snapshot) </span><span class="cov8" title="1">{
                         unRecoverableError = helpers.NewUnrecoverableMetadataError(fmt.Sprintf("failed to convert merge request number '%s' to integer: %s", mergeRequestStr, err.Error()))
                         r.logger.Error(unRecoverableError, "snapshot.NameSpace", snapshot.Namespace, "snapshot.Name", snapshot.Name)
                         return 0, unRecoverableError
@@ -5376,19 +5376,19 @@ func GenerateGitlabCommitState(state intgteststat.IntegrationTestStatus, optiona
 
         if optional </span><span class="cov8" title="1">{
                 switch state </span>{
-                case intgteststat.IntegrationTestStatusPending, intgteststat.BuildPLRInProgress, intgteststat.IntegrationTestStatusInProgress:<span class="cov0" title="0">
+                case intgteststat.IntegrationTestStatusPending, intgteststat.BuildPLRInProgress, intgteststat.IntegrationTestStatusInProgress:<span class="cov8" title="1">
                         glState = gitlab.Pending</span>
                 case intgteststat.IntegrationTestStatusEnvironmentProvisionError_Deprecated, intgteststat.IntegrationTestStatusDeploymentError_Deprecated,
                         intgteststat.IntegrationTestStatusTestInvalid, intgteststat.IntegrationTestStatusTestFail:<span class="cov8" title="1">
                         glState = gitlab.Skipped</span>
                 case intgteststat.IntegrationTestStatusDeleted, intgteststat.BuildPLRFailed,
-                        intgteststat.SnapshotCreationFailed, intgteststat.GroupSnapshotCreationFailed:<span class="cov0" title="0">
+                        intgteststat.SnapshotCreationFailed, intgteststat.GroupSnapshotCreationFailed:<span class="cov8" title="1">
                         glState = gitlab.Canceled</span>
-                case intgteststat.IntegrationTestStatusTestPassed:<span class="cov0" title="0">
+                case intgteststat.IntegrationTestStatusTestPassed:<span class="cov8" title="1">
                         glState = gitlab.Success</span>
-                case intgteststat.IntegrationTestStatusTestWarning:<span class="cov0" title="0">
+                case intgteststat.IntegrationTestStatusTestWarning:<span class="cov8" title="1">
                         glState = gitlab.Success</span>
-                default:<span class="cov0" title="0">
+                default:<span class="cov8" title="1">
                         return glState, fmt.Errorf("unknown status %s", state)</span>
                 }
         } else<span class="cov8" title="1"> {
@@ -5409,7 +5409,7 @@ func GenerateGitlabCommitState(state intgteststat.IntegrationTestStatus, optiona
                         glState = gitlab.Success</span>
                 case intgteststat.IntegrationTestStatusTestWarning:<span class="cov8" title="1">
                         glState = gitlab.Success</span>
-                default:<span class="cov0" title="0">
+                default:<span class="cov8" title="1">
                         return glState, fmt.Errorf("unknown status %s", state)</span>
                 }
         }
