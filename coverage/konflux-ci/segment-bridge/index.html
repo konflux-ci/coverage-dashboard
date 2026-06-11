@@ -57,7 +57,7 @@
 				
 				<option value="file0">github.com/redhat-appstudio/segment-bridge.git/scripts/runner.go (33.3%)</option>
 				
-				<option value="file1">github.com/redhat-appstudio/segment-bridge.git/stats/series.go (84.4%)</option>
+				<option value="file1">github.com/redhat-appstudio/segment-bridge.git/stats/series.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -185,7 +185,7 @@ func (s *Series[T]) Add(v T) <span class="cov8" title="1">{
                 s.max = v
                 s.total = v
         }</span> else<span class="cov8" title="1"> {
-                if s.min &gt; v </span><span class="cov0" title="0">{
+                if s.min &gt; v </span><span class="cov8" title="1">{
                         s.min = v
                 }</span>
                 <span class="cov8" title="1">if s.max &lt; v </span><span class="cov8" title="1">{
@@ -217,18 +217,18 @@ func (s Series[T]) Format(f fmt.State, verb rune) <span class="cov8" title="1">{
 
 func rebuildFmtStr(f fmt.State, verb rune) string <span class="cov8" title="1">{
         fldFmtStr := "%"
-        for flag := range [...]int{'+', '=', '#', ' ', '0'} </span><span class="cov8" title="1">{
-                if f.Flag(flag) </span><span class="cov0" title="0">{
+        for _, flag := range [...]int{'+', '-', '#', ' ', '0'} </span><span class="cov8" title="1">{
+                if f.Flag(flag) </span><span class="cov8" title="1">{
                         fldFmtStr += string(rune(flag))
                 }</span>
         }
         <span class="cov8" title="1">if w, ok := f.Width(); ok </span><span class="cov8" title="1">{
                 fldFmtStr += fmt.Sprintf("%d", w)
         }</span>
-        <span class="cov8" title="1">if p, ok := f.Precision(); ok </span><span class="cov0" title="0">{
-                if p == 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if p, ok := f.Precision(); ok </span><span class="cov8" title="1">{
+                if p == 0 </span><span class="cov8" title="1">{
                         fldFmtStr += "."
-                }</span> else<span class="cov0" title="0"> {
+                }</span> else<span class="cov8" title="1"> {
                         fldFmtStr += fmt.Sprintf(".%d", p)
                 }</span>
         }

@@ -1,5 +1,5 @@
 {
-  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/27253407685",
+  "run_url": "https://github.com/konflux-ci/coverage-dashboard/actions/runs/27324052133",
   "data": [
     {
       "repo": "konflux-ci/application-api",
@@ -9,7 +9,7 @@
     },
     {
       "repo": "konflux-ci/build-service",
-      "coverage": 61.1,
+      "coverage": 61.2,
       "status": "ok",
       "packages": [
         {
@@ -22,15 +22,15 @@
         },
         {
           "package": "github.com/konflux-ci/build-service/internal/controller",
-          "coverage": 81.9
-        },
-        {
-          "package": "github.com/konflux-ci/build-service/pkg/common",
-          "coverage": 90.0
+          "coverage": 82.1
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git",
           "coverage": 20.5
+        },
+        {
+          "package": "github.com/konflux-ci/build-service/pkg/common",
+          "coverage": 90.0
         },
         {
           "package": "github.com/konflux-ci/build-service/pkg/git/gitproviderfactory",
@@ -132,7 +132,7 @@
     },
     {
       "repo": "konflux-ci/image-controller",
-      "coverage": 73.4,
+      "coverage": 73.2,
       "status": "failed",
       "packages": [
         {
@@ -145,7 +145,7 @@
         },
         {
           "package": "github.com/konflux-ci/image-controller/internal/controller",
-          "coverage": 74.1
+          "coverage": 73.6
         },
         {
           "package": "github.com/konflux-ci/image-controller/pkg/quay",
@@ -174,12 +174,12 @@
     },
     {
       "repo": "konflux-ci/integration-service",
-      "coverage": 62.5,
+      "coverage": 62.6,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/integration-service/snapshot",
-          "coverage": 70.0
+          "coverage": 70.9
         },
         {
           "package": "github.com/konflux-ci/integration-service/status",
@@ -213,12 +213,12 @@
     },
     {
       "repo": "konflux-ci/internal-services",
-      "coverage": 62.4,
+      "coverage": 64.9,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/internal-services/controllers/internalrequest",
-          "coverage": 72.9
+          "coverage": 75.6
         },
         {
           "package": "github.com/konflux-ci/internal-services/metrics",
@@ -474,16 +474,16 @@
           "coverage": 32.3
         },
         {
-          "package": "github.com/konflux-ci/qe-tools/cmd",
-          "coverage": 72.2
-        },
-        {
           "package": "github.com/konflux-ci/qe-tools/cmd/analyzetestresults",
           "coverage": 41.7
         },
         {
           "package": "github.com/konflux-ci/qe-tools/cmd/coffeebreak",
           "coverage": 5.8
+        },
+        {
+          "package": "github.com/konflux-ci/qe-tools/cmd",
+          "coverage": 72.2
         }
       ]
     },
@@ -585,12 +585,12 @@
     },
     {
       "repo": "konflux-ci/segment-bridge",
-      "coverage": 31.7,
+      "coverage": 35.8,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/redhat-appstudio/segment-bridge.git/stats",
-          "coverage": 84.4
+          "coverage": 100.0
         },
         {
           "package": "github.com/redhat-appstudio/segment-bridge.git/scripts",
@@ -600,12 +600,12 @@
     },
     {
       "repo": "konflux-ci/smee-sidecar",
-      "coverage": 58.1,
+      "coverage": 56.8,
       "status": "ok",
       "packages": [
         {
           "package": "github.com/konflux-ci/smee-sidecar/cmd",
-          "coverage": 58.1
+          "coverage": 56.8
         }
       ]
     },
