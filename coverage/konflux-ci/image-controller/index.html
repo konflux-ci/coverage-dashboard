@@ -57,9 +57,9 @@
 				
 				<option value="file0">github.com/konflux-ci/image-controller/cmd/main.go (44.9%)</option>
 				
-				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/application_controller.go (79.6%)</option>
+				<option value="file1">github.com/konflux-ci/image-controller/internal/controller/application_controller.go (81.2%)</option>
 				
-				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (71.2%)</option>
+				<option value="file2">github.com/konflux-ci/image-controller/internal/controller/component_image_controller.go (72.1%)</option>
 				
 				<option value="file3">github.com/konflux-ci/image-controller/internal/controller/imagerepository_controller.go (70.4%)</option>
 				
@@ -657,7 +657,7 @@ func (r *ApplicationPullSecretCreator) Reconcile(ctx context.Context, req ctrl.R
                 }</span>
         }
 
-        <span class="cov8" title="1">if err := r.updateIntegrationServiceAccountWithApplicationPullSecret(ctx, applicationPullSecretName, application.Namespace); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := r.updateIntegrationServiceAccountWithApplicationPullSecret(ctx, applicationPullSecretName, application.Namespace); err != nil </span><span class="cov8" title="1">{
                 return ctrl.Result{}, err
         }</span>
 
@@ -852,7 +852,7 @@ func (r *ApplicationPullSecretCreator) updateIntegrationServiceAccountWithApplic
         }</span>
 
         <span class="cov8" title="1">if shouldUpdateServiceAccount </span><span class="cov8" title="1">{
-                if err := r.Client.Update(ctx, namespaceServiceAccount); err != nil </span><span class="cov0" title="0">{
+                if err := r.Client.Update(ctx, namespaceServiceAccount); err != nil </span><span class="cov8" title="1">{
                         log.Error(err, "failed to update Service Account with application pull secret", l.Action, l.ActionUpdate)
                         return err
                 }</span>
@@ -1213,7 +1213,7 @@ func (r *ComponentReconciler) waitComponentUpdateInCache(ctx context.Context, co
                         }
                         <span class="cov0" title="0">log.Error(err, "failed to get the component for annotation update check", l.Action, l.ActionView)</span>
                 }
-                <span class="cov0" title="0">time.Sleep(100 * time.Millisecond)</span>
+                <span class="cov8" title="1">time.Sleep(100 * time.Millisecond)</span>
         }
         <span class="cov8" title="1">if !isComponentInCacheUpToDate </span><span class="cov0" title="0">{
                 log.Info("failed to wait for updated cache. Requested action could be repeated.", l.Audit, "true")

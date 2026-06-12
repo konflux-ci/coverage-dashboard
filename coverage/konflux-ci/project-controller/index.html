@@ -55,15 +55,25 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/project-controller/internal/controller/projectdevelopmentstream_controller.go (73.6%)</option>
+				<option value="file0">github.com/konflux-ci/project-controller/internal/controller/projectdevelopmentstream_controller.go (72.3%)</option>
 				
-				<option value="file1">github.com/konflux-ci/project-controller/internal/template/execute.go (75.0%)</option>
+				<option value="file1">github.com/konflux-ci/project-controller/internal/ownership/add_missing_uids.go (0.0%)</option>
 				
-				<option value="file2">github.com/konflux-ci/project-controller/internal/template/resources.go (10.5%)</option>
+				<option value="file2">github.com/konflux-ci/project-controller/internal/ownership/product.go (100.0%)</option>
 				
-				<option value="file3">github.com/konflux-ci/project-controller/internal/template/unstructured.go (87.3%)</option>
+				<option value="file3">github.com/konflux-ci/project-controller/internal/ownership/without_uid.go (0.0%)</option>
 				
-				<option value="file4">github.com/konflux-ci/project-controller/pkg/logr/eventr/eventr.go (85.7%)</option>
+				<option value="file4">github.com/konflux-ci/project-controller/internal/template/execute.go (75.0%)</option>
+				
+				<option value="file5">github.com/konflux-ci/project-controller/internal/template/resources.go (10.5%)</option>
+				
+				<option value="file6">github.com/konflux-ci/project-controller/internal/template/unstructured.go (87.3%)</option>
+				
+				<option value="file7">github.com/konflux-ci/project-controller/pkg/logr/eventr/eventr.go (85.7%)</option>
+				
+				<option value="file8">github.com/konflux-ci/project-controller/pkg/testhelpers/applyfile.go (0.0%)</option>
+				
+				<option value="file9">github.com/konflux-ci/project-controller/pkg/testhelpers/resourcefromfile.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -131,14 +141,14 @@ type ProjectDevelopmentStreamReconciler struct {
         Recorder events.EventRecorder
 }
 
-//+kubebuilder:rbac:groups=projctl.konflux.dev,resources=projectdevelopmentstreams,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=projctl.konflux.dev,resources=projectdevelopmentstreams/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=projctl.konflux.dev,resources=projectdevelopmentstreams/finalizers,verbs=update
+// +kubebuilder:rbac:groups=projctl.konflux.dev,resources=projectdevelopmentstreams,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=projctl.konflux.dev,resources=projectdevelopmentstreams/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=projctl.konflux.dev,resources=projectdevelopmentstreams/finalizers,verbs=update
 
-//+kubebuilder:rbac:groups=projctl.konflux.dev,resources=projects,verbs=get;list;watch
-//+kubebuilder:rbac:groups=projctl.konflux.dev,resources=projectdevelopmentstreamtemplates,verbs=get;list;watch
+// +kubebuilder:rbac:groups=projctl.konflux.dev,resources=projects,verbs=get;list;watch
+// +kubebuilder:rbac:groups=projctl.konflux.dev,resources=projectdevelopmentstreamtemplates,verbs=get;list;watch
 
-//+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
+// +kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -150,31 +160,28 @@ type ProjectDevelopmentStreamReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *ProjectDevelopmentStreamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) <span class="cov8" title="1">{
-        _ = log.FromContext(ctx)
-
-        // TODO(user): your logic here
-        log := log.FromContext(ctx)
+        logger := log.FromContext(ctx)
 
         var pds projctlv1beta1.ProjectDevelopmentStream
         if err := r.Get(ctx, req.NamespacedName, &amp;pds); err != nil </span><span class="cov0" title="0">{
-                log.Error(err, "Unable to fetch ProjectDevelopmentStream")
+                logger.Error(err, "Unable to fetch ProjectDevelopmentStream")
                 // we'll ignore not-found errors, since they can't be fixed by an immediate
                 // requeue (we'll need to wait for a new notification), and we can get them
                 // on deleted requests.
                 return ctrl.Result{}, client.IgnoreNotFound(err)
         }</span>
 
-        <span class="cov8" title="1">log = log.WithValues("PDS name", pds.ObjectMeta.Name)
-        log = muxr.NewMuxLogger(log, eventr.NewEventr(r.Recorder, &amp;pds))
+        <span class="cov8" title="1">logger = logger.WithValues("PDS name", pds.Name)
+        logger = muxr.NewMuxLogger(logger, eventr.NewEventr(r.Recorder, &amp;pds))
         // Update context with the enriched logger so that setReadyCondition can use it
-        ctx = ctrl.LoggerInto(ctx, log)
+        ctx = ctrl.LoggerInto(ctx, logger)
 
         // This is arguably better done in an admission hook, but its easier to test
         // when doing this from the controller
         if !r.checkProductOwnerRef(pds) </span><span class="cov8" title="1">{
-                log.Info("Setting ownerReference for ProductDevelopmentStream")
+                logger.Info("Setting ownerReference for ProductDevelopmentStream")
                 if err := r.setProductOwnerRef(ctx, &amp;pds); err != nil </span><span class="cov0" title="0">{
-                        log.Error(err, "Error setting product ownerReference for ProjectDevelopmentStream")
+                        logger.Error(err, "Error setting product ownerReference for ProjectDevelopmentStream")
                         // We treat the product association as a light requirement so we
                         // continue to applying templates rather then quitting on error here
                 }</span> else<span class="cov8" title="1"> {
@@ -187,26 +194,26 @@ func (r *ProjectDevelopmentStreamReconciler) Reconcile(ctx context.Context, req 
 
         <span class="cov8" title="1">var templateName string
         if pds.Spec.Template == nil </span><span class="cov8" title="1">{
-                log.Info("No template is associated with this ProjectDevelopmentStream")
+                logger.Info("No template is associated with this ProjectDevelopmentStream")
                 _ = r.setReadyCondition(ctx, &amp;pds, metav1.ConditionTrue, "NoTemplate", "ProjectDevelopmentStream ready (no template specified)")
                 return ctrl.Result{}, nil
         }</span>
         <span class="cov8" title="1">templateName = pds.Spec.Template.Name
-        log = log.WithValues("PDS Template", templateName)
-        ctx = ctrl.LoggerInto(ctx, log)
+        logger = logger.WithValues("PDS Template", templateName)
+        ctx = ctrl.LoggerInto(ctx, logger)
 
         var pdst projctlv1beta1.ProjectDevelopmentStreamTemplate
         templateKey := client.ObjectKey{Namespace: pds.GetNamespace(), Name: templateName}
         if err := r.Get(ctx, templateKey, &amp;pdst); err != nil </span><span class="cov8" title="1">{
-                log.Error(err, "Failed to fetch template")
+                logger.Error(err, "Failed to fetch template")
                 _ = r.setReadyCondition(ctx, &amp;pds, metav1.ConditionFalse, "TemplateFetchFailed", fmt.Sprintf("Failed to fetch template: %v", err))
                 return ctrl.Result{}, client.IgnoreNotFound(err)
         }</span>
 
-        <span class="cov8" title="1">log.Info(fmt.Sprintf("Applying resources from ProjectDevelopmentStreamTemplate: %s", pdst.Name))
+        <span class="cov8" title="1">logger.Info(fmt.Sprintf("Applying resources from ProjectDevelopmentStreamTemplate: %s", pdst.Name))
         resources, err := template.MkResources(pds, pdst)
         if err != nil </span><span class="cov8" title="1">{
-                log.Error(err, "Failed to generate resources from template")
+                logger.Error(err, "Failed to generate resources from template")
                 _ = r.setReadyCondition(ctx, &amp;pds, metav1.ConditionFalse, "TemplateGenerationFailed", fmt.Sprintf("Failed to generate resources from template: %v", err))
                 // We return 'nil' error because there is not point retrying the
                 // reconcile loop
@@ -215,18 +222,18 @@ func (r *ProjectDevelopmentStreamReconciler) Reconcile(ctx context.Context, req 
 
         <span class="cov8" title="1">var requeue bool
         for _, resource := range resources </span><span class="cov8" title="1">{
-                log := log.WithValues(
+                resLogger := logger.WithValues(
                         "apiVersion", resource.GetAPIVersion(),
                         "kind", resource.GetKind(),
                         "name", resource.GetName(),
                 )
-                log.V(1).Info("Creating/Updating resource")
+                resLogger.V(1).Info("Creating/Updating resource")
                 ownership.AddMissingUIDs(ctx, r.Client, resource)
                 if len(resource.GetOwnerReferences()) &lt;= 0 </span><span class="cov8" title="1">{
                         // If the resource does not have an owner set, use the PDS
                         _ = controllerutil.SetOwnerReference(&amp;pds, resource, r.Scheme)
                 }</span>
-                <span class="cov8" title="1">requeue = requeue || r.createOrUpdateResource(ctx, log, resource)</span>
+                <span class="cov8" title="1">requeue = requeue || r.createOrUpdateResource(ctx, resLogger, resource)</span>
         }
 
         // Set final condition based on whether we need to requeue
@@ -242,18 +249,18 @@ func (r *ProjectDevelopmentStreamReconciler) Reconcile(ctx context.Context, req 
 // Create or update the given resource. Returns true if there is an update
 // conflict for the resource and therefore the reconcile action should be
 // re-queued.
-func (r *ProjectDevelopmentStreamReconciler) createOrUpdateResource(ctx context.Context, log logr.Logger, resource *unstructured.Unstructured) bool <span class="cov8" title="1">{
+func (r *ProjectDevelopmentStreamReconciler) createOrUpdateResource(ctx context.Context, logger logr.Logger, resource *unstructured.Unstructured) bool <span class="cov8" title="1">{
         if template.HasCreateOnlyFields(resource) </span><span class="cov8" title="1">{
                 exists, err := r.resourceExists(ctx, resource)
                 if err != nil </span><span class="cov0" title="0">{
-                        log.Error(err, "Failed to check if resource exists: %s [%s]", resource.GetName(), resource.GetKind())
+                        logger.Error(err, "Failed to check if resource exists", "name", resource.GetName(), "kind", resource.GetKind())
                         return true
                 }</span>
                 <span class="cov8" title="1">if exists </span><span class="cov8" title="1">{
                         template.RemoveCreateOnlyFields(resource)
                 }</span>
         }
-        <span class="cov8" title="1">err := r.Client.Patch(
+        <span class="cov8" title="1">err := r.Patch(
                 ctx,
                 resource,
                 client.Apply, //nolint:staticcheck // deprecated: will be migrated to new Apply API in future
@@ -261,29 +268,18 @@ func (r *ProjectDevelopmentStreamReconciler) createOrUpdateResource(ctx context.
                 client.ForceOwnership,
         )
         if err != nil </span><span class="cov0" title="0">{
-                log.Error(err, fmt.Sprintf("Failed to create or update resource: %s [%s]", resource.GetName(), resource.GetKind()))
+                logger.Error(err, fmt.Sprintf("Failed to create or update resource: %s [%s]", resource.GetName(), resource.GetKind()))
                 return apierrors.IsConflict(err)
         }</span>
-        <span class="cov8" title="1">log.Info(fmt.Sprintf("Resource updated: %s [%s]", resource.GetName(), resource.GetKind()))
+        <span class="cov8" title="1">logger.Info(fmt.Sprintf("Resource updated: %s [%s]", resource.GetName(), resource.GetKind()))
         return false</span>
 }
 
 // Check wither the PDS ownerReference is already set to point to the right
 // product
 func (r *ProjectDevelopmentStreamReconciler) checkProductOwnerRef(pds projctlv1beta1.ProjectDevelopmentStream) bool <span class="cov8" title="1">{
-        projectName := pds.Spec.Project
-        if projectName == "" </span><span class="cov0" title="0">{
-                return true // We define an empty project field as having a reference
-        }</span>
-        <span class="cov8" title="1">projectGVK, _ := r.Client.GroupVersionKindFor(&amp;projctlv1beta1.Project{})
-        prjAPIVersion, prjKind := projectGVK.ToAPIVersionAndKind()
-        for _, ref := range pds.ObjectMeta.OwnerReferences </span><span class="cov8" title="1">{
-                if ref.APIVersion == prjAPIVersion &amp;&amp; ref.Kind == prjKind &amp;&amp; ref.Name == projectName </span><span class="cov8" title="1">{
-                        return true
-                }</span>
-        }
-        <span class="cov8" title="1">return false</span>
-}
+        return ownership.HasProductRef(r.Client, pds)
+}</span>
 
 func (r *ProjectDevelopmentStreamReconciler) setProductOwnerRef(ctx context.Context, pds *projctlv1beta1.ProjectDevelopmentStream) error <span class="cov8" title="1">{
         // Re-fetch so we have the latest resourceVersion (e.g. after a status apply earlier in reconcile).
@@ -292,13 +288,13 @@ func (r *ProjectDevelopmentStreamReconciler) setProductOwnerRef(ctx context.Cont
         }</span>
         <span class="cov8" title="1">projectKey := client.ObjectKey{Namespace: pds.GetNamespace(), Name: pds.Spec.Project}
         project := projctlv1beta1.Project{}
-        if err := r.Client.Get(ctx, projectKey, &amp;project); err != nil </span><span class="cov0" title="0">{
+        if err := r.Get(ctx, projectKey, &amp;project); err != nil </span><span class="cov0" title="0">{
                 return err
         }</span>
         <span class="cov8" title="1">if err := controllerutil.SetOwnerReference(&amp;project, pds, r.Scheme); err != nil </span><span class="cov0" title="0">{
                 return err
         }</span>
-        <span class="cov8" title="1">return r.Client.Update(ctx, pds)</span>
+        <span class="cov8" title="1">return r.Update(ctx, pds)</span>
 }
 
 // Returns a handler for collecting all dev streams that exist on the same namespace as
@@ -310,7 +306,7 @@ func getSameNSEventHandler(r *ProjectDevelopmentStreamReconciler) handler.EventH
 
                         // get all streams from current namespace
                         list := projctlv1beta1.ProjectDevelopmentStreamList{}
-                        if err := r.Client.List(ctx, &amp;list, client.InNamespace(o.GetNamespace())); err != nil </span><span class="cov0" title="0">{
+                        if err := r.List(ctx, &amp;list, client.InNamespace(o.GetNamespace())); err != nil </span><span class="cov0" title="0">{
                                 lg.Error(err, "Failed listing dev streams in namespace")
                                 return nil
                         }</span>
@@ -326,7 +322,7 @@ func getSameNSEventHandler(r *ProjectDevelopmentStreamReconciler) handler.EventH
 
 // setReadyCondition sets the Ready condition and updates the status
 func (r *ProjectDevelopmentStreamReconciler) setReadyCondition(ctx context.Context, pds *projctlv1beta1.ProjectDevelopmentStream, status metav1.ConditionStatus, reason, message string) error <span class="cov8" title="1">{
-        log := log.FromContext(ctx)
+        logger := log.FromContext(ctx)
 
         condition := metav1.Condition{
                 Type:               ConditionTypeReady,
@@ -348,7 +344,7 @@ func (r *ProjectDevelopmentStreamReconciler) setReadyCondition(ctx context.Conte
         // Status().Apply) so the server merges and tracks field ownership.
         <span class="cov8" title="1">gvk, err := r.GroupVersionKindFor(pds)
         if err != nil </span><span class="cov0" title="0">{
-                log.Error(err, "Failed to get GVK for ProjectDevelopmentStream")
+                logger.Error(err, "Failed to get GVK for ProjectDevelopmentStream")
                 return err
         }</span>
         <span class="cov8" title="1">applyStatus := &amp;projctlv1beta1.ProjectDevelopmentStream{
@@ -363,12 +359,12 @@ func (r *ProjectDevelopmentStreamReconciler) setReadyCondition(ctx context.Conte
         applyStatus.GetObjectKind().SetGroupVersionKind(gvk)
         u, err := runtime.DefaultUnstructuredConverter.ToUnstructured(applyStatus)
         if err != nil </span><span class="cov0" title="0">{
-                log.Error(err, "Failed to convert status to unstructured")
+                logger.Error(err, "Failed to convert status to unstructured")
                 return err
         }</span>
         <span class="cov8" title="1">applyObj := &amp;unstructured.Unstructured{Object: u}
         if err := r.Status().Apply(ctx, client.ApplyConfigurationFromUnstructured(applyObj), client.FieldOwner("projctl.konflux.dev")); err != nil </span><span class="cov0" title="0">{
-                log.Error(err, "Failed to update Ready condition", "reason", reason)
+                logger.Error(err, "Failed to update Ready condition", "reason", reason)
                 return err
         }</span>
         <span class="cov8" title="1">return nil</span>
@@ -396,7 +392,7 @@ func (r *ProjectDevelopmentStreamReconciler) resourceExists(ctx context.Context,
         existing.SetKind(resource.GetKind())
         existing.SetName(resource.GetName())
         existing.SetNamespace(resource.GetNamespace())
-        err := r.Client.Get(ctx, client.ObjectKeyFromObject(&amp;existing), &amp;existing)
+        err := r.Get(ctx, client.ObjectKeyFromObject(&amp;existing), &amp;existing)
         if err != nil </span><span class="cov8" title="1">{
                 if apierrors.IsNotFound(err) </span><span class="cov8" title="1">{
                         return false, nil
@@ -407,7 +403,146 @@ func (r *ProjectDevelopmentStreamReconciler) resourceExists(ctx context.Context,
 }
 </pre>
 		
-		<pre class="file" id="file1" style="display: none">package template
+		<pre class="file" id="file1" style="display: none">package ownership
+
+import (
+        "context"
+
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+        "k8s.io/apimachinery/pkg/types"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+// Given an object, find ownership records that are defined on it with missing
+// UID values and fill-in those values.
+// Access to an API client is and context needed to search for the owning
+// objects.
+func AddMissingUIDs(ctx context.Context, cli client.Client, object metav1.Object) <span class="cov0" title="0">{
+        owners := object.GetOwnerReferences()
+        for i, owner := range owners </span><span class="cov0" title="0">{
+                if owner.UID != "" </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov0" title="0">uid, err := findObjectUid(ctx, cli, owner.APIVersion, owner.Kind, object.GetNamespace(), owner.Name)
+                if err != nil </span><span class="cov0" title="0">{
+                        // If we have an error fetching the owner object we just ignore it
+                        // and leave the record as-is. We rely on the fact that the server
+                        // will just strip it away if its still missing a UID
+                        continue</span>
+                }
+                <span class="cov0" title="0">owners[i].UID = uid</span>
+        }
+        <span class="cov0" title="0">object.SetOwnerReferences(owners)</span>
+}
+
+func findObjectUid(ctx context.Context, cli client.Client, apiVersion, kind, namespace, name string) (types.UID, error) <span class="cov0" title="0">{
+        key := client.ObjectKey{Namespace: namespace, Name: name}
+        var object unstructured.Unstructured
+        object.SetAPIVersion(apiVersion)
+        object.SetKind(kind)
+        if err := cli.Get(ctx, key, &amp;object); err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov0" title="0">return object.GetUID(), nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package ownership
+
+import (
+        "sigs.k8s.io/controller-runtime/pkg/client"
+
+        projctlv1beta1 "github.com/konflux-ci/project-controller/api/v1beta1"
+)
+
+func HasProductRef(k8sClient client.Client, pds projctlv1beta1.ProjectDevelopmentStream) bool <span class="cov8" title="1">{
+        projectName := pds.Spec.Project
+        if projectName == "" </span><span class="cov8" title="1">{
+                return true // We define an empty project field as having a reference
+        }</span>
+        <span class="cov8" title="1">projectGVK, _ := k8sClient.GroupVersionKindFor(&amp;projctlv1beta1.Project{})
+        prjAPIVersion, prjKind := projectGVK.ToAPIVersionAndKind()
+        for _, ref := range pds.OwnerReferences </span><span class="cov8" title="1">{
+                if ref.APIVersion == prjAPIVersion &amp;&amp; ref.Kind == prjKind &amp;&amp; ref.Name == projectName </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+        <span class="cov8" title="1">return false</span>
+
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package ownership
+
+import (
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        "k8s.io/apimachinery/pkg/runtime/schema"
+)
+
+// Set an ownership record for a resource without UID. This is meant to be used
+// locally when the UID for the owning resource is not yet known.
+// This function also ensure each object only has one ownership record for
+// a particular API group and Kind combination.
+func SetWithoutUid(
+        resource metav1.Object, ownerAPI schema.GroupVersionKind, ownerName string,
+        ownerIsControlller, ownerDeletionBlocked bool,
+) <span class="cov0" title="0">{
+        apiVersion, kind := ownerAPI.ToAPIVersionAndKind()
+        ref := metav1.OwnerReference{
+                APIVersion: apiVersion,
+                Kind:       kind,
+                Name:       ownerName,
+        }
+        if ownerIsControlller </span><span class="cov0" title="0">{
+                ref.Controller = &amp;ownerIsControlller
+        }</span>
+        <span class="cov0" title="0">if ownerDeletionBlocked </span><span class="cov0" title="0">{
+                ref.BlockOwnerDeletion = &amp;ownerDeletionBlocked
+        }</span>
+        <span class="cov0" title="0">upsertOwnerRef(ref, resource)</span>
+}
+
+// Insert or update and ownership reference for the given object. A reference
+// is updated if it refers to the same API group and kind as the given reference
+func upsertOwnerRef(ref metav1.OwnerReference, object metav1.Object) <span class="cov0" title="0">{
+        owners := object.GetOwnerReferences()
+        if idx := indexOwnerRef(owners, ref); idx == -1 </span><span class="cov0" title="0">{
+                owners = append(owners, ref)
+        }</span> else<span class="cov0" title="0"> {
+                owners[idx] = ref
+        }</span>
+        <span class="cov0" title="0">object.SetOwnerReferences(owners)</span>
+}
+
+// Find, within the given slice an ownerReference record that refers to the
+// same Group and Kind as the given reference
+func indexOwnerRef(ownerReferences []metav1.OwnerReference, ref metav1.OwnerReference) int <span class="cov0" title="0">{
+        for i, r := range ownerReferences </span><span class="cov0" title="0">{
+                if referSameGroupKind(r, ref) </span><span class="cov0" title="0">{
+                        return i
+                }</span>
+        }
+        <span class="cov0" title="0">return -1</span>
+}
+
+// Returns true if both given references refer to the same resource Group and
+// Kind
+func referSameGroupKind(a, b metav1.OwnerReference) bool <span class="cov0" title="0">{
+        aGV, err := schema.ParseGroupVersion(a.APIVersion)
+        if err != nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">bGV, err := schema.ParseGroupVersion(b.APIVersion)
+        if err != nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+        <span class="cov0" title="0">return aGV.Group == bGV.Group &amp;&amp; a.Kind == b.Kind</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package template
 
 import (
         "regexp"
@@ -436,7 +571,7 @@ func executeTemplate(templateStr string, values map[string]string) (string, erro
 }
 </pre>
 		
-		<pre class="file" id="file2" style="display: none">package template
+		<pre class="file" id="file5" style="display: none">package template
 
 import (
         "fmt"
@@ -449,12 +584,12 @@ import (
         apischema "k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications/finalizers,verbs=update
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=imagerepositories,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=integrationtestscenarios,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=releaseplans,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications/finalizers,verbs=update
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=imagerepositories,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=integrationtestscenarios,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=appstudio.redhat.com,resources=releaseplans,verbs=get;list;watch;create;update;patch;delete
 
 // List of resource types supported by templates and various details about how
 // to instantiate resources of those types. The list order determines the order
@@ -783,7 +918,7 @@ func RemoveCreateOnlyFields(resource *unstructured.Unstructured) <span class="co
 }
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">package template
+		<pre class="file" id="file6" style="display: none">package template
 
 import (
         "fmt"
@@ -899,7 +1034,7 @@ func processNestedSlice(obj map[string]any, path []string, ff fieldFunc) error <
 }
 </pre>
 		
-		<pre class="file" id="file4" style="display: none">package eventr
+		<pre class="file" id="file7" style="display: none">package eventr
 
 import (
         "fmt"
@@ -965,6 +1100,51 @@ func GetValueForKey(keysAndValues []any, key any, defVal string) string <span cl
                 }
         }
         <span class="cov8" title="1">return value</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package testhelpers
+
+import (
+        "context"
+
+        g "github.com/onsi/gomega"
+
+        "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+func ApplyFile(ctx context.Context, k8sClient client.Client, path string, ns string) <span class="cov0" title="0">{
+        res := new(unstructured.Unstructured)
+        ResourceFromFile(path, res)
+        res.SetNamespace(ns)
+        g.Expect(k8sClient.Patch(
+                ctx, res,
+                client.Apply, //nolint:staticcheck // deprecated: will be migrated to new Apply API in future
+                client.FieldOwner("test-suite"), client.ForceOwnership,
+        )).To(g.Succeed())
+}</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package testhelpers
+
+import (
+        "io"
+        "os"
+
+        "k8s.io/apimachinery/pkg/util/yaml"
+        "sigs.k8s.io/controller-runtime/pkg/client"
+
+        g "github.com/onsi/gomega"
+)
+
+func ResourceFromFile(path string, resource client.Object) <span class="cov8" title="1">{
+        f, err := os.Open(path) //nolint:gosec // path is a test fixture file under config/samples
+        g.Expect(err).NotTo(g.HaveOccurred())
+        defer func() </span><span class="cov8" title="1">{ _ = f.Close() }</span>()
+        <span class="cov8" title="1">buf, err := io.ReadAll(f)
+        g.Expect(err).NotTo(g.HaveOccurred())
+        g.Expect(yaml.UnmarshalStrict(buf, resource)).To(g.Succeed())</span>
 }
 </pre>
 		
