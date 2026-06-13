@@ -81,37 +81,39 @@
 				
 				<option value="file12">github.com/konflux-ci/release-service/controllers/releaseplan/controller.go (66.7%)</option>
 				
-				<option value="file13">github.com/konflux-ci/release-service/controllers/releaseplanadmission/adapter.go (91.7%)</option>
+				<option value="file13">github.com/konflux-ci/release-service/controllers/releaseplanadmission/adapter.go (84.4%)</option>
 				
-				<option value="file14">github.com/konflux-ci/release-service/controllers/releaseplanadmission/controller.go (66.7%)</option>
+				<option value="file14">github.com/konflux-ci/release-service/controllers/releaseplanadmission/controller.go (81.0%)</option>
 				
 				<option value="file15">github.com/konflux-ci/release-service/controllers/utils/handlers/enqueue_matched.go (100.0%)</option>
 				
-				<option value="file16">github.com/konflux-ci/release-service/controllers/utils/predicates/predicates.go (94.7%)</option>
+				<option value="file16">github.com/konflux-ci/release-service/controllers/utils/predicates/predicates.go (97.0%)</option>
 				
-				<option value="file17">github.com/konflux-ci/release-service/git/references.go (81.2%)</option>
+				<option value="file17">github.com/konflux-ci/release-service/controllers/utils/retry/matcher.go (88.2%)</option>
 				
-				<option value="file18">github.com/konflux-ci/release-service/kubearchive/client.go (76.8%)</option>
+				<option value="file18">github.com/konflux-ci/release-service/git/references.go (81.2%)</option>
 				
-				<option value="file19">github.com/konflux-ci/release-service/loader/loader.go (84.8%)</option>
+				<option value="file19">github.com/konflux-ci/release-service/kubearchive/client.go (76.8%)</option>
 				
-				<option value="file20">github.com/konflux-ci/release-service/loader/loader_mock.go (63.0%)</option>
+				<option value="file20">github.com/konflux-ci/release-service/loader/loader.go (84.8%)</option>
 				
-				<option value="file21">github.com/konflux-ci/release-service/metadata/labels.go (100.0%)</option>
+				<option value="file21">github.com/konflux-ci/release-service/loader/loader_mock.go (63.0%)</option>
 				
-				<option value="file22">github.com/konflux-ci/release-service/metadata/metadata.go (100.0%)</option>
+				<option value="file22">github.com/konflux-ci/release-service/metadata/labels.go (100.0%)</option>
 				
-				<option value="file23">github.com/konflux-ci/release-service/metrics/release.go (100.0%)</option>
+				<option value="file23">github.com/konflux-ci/release-service/metadata/metadata.go (100.0%)</option>
 				
-				<option value="file24">github.com/konflux-ci/release-service/syncer/syncer.go (90.0%)</option>
+				<option value="file24">github.com/konflux-ci/release-service/metrics/release.go (100.0%)</option>
 				
-				<option value="file25">github.com/konflux-ci/release-service/tekton/predicates.go (100.0%)</option>
+				<option value="file25">github.com/konflux-ci/release-service/syncer/syncer.go (90.0%)</option>
 				
-				<option value="file26">github.com/konflux-ci/release-service/tekton/utils.go (93.0%)</option>
+				<option value="file26">github.com/konflux-ci/release-service/tekton/predicates.go (100.0%)</option>
 				
-				<option value="file27">github.com/konflux-ci/release-service/tekton/utils/pipeline.go (98.8%)</option>
+				<option value="file27">github.com/konflux-ci/release-service/tekton/utils.go (93.0%)</option>
 				
-				<option value="file28">github.com/konflux-ci/release-service/tekton/utils/pipeline_run_builder.go (90.7%)</option>
+				<option value="file28">github.com/konflux-ci/release-service/tekton/utils/pipeline.go (98.8%)</option>
+				
+				<option value="file29">github.com/konflux-ci/release-service/tekton/utils/pipeline_run_builder.go (90.7%)</option>
 				
 				</select>
 			</div>
@@ -1371,6 +1373,24 @@ type MatchedReleasePlan struct {
         Active bool `json:"active,omitempty"`
 }
 
+// RetryInfo contains information about retry configuration for a ReleasePlanAdmission.
+type RetryInfo struct {
+        // Enabled indicates whether retries are enabled for this RPA's pipeline
+        Enabled bool `json:"enabled"`
+
+        // MaxRetries is the maximum number of retries if enabled
+        // +optional
+        MaxRetries *int `json:"maxRetries,omitempty"`
+
+        // Mitigations defines adjustment strategies to apply on retry based on failure type
+        // +optional
+        Mitigations *Mitigations `json:"mitigations,omitempty"`
+
+        // Reason explains why retries are enabled or disabled
+        // Examples: "disabled due to tag: production", "enabled with policy", "no matching pipeline"
+        Reason string `json:"reason"`
+}
+
 // ReleasePlanAdmissionStatus defines the observed state of ReleasePlanAdmission.
 type ReleasePlanAdmissionStatus struct {
         // Conditions represent the latest available observations for the releasePlanAdmission
@@ -1380,6 +1400,10 @@ type ReleasePlanAdmissionStatus struct {
         // ReleasePlan is a list of releasePlans matched to the ReleasePlanAdmission
         // +optional
         ReleasePlans []MatchedReleasePlan `json:"releasePlans"`
+
+        // RetryInfo contains information about retry configuration for this ReleasePlanAdmission
+        // +optional
+        RetryInfo *RetryInfo `json:"retryInfo,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -4607,12 +4631,16 @@ package releaseplanadmission
 
 import (
         "context"
+        "fmt"
+        "os"
         "reflect"
 
         "github.com/go-logr/logr"
         "github.com/konflux-ci/operator-toolkit/controller"
         "github.com/konflux-ci/release-service/api/v1alpha1"
+        "github.com/konflux-ci/release-service/controllers/utils/retry"
         "github.com/konflux-ci/release-service/loader"
+        "k8s.io/apimachinery/pkg/api/errors"
         "k8s.io/apimachinery/pkg/api/meta"
         "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -4663,6 +4691,54 @@ func (a *adapter) EnsureMatchingInformationIsSet() (controller.OperationResult, 
 
         <span class="cov8" title="1">return controller.RequeueOnErrorOrContinue(a.client.Status().Patch(a.ctx, a.releasePlanAdmission, patch))</span>
 }
+
+// EnsureRetryInformationIsSet is an operation that will ensure that the ReleasePlanAdmission has updated
+// retry information in its status based on the current ReleaseServiceConfig.
+func (a *adapter) EnsureRetryInformationIsSet() (controller.OperationResult, error) <span class="cov8" title="1">{
+        // Get ReleaseServiceConfig from operator namespace
+        namespace := os.Getenv("SERVICE_NAMESPACE")
+        if namespace == "" </span><span class="cov0" title="0">{
+                return controller.RequeueWithError(fmt.Errorf("SERVICE_NAMESPACE env var not set"))
+        }</span>
+
+        <span class="cov8" title="1">rsc, err := a.loader.GetReleaseServiceConfig(
+                a.ctx, a.client,
+                v1alpha1.ReleaseServiceConfigResourceName,
+                namespace,
+        )
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.IsNotFound(err) </span><span class="cov8" title="1">{
+                        rsc = nil
+                }</span> else<span class="cov0" title="0"> {
+                        return controller.RequeueWithError(err)
+                }</span>
+        }
+
+        // Get matched ReleasePlans (only needed if RSC exists for tag-based disable checks)
+        <span class="cov8" title="1">var matchedRPs *v1alpha1.ReleasePlanList
+        if rsc != nil </span><span class="cov8" title="1">{
+                matchedRPs, err = a.loader.GetMatchingReleasePlans(a.ctx, a.client, a.releasePlanAdmission)
+                if err != nil </span><span class="cov0" title="0">{
+                        return controller.RequeueWithError(err)
+                }</span>
+        }
+
+        // Determine retry info
+        <span class="cov8" title="1">newRetryInfo := retry.DetermineRetryInfo(a.releasePlanAdmission, matchedRPs, rsc, a.logger)
+
+        // Check if update needed
+        if reflect.DeepEqual(a.releasePlanAdmission.Status.RetryInfo, newRetryInfo) </span><span class="cov0" title="0">{
+                return controller.ContinueProcessing()
+        }</span>
+
+        // Update status
+        <span class="cov8" title="1">copiedRPA := a.releasePlanAdmission.DeepCopy()
+        patch := client.MergeFrom(copiedRPA)
+
+        a.releasePlanAdmission.Status.RetryInfo = newRetryInfo
+
+        return controller.RequeueOnErrorOrContinue(a.client.Status().Patch(a.ctx, a.releasePlanAdmission, patch))</span>
+}
 </pre>
 		
 		<pre class="file" id="file14" style="display: none">/*
@@ -4700,6 +4776,9 @@ import (
         "sigs.k8s.io/controller-runtime/pkg/builder"
         "sigs.k8s.io/controller-runtime/pkg/client"
         sigsctrl "sigs.k8s.io/controller-runtime/pkg/controller"
+        "sigs.k8s.io/controller-runtime/pkg/handler"
+        "sigs.k8s.io/controller-runtime/pkg/predicate"
+        "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // Controller reconciles a ReleasePlanAdmission object
@@ -4732,18 +4811,22 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
         return controller.ReconcileHandler([]controller.Operation{
                 adapter.EnsureMatchingInformationIsSet,
+                adapter.EnsureRetryInformationIsSet,
         })</span>
 }
 
 // Register registers the controller with the passed manager and log.
 func (c *Controller) Register(mgr ctrl.Manager, log *logr.Logger, _ cluster.Cluster) error <span class="cov8" title="1">{
         c.client = mgr.GetClient()
+        c.log = *log
 
         return ctrl.NewControllerManagedBy(mgr).
                 WithOptions(sigsctrl.Options{MaxConcurrentReconciles: c.MaxConcurrentReconciles}).
-                For(&amp;v1alpha1.ReleasePlanAdmission{}, builder.WithPredicates(predicates.MatchPredicate())).
+                For(&amp;v1alpha1.ReleasePlanAdmission{}, builder.WithPredicates(predicate.Or(predicates.MatchPredicate(), predicates.RetryInfoPredicate()))).
                 Watches(&amp;v1alpha1.ReleasePlan{}, &amp;handlers.EnqueueRequestForMatchedResource[client.Object]{},
                         builder.WithPredicates(predicates.MatchPredicate())).
+                Watches(&amp;v1alpha1.ReleaseServiceConfig{}, handler.EnqueueRequestsFromMapFunc(c.enqueueAllRPAs),
+                        builder.WithPredicates(predicates.ReleaseServiceConfigPredicate())).
                 Complete(c)
 }</span>
 
@@ -4752,6 +4835,24 @@ func (c *Controller) Register(mgr ctrl.Manager, log *logr.Logger, _ cluster.Clus
 func (c *Controller) SetupCache(mgr ctrl.Manager) error <span class="cov0" title="0">{
         return cache.SetupReleasePlanCache(mgr)
 }</span>
+
+// enqueueAllRPAs is a handler function that enqueues all ReleasePlanAdmissions when a ReleaseServiceConfig changes.
+func (c *Controller) enqueueAllRPAs(ctx context.Context, _ client.Object) []reconcile.Request <span class="cov8" title="1">{
+        rpaList := &amp;v1alpha1.ReleasePlanAdmissionList{}
+        if err := c.client.List(ctx, rpaList); err != nil </span><span class="cov8" title="1">{
+                c.log.Error(err, "Failed to list ReleasePlanAdmissions for ReleaseServiceConfig watch")
+                return []reconcile.Request{}
+        }</span>
+
+        <span class="cov8" title="1">requests := make([]reconcile.Request, len(rpaList.Items))
+        for i, rpa := range rpaList.Items </span><span class="cov8" title="1">{
+                requests[i] = reconcile.Request{
+                        NamespacedName: client.ObjectKeyFromObject(&amp;rpa),
+                }
+        }</span>
+
+        <span class="cov8" title="1">return requests</span>
+}
 </pre>
 		
 		<pre class="file" id="file15" style="display: none">/*
@@ -4909,6 +5010,26 @@ func MatchPredicate() predicate.Predicate <span class="cov8" title="1">{
         }
 }
 
+// RetryInfoPredicate returns a predicate which returns true when pipeline or data
+// specifications change (needed for retry info updates).
+func RetryInfoPredicate() predicate.Predicate <span class="cov8" title="1">{
+        return predicate.Funcs{
+                CreateFunc: func(createEvent event.CreateEvent) bool </span><span class="cov8" title="1">{
+                        return false
+                }</span>,
+                DeleteFunc: func(deleteEvent event.DeleteEvent) bool <span class="cov8" title="1">{
+                        return false
+                }</span>,
+                GenericFunc: func(genericEvent event.GenericEvent) bool <span class="cov8" title="1">{
+                        return false
+                }</span>,
+                UpdateFunc: func(e event.UpdateEvent) bool <span class="cov8" title="1">{
+                        return hasPipelineChanged(e.ObjectOld, e.ObjectNew) ||
+                                hasDataChanged(e.ObjectOld, e.ObjectNew)
+                }</span>,
+        }
+}
+
 // hasConditionChanged returns true if one, but not both, of the conditions
 // are nil or if both are not nil and have different lastTransitionTimes.
 func hasConditionChanged(conditionOld, conditionNew *metav1.Condition) bool <span class="cov8" title="1">{
@@ -4993,9 +5114,326 @@ func hasSourceChanged(objectOld, objectNew client.Object) bool <span class="cov8
 
         <span class="cov0" title="0">return false</span>
 }
+
+// hasPipelineChanged returns true if the objects are ReleasePlanAdmissions or ReleasePlans
+// and their pipeline specifications have changed.
+func hasPipelineChanged(objectOld, objectNew client.Object) bool <span class="cov8" title="1">{
+        if releasePlanAdmissionOld, ok := objectOld.(*v1alpha1.ReleasePlanAdmission); ok </span><span class="cov8" title="1">{
+                if releasePlanAdmissionNew, ok := objectNew.(*v1alpha1.ReleasePlanAdmission); ok </span><span class="cov8" title="1">{
+                        return !reflect.DeepEqual(releasePlanAdmissionOld.Spec.Pipeline, releasePlanAdmissionNew.Spec.Pipeline)
+                }</span>
+        }
+
+        <span class="cov8" title="1">if releasePlanOld, ok := objectOld.(*v1alpha1.ReleasePlan); ok </span><span class="cov8" title="1">{
+                if releasePlanNew, ok := objectNew.(*v1alpha1.ReleasePlan); ok </span><span class="cov8" title="1">{
+                        return !reflect.DeepEqual(releasePlanOld.Spec.TenantPipeline, releasePlanNew.Spec.TenantPipeline) ||
+                                !reflect.DeepEqual(releasePlanOld.Spec.FinalPipeline, releasePlanNew.Spec.FinalPipeline)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return false</span>
+}
+
+// hasDataChanged returns true if the objects are ReleasePlanAdmissions or ReleasePlans
+// and their data specifications have changed.
+func hasDataChanged(objectOld, objectNew client.Object) bool <span class="cov8" title="1">{
+        if releasePlanAdmissionOld, ok := objectOld.(*v1alpha1.ReleasePlanAdmission); ok </span><span class="cov8" title="1">{
+                if releasePlanAdmissionNew, ok := objectNew.(*v1alpha1.ReleasePlanAdmission); ok </span><span class="cov8" title="1">{
+                        return !reflect.DeepEqual(releasePlanAdmissionOld.Spec.Data, releasePlanAdmissionNew.Spec.Data)
+                }</span>
+        }
+
+        <span class="cov8" title="1">if releasePlanOld, ok := objectOld.(*v1alpha1.ReleasePlan); ok </span><span class="cov8" title="1">{
+                if releasePlanNew, ok := objectNew.(*v1alpha1.ReleasePlan); ok </span><span class="cov8" title="1">{
+                        return !reflect.DeepEqual(releasePlanOld.Spec.Data, releasePlanNew.Spec.Data)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return false</span>
+}
+
+// ReleaseServiceConfigPredicate returns a predicate which returns true when a ReleaseServiceConfig
+// is created, deleted, or when its RetryablePipelines specification changes.
+func ReleaseServiceConfigPredicate() predicate.Predicate <span class="cov8" title="1">{
+        return predicate.Funcs{
+                CreateFunc: func(createEvent event.CreateEvent) bool </span><span class="cov8" title="1">{
+                        return true
+                }</span>,
+                DeleteFunc: func(deleteEvent event.DeleteEvent) bool <span class="cov8" title="1">{
+                        // Reconcile on deletion to update RPA status to "no retry configuration available"
+                        return true
+                }</span>,
+                GenericFunc: func(genericEvent event.GenericEvent) bool <span class="cov8" title="1">{
+                        return false
+                }</span>,
+                UpdateFunc: func(e event.UpdateEvent) bool <span class="cov8" title="1">{
+                        rscOld, okOld := e.ObjectOld.(*v1alpha1.ReleaseServiceConfig)
+                        rscNew, okNew := e.ObjectNew.(*v1alpha1.ReleaseServiceConfig)
+
+                        if !okOld || !okNew </span><span class="cov8" title="1">{
+                                return false
+                        }</span>
+
+                        <span class="cov8" title="1">return !reflect.DeepEqual(rscOld.Spec.RetryablePipelines, rscNew.Spec.RetryablePipelines)</span>
+                },
+        }
+}
 </pre>
 		
 		<pre class="file" id="file17" style="display: none">/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package retry
+
+import (
+        "encoding/json"
+        "fmt"
+        "regexp"
+
+        "github.com/go-logr/logr"
+        "github.com/konflux-ci/release-service/api/v1alpha1"
+        tektonutils "github.com/konflux-ci/release-service/tekton/utils"
+        "k8s.io/apimachinery/pkg/runtime"
+)
+
+// DetermineRetryInfo determines the retry information for a given ReleasePlanAdmission.
+// It checks if the RPA's pipeline matches any configured retryable pipelines and if
+// tags from the RPA or matched ReleasePlans disable retries.
+// The RPA's Pipeline.MaxRetries can override the RSC configuration.
+func DetermineRetryInfo(rpa *v1alpha1.ReleasePlanAdmission, matchedRPs *v1alpha1.ReleasePlanList, rsc *v1alpha1.ReleaseServiceConfig, logger *logr.Logger) *v1alpha1.RetryInfo <span class="cov8" title="1">{
+        // Handle no RSC case
+        if rsc == nil </span><span class="cov8" title="1">{
+                return &amp;v1alpha1.RetryInfo{
+                        Enabled: false,
+                        Reason:  "no retry configuration available",
+                }
+        }</span>
+
+        // Handle no pipeline case
+        <span class="cov8" title="1">if rpa.Spec.Pipeline == nil </span><span class="cov8" title="1">{
+                return &amp;v1alpha1.RetryInfo{
+                        Enabled: false,
+                        Reason:  "no pipeline defined",
+                }
+        }</span>
+
+        // Check if retries are explicitly overridden by RPA pipeline
+        <span class="cov8" title="1">if rpa.Spec.Pipeline.MaxRetries != nil </span><span class="cov8" title="1">{
+                if *rpa.Spec.Pipeline.MaxRetries == 0 </span><span class="cov8" title="1">{
+                        return &amp;v1alpha1.RetryInfo{
+                                Enabled: false,
+                                Reason:  "retries disabled by RPA pipeline override",
+                        }
+                }</span>
+                <span class="cov8" title="1">return &amp;v1alpha1.RetryInfo{
+                        Enabled:    true,
+                        MaxRetries: rpa.Spec.Pipeline.MaxRetries,
+                        Reason:     "retries enabled by RPA pipeline override",
+                }</span>
+        }
+
+        // Try to match the pipeline against RSC retryable pipelines
+        <span class="cov8" title="1">matchedRetryable := GetMatchingRetryablePipeline(rpa.Spec.Pipeline, rsc.Spec.RetryablePipelines, logger)
+        if matchedRetryable == nil </span><span class="cov8" title="1">{
+                return &amp;v1alpha1.RetryInfo{
+                        Enabled: false,
+                        Reason:  "pipeline not configured for retries",
+                }
+        }</span>
+
+        // Check disable conditions (tags)
+        <span class="cov8" title="1">if matchedRetryable.RetryPolicy.DisableOn != nil &amp;&amp;
+                len(matchedRetryable.RetryPolicy.DisableOn.Tags) &gt; 0 </span><span class="cov8" title="1">{
+
+                // Extract tags from RPA
+                rpaTags := ExtractTags(rpa.Spec.Data, logger)
+
+                // Extract tags from all matched RPs
+                rpTags := []string{}
+                if matchedRPs != nil </span><span class="cov8" title="1">{
+                        for _, rp := range matchedRPs.Items </span><span class="cov8" title="1">{
+                                rpTags = append(rpTags, ExtractTags(rp.Spec.Data, logger)...)
+                        }</span>
+                }
+
+                // Combine tags
+                <span class="cov8" title="1">allTags := append(rpaTags, rpTags...)
+
+                // Check if disabled by tags
+                if matchedTag, disabled := IsDisabledByTags(allTags, matchedRetryable.RetryPolicy.DisableOn.Tags); disabled </span><span class="cov8" title="1">{
+                        return &amp;v1alpha1.RetryInfo{
+                                Enabled: false,
+                                Reason:  fmt.Sprintf("disabled by tag: %s", matchedTag),
+                        }
+                }</span>
+        }
+
+        // Retries enabled by RSC policy
+        <span class="cov8" title="1">maxRetries := matchedRetryable.RetryPolicy.MaxRetries
+        return &amp;v1alpha1.RetryInfo{
+                Enabled:     true,
+                MaxRetries:  &amp;maxRetries,
+                Mitigations: matchedRetryable.RetryPolicy.Mitigations,
+                Reason:      "retries enabled by policy",
+        }</span>
+}
+
+// GetMatchingRetryablePipeline checks if a pipeline matches any of the configured retryable pipelines.
+// It returns the first matching RetryablePipeline or nil if no match is found.
+// Follows the same pattern as IsPipelineOverridden from releaseserviceconfig_types.go.
+func GetMatchingRetryablePipeline(pipeline *tektonutils.Pipeline, retryablePipelines []v1alpha1.RetryablePipeline, logger *logr.Logger) *v1alpha1.RetryablePipeline <span class="cov8" title="1">{
+        if pipeline == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        // Extract git resolver params
+        <span class="cov8" title="1">url, revision, pathInRepo, err := pipeline.PipelineRef.GetGitResolverParams()
+        if err != nil </span><span class="cov0" title="0">{
+                // Not a git resolver or error extracting params, can't match
+                if logger != nil </span><span class="cov0" title="0">{
+                        logger.V(1).Info("Failed to extract git resolver params", "error", err)
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        }
+
+        // Try to match against each retryable pipeline
+        <span class="cov8" title="1">for i, retryable := range retryablePipelines </span><span class="cov8" title="1">{
+                // Match URL with regex (auto-anchor to prevent substring matches)
+                anchoredUrl := fmt.Sprintf("^(?:%s)$", retryable.Url)
+                urlRegex, err := regexp.Compile(anchoredUrl)
+                if err != nil </span><span class="cov0" title="0">{
+                        if logger != nil </span><span class="cov0" title="0">{
+                                logger.V(1).Info("Failed to compile URL regex", "url", retryable.Url, "error", err)
+                        }</span>
+                        <span class="cov0" title="0">continue</span>
+                }
+                <span class="cov8" title="1">if !urlRegex.MatchString(url) </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                // Match revision with regex (auto-anchor to prevent substring matches)
+                <span class="cov8" title="1">anchoredRevision := fmt.Sprintf("^(?:%s)$", retryable.Revision)
+                revisionRegex, err := regexp.Compile(anchoredRevision)
+                if err != nil </span><span class="cov0" title="0">{
+                        if logger != nil </span><span class="cov0" title="0">{
+                                logger.V(1).Info("Failed to compile revision regex", "revision", retryable.Revision, "error", err)
+                        }</span>
+                        <span class="cov0" title="0">continue</span>
+                }
+                <span class="cov8" title="1">if !revisionRegex.MatchString(revision) </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                // Exact match on pathInRepo
+                <span class="cov8" title="1">if retryable.PathInRepo == pathInRepo </span><span class="cov8" title="1">{
+                        return &amp;retryablePipelines[i]
+                }</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// ExtractTags extracts tags from a runtime.RawExtension data field.
+// Tags can be in four locations according to the release-service-catalog schema:
+// 1. mapping.defaults.tags
+// 2. mapping.components[].tags
+// 3. mapping.components[].componentTags
+// 4. mapping.components[].repositories[].tags
+func ExtractTags(data *runtime.RawExtension, logger *logr.Logger) []string <span class="cov8" title="1">{
+        if data == nil || data.Raw == nil </span><span class="cov8" title="1">{
+                return []string{}
+        }</span>
+
+        <span class="cov8" title="1">var parsed map[string]interface{}
+        if err := json.Unmarshal(data.Raw, &amp;parsed); err != nil </span><span class="cov8" title="1">{
+                if logger != nil </span><span class="cov8" title="1">{
+                        logger.V(1).Info("Failed to unmarshal data for tag extraction", "error", err)
+                }</span>
+                <span class="cov8" title="1">return []string{}</span>
+        }
+
+        <span class="cov8" title="1">tags := []string{}
+
+        // Get mapping object
+        mapping, ok := parsed["mapping"].(map[string]interface{})
+        if !ok </span><span class="cov0" title="0">{
+                return []string{}
+        }</span>
+
+        // 1. Extract mapping.defaults.tags
+        <span class="cov8" title="1">if defaults, ok := mapping["defaults"].(map[string]interface{}); ok </span><span class="cov8" title="1">{
+                tags = append(tags, extractTagArray(defaults["tags"])...)
+        }</span>
+
+        // 2. Extract from components array
+        <span class="cov8" title="1">if components, ok := mapping["components"].([]interface{}); ok </span><span class="cov8" title="1">{
+                for _, comp := range components </span><span class="cov8" title="1">{
+                        if compMap, ok := comp.(map[string]interface{}); ok </span><span class="cov8" title="1">{
+                                // Component-level tags
+                                tags = append(tags, extractTagArray(compMap["tags"])...)
+
+                                // Component-level componentTags
+                                tags = append(tags, extractTagArray(compMap["componentTags"])...)
+
+                                // Repository-level tags
+                                if repos, ok := compMap["repositories"].([]interface{}); ok </span><span class="cov8" title="1">{
+                                        for _, repo := range repos </span><span class="cov8" title="1">{
+                                                if repoMap, ok := repo.(map[string]interface{}); ok </span><span class="cov8" title="1">{
+                                                        tags = append(tags, extractTagArray(repoMap["tags"])...)
+                                                }</span>
+                                        }
+                                }
+                        }
+                }
+        }
+
+        <span class="cov8" title="1">return tags</span>
+}
+
+// extractTagArray is a helper that extracts string tags from an interface{} array.
+func extractTagArray(tagsInterface interface{}) []string <span class="cov8" title="1">{
+        tagArray, ok := tagsInterface.([]interface{})
+        if !ok </span><span class="cov8" title="1">{
+                return []string{}
+        }</span>
+
+        <span class="cov8" title="1">result := []string{}
+        for _, tag := range tagArray </span><span class="cov8" title="1">{
+                if tagStr, ok := tag.(string); ok </span><span class="cov8" title="1">{
+                        result = append(result, tagStr)
+                }</span>
+        }
+        <span class="cov8" title="1">return result</span>
+}
+
+// IsDisabledByTags checks if any of the combined tags match the disable tags.
+// Returns the first matching tag and true if disabled, or empty string and false if not disabled.
+func IsDisabledByTags(combinedTags, disableTags []string) (string, bool) <span class="cov8" title="1">{
+        for _, disableTag := range disableTags </span><span class="cov8" title="1">{
+                for _, tag := range combinedTags </span><span class="cov8" title="1">{
+                        if tag == disableTag </span><span class="cov8" title="1">{
+                                return tag, true
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">return "", false</span>
+}
+</pre>
+		
+		<pre class="file" id="file18" style="display: none">/*
 Copyright 2025.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -5098,7 +5536,7 @@ func ResolveBranchToSHA(repoURL, revision string) (string, error) <span class="c
 }
 </pre>
 		
-		<pre class="file" id="file18" style="display: none">package kubearchive
+		<pre class="file" id="file19" style="display: none">package kubearchive
 
 import (
         "context"
@@ -5368,7 +5806,7 @@ func truncate(s string, maxLen int) string <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file19" style="display: none">package loader
+		<pre class="file" id="file20" style="display: none">package loader
 
 import (
         "context"
@@ -5819,7 +6257,7 @@ func IsRetriable(err error) bool <span class="cov0" title="0">{
 }
 </pre>
 		
-		<pre class="file" id="file20" style="display: none">package loader
+		<pre class="file" id="file21" style="display: none">package loader
 
 import (
         "context"
@@ -5987,7 +6425,7 @@ func (l *mockLoader) GetProcessingResources(ctx context.Context, cli client.Clie
 }
 </pre>
 		
-		<pre class="file" id="file21" style="display: none">/*
+		<pre class="file" id="file22" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -6109,7 +6547,7 @@ var (
 )
 </pre>
 		
-		<pre class="file" id="file22" style="display: none">/*
+		<pre class="file" id="file23" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -6197,7 +6635,7 @@ func safeCopy(dst map[string]string, key, val string) <span class="cov8" title="
 }
 </pre>
 		
-		<pre class="file" id="file23" style="display: none">/*
+		<pre class="file" id="file24" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -6427,7 +6865,7 @@ func init() <span class="cov8" title="1">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file24" style="display: none">/*
+		<pre class="file" id="file25" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -6500,7 +6938,7 @@ func (s *Syncer) SyncSnapshot(snapshot *applicationapiv1alpha1.Snapshot, namespa
 }
 </pre>
 		
-		<pre class="file" id="file25" style="display: none">/*
+		<pre class="file" id="file26" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -6550,7 +6988,7 @@ func ReleasePipelineRunLifecyclePredicate() predicate.Predicate <span class="cov
 }
 </pre>
 		
-		<pre class="file" id="file26" style="display: none">/*
+		<pre class="file" id="file27" style="display: none">/*
 Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -6808,7 +7246,7 @@ func GetTaskRunTimeout(pipelineRun *tektonv1.PipelineRun, taskRun *tektonv1.Task
 }
 </pre>
 		
-		<pre class="file" id="file27" style="display: none">/*
+		<pre class="file" id="file28" style="display: none">/*
 Copyright 2023.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -7144,7 +7582,7 @@ func AdjustTimeouts(timeouts *tektonv1.TimeoutFields, logger logr.Logger) *tekto
 }
 </pre>
 		
-		<pre class="file" id="file28" style="display: none">/*
+		<pre class="file" id="file29" style="display: none">/*
 Copyright 2023.
 
 Licensed under the Apache License, Version 2.0 (the "License");

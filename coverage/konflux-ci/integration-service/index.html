@@ -75,9 +75,9 @@
 				
 				<option value="file9">github.com/konflux-ci/integration-service/pkg/metrics/integration.go (55.2%)</option>
 				
-				<option value="file10">github.com/konflux-ci/integration-service/snapshot/create.go (70.3%)</option>
+				<option value="file10">github.com/konflux-ci/integration-service/snapshot/create.go (68.7%)</option>
 				
-				<option value="file11">github.com/konflux-ci/integration-service/snapshot/gcl.go (60.9%)</option>
+				<option value="file11">github.com/konflux-ci/integration-service/snapshot/gcl.go (55.3%)</option>
 				
 				<option value="file12">github.com/konflux-ci/integration-service/snapshot/utils.go (94.1%)</option>
 				
@@ -93,7 +93,7 @@
 				
 				<option value="file18">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (86.0%)</option>
 				
-				<option value="file19">github.com/konflux-ci/integration-service/status/status.go (63.3%)</option>
+				<option value="file19">github.com/konflux-ci/integration-service/status/status.go (63.5%)</option>
 				
 				</select>
 			</div>
@@ -2658,7 +2658,7 @@ func CreateSnapshotWithCollisionHandling(ctx context.Context, client client.Clie
 // In case the Snapshot can't be created, an error will be returned.
 func PrepareSnapshot(ctx context.Context, adapterClient client.Client, componentGroup *v1beta2.ComponentGroup, newSnapshotComponent applicationapiv1alpha1.SnapshotComponent, log logr.Logger) (*applicationapiv1alpha1.Snapshot, error) <span class="cov8" title="1">{
 
-        snapshotComponents, invalidComponents := getSnapshotComponentsFromGCL(componentGroup, log)
+        snapshotComponents, invalidComponents := GetSnapshotComponentsFromGCL(componentGroup, log)
         upsertNewComponentImage(&amp;snapshotComponents, &amp;invalidComponents, newSnapshotComponent, log)
 
         if len(snapshotComponents) == 0 </span><span class="cov0" title="0">{
@@ -2689,7 +2689,7 @@ func PrepareSnapshot(ctx context.Context, adapterClient client.Client, component
 }
 
 // This prevents race conditions if EnsureGCLAlignedWithSpecComponents runs late
-func getSnapshotComponentsFromGCL(componentGroup *v1beta2.ComponentGroup, log logr.Logger) ([]applicationapiv1alpha1.SnapshotComponent, []v1beta2.ComponentState) <span class="cov8" title="1">{
+func GetSnapshotComponentsFromGCL(componentGroup *v1beta2.ComponentGroup, log logr.Logger) ([]applicationapiv1alpha1.SnapshotComponent, []v1beta2.ComponentState) <span class="cov8" title="1">{
         var snapshotComponents []applicationapiv1alpha1.SnapshotComponent
         var invalidComponents []v1beta2.ComponentState
 
@@ -2725,7 +2725,7 @@ func getSnapshotComponentsFromGCL(componentGroup *v1beta2.ComponentGroup, log lo
                 }
 
                 // Get ComponentSource for the component which is not built in this pipeline
-                <span class="cov8" title="1">componentSource := getComponentSourceFromGCLComponent(gclComponent)
+                <span class="cov8" title="1">componentSource := GetComponentSourceFromGCLComponent(gclComponent)
 
                 snapshotComponents = append(snapshotComponents, applicationapiv1alpha1.SnapshotComponent{
                         Name:           name,
@@ -2811,7 +2811,7 @@ func NewSnapshot(componentGroup *v1beta2.ComponentGroup, snapshotComponents *[]a
         return snapshot
 }</span>
 
-func getComponentSourceFromGCLComponent(gclComponent v1beta2.ComponentState) applicationapiv1alpha1.ComponentSource <span class="cov8" title="1">{
+func GetComponentSourceFromGCLComponent(gclComponent v1beta2.ComponentState) applicationapiv1alpha1.ComponentSource <span class="cov8" title="1">{
         // NOTE: if we need to fall back on data from component CR we can do it in here
         componentSource := applicationapiv1alpha1.ComponentSource{
                 ComponentSourceUnion: applicationapiv1alpha1.ComponentSourceUnion{
@@ -2850,6 +2850,13 @@ func getSnapshotComponentFromBuildPLR(pipelineRun *tektonv1.PipelineRun, compone
                 Source:         *componentSource,
         }, nil</span>
 }
+
+// PrepareTempGroupSnapshot will prepare a temp group snapshot used to check the integration test scenario that should be applied to the group snapshot under that componentGroup
+func PrepareTempGroupSnapshot(componentGroup *v1beta2.ComponentGroup, snapshot *applicationapiv1alpha1.Snapshot) *applicationapiv1alpha1.Snapshot <span class="cov0" title="0">{
+        tempGroupSnapshot := NewSnapshot(componentGroup, &amp;[]applicationapiv1alpha1.SnapshotComponent{})
+        tempGroupSnapshot, _ = gitops.SetAnnotationAndLabelForGroupSnapshot(tempGroupSnapshot, snapshot, []gitops.ComponentSnapshotInfo{})
+        return tempGroupSnapshot
+}</span>
 </pre>
 		
 		<pre class="file" id="file11" style="display: none">/*
@@ -3016,6 +3023,20 @@ func UpdateGCLForOverrideSnapshot(ctx context.Context, adapterClient client.Clie
         })
 
         <span class="cov8" title="1">return err</span>
+}
+
+func FetchSnapshotComponentFromGCL(componentName string, snapshotComponentsFromGCL []applicationapiv1alpha1.SnapshotComponent, invalidComponents []v1beta2.ComponentState) (*applicationapiv1alpha1.SnapshotComponent, error) <span class="cov0" title="0">{
+        for _, snapshotComponentFromGCL := range snapshotComponentsFromGCL </span><span class="cov0" title="0">{
+                if snapshotComponentFromGCL.Name == componentName </span><span class="cov0" title="0">{
+                        return &amp;snapshotComponentFromGCL, nil
+                }</span>
+        }
+        <span class="cov0" title="0">for _, invalidComponent := range invalidComponents </span><span class="cov0" title="0">{
+                if invalidComponent.Name == componentName </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("component cannot be added to snapshot due to invalid digest in containerImage")
+                }</span>
+        }
+        <span class="cov0" title="0">return nil, nil</span>
 }
 </pre>
 		
@@ -5850,23 +5871,21 @@ func GenerateSummaryForAllScenarios(state intgteststat.IntegrationTestStatus, co
         <span class="cov8" title="1">return summary, nil</span>
 }
 
-// function GenerateComponentNameWithPrefix to generate component name "pr group" or "component component-sample"
+// GenerateComponentNameWithPrefix to generate component name "pr group" or "component component-sample"
 // to help search it in comment correctly to avoid component name is searched in pr group report
 func GenerateComponentNameWithPrefix(componentName string) string <span class="cov8" title="1">{
-        if componentName == gitops.ComponentNameForGroupSnapshot </span><span class="cov0" title="0">{
-                componentName = gitops.ComponentNameForGroupSnapshot
-        }</span> else<span class="cov8" title="1"> {
+        if !strings.HasPrefix(componentName, gitops.ComponentNameForGroupSnapshot) </span><span class="cov8" title="1">{
                 componentName = "component " + componentName
         }</span>
         <span class="cov8" title="1">return componentName</span>
 }
 
-// function GenerateTestSummaryPrefixForComponent to generate test summary prefix for component name "pr group" or "component component-sample"
+// GenerateTestSummaryPrefixForComponent to generate test summary prefix for component name "pr group" or "component component-sample"
 // to help search it in comment correctly since all comments are posted together
 func GenerateTestSummaryPrefixForComponent(componentName string) string <span class="cov8" title="1">{
         var commentTitle string
-        if componentName == gitops.ComponentNameForGroupSnapshot </span><span class="cov0" title="0">{
-                commentTitle = "Integration test for " + gitops.ComponentNameForGroupSnapshot
+        if strings.HasPrefix(componentName, gitops.ComponentNameForGroupSnapshot) </span><span class="cov0" title="0">{
+                commentTitle = "Integration test for " + componentName
         }</span> else<span class="cov8" title="1"> {
                 commentTitle = "Integration test for component " + componentName
         }</span>
