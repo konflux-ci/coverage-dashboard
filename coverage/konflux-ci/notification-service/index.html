@@ -57,9 +57,9 @@
 				
 				<option value="file0">github.com/konflux-ci/notification-service/internal/controller/metrics.go (100.0%)</option>
 				
-				<option value="file1">github.com/konflux-ci/notification-service/internal/controller/notificationservice_controller.go (77.8%)</option>
+				<option value="file1">github.com/konflux-ci/notification-service/internal/controller/notificationservice_controller.go (74.1%)</option>
 				
-				<option value="file2">github.com/konflux-ci/notification-service/internal/controller/pipelinerun_helper.go (97.3%)</option>
+				<option value="file2">github.com/konflux-ci/notification-service/internal/controller/pipelinerun_helper.go (97.4%)</option>
 				
 				<option value="file3">github.com/konflux-ci/notification-service/internal/controller/predicates.go (81.8%)</option>
 				
@@ -179,7 +179,7 @@ func (r *NotificationServiceReconciler) Reconcile(ctx context.Context, req ctrl.
                                         logger.Info("Conflict removing finalizer on deleted run, will retry on re-fetch", "pipelineRun", pipelineRun.Name)
                                         return ctrl.Result{}, err
                                 }</span>
-                                <span class="cov8" title="1">logger.Error(err, "Failed to remove finalizer", "pipelineRun", pipelineRun.Name)
+                                <span class="cov0" title="0">logger.Error(err, "Failed to remove finalizer", "pipelineRun", pipelineRun.Name)
                                 return ctrl.Result{}, err</span>
                         }
                 } else<span class="cov8" title="1"> {
@@ -278,7 +278,7 @@ func AddFinalizerToPipelineRun(ctx context.Context, pipelineRun *tektonv1.Pipeli
         r.Log.Info("Adding finalizer", "pipelineRun", pipelineRun.Name)
         patch := client.MergeFromWithOptions(pipelineRun.DeepCopy(), client.MergeFromWithOptimisticLock{})
         if ok := controllerutil.AddFinalizer(pipelineRun, finalizer); ok </span><span class="cov8" title="1">{
-                err := r.Client.Patch(ctx, pipelineRun, patch)
+                err := r.Patch(ctx, pipelineRun, patch)
                 if err != nil </span><span class="cov8" title="1">{
                         return fmt.Errorf("error occurred while patching the updated PipelineRun after finalizer addition: %w", err)
                 }</span>
@@ -293,7 +293,7 @@ func RemoveFinalizerFromPipelineRun(ctx context.Context, pipelineRun *tektonv1.P
         r.Log.Info("Removing finalizer", "pipelineRun", pipelineRun.Name)
         patch := client.MergeFromWithOptions(pipelineRun.DeepCopy(), client.MergeFromWithOptimisticLock{})
         if ok := controllerutil.RemoveFinalizer(pipelineRun, finalizer); ok </span><span class="cov8" title="1">{
-                err := r.Client.Patch(ctx, pipelineRun, patch)
+                err := r.Patch(ctx, pipelineRun, patch)
                 if err != nil </span><span class="cov8" title="1">{
                         return fmt.Errorf("error occurred while patching the updated PipelineRun after finalizer removal: %w", err)
                 }</span>
@@ -306,21 +306,22 @@ func RemoveFinalizerFromPipelineRun(ctx context.Context, pipelineRun *tektonv1.P
 // And adds the pipelinerunName
 // Return error if failed to extract results or if results does not exist
 func GetResultsFromPipelineRun(pipelineRun *tektonv1.PipelineRun) ([]byte, error) <span class="cov8" title="1">{
-        namedResults := []tektonv1.PipelineRunResult{
-                {
+        fetchedResults := pipelineRun.Status.Results
+        namedResults := make([]tektonv1.PipelineRunResult, 0, 3+len(fetchedResults))
+        namedResults = append(namedResults,
+                tektonv1.PipelineRunResult{
                         Name:  "PIPELINERUN_NAME",
                         Value: *tektonv1.NewStructuredValues(pipelineRun.Name),
                 },
-                {
+                tektonv1.PipelineRunResult{
                         Name:  "NAMESPACE",
                         Value: *tektonv1.NewStructuredValues(pipelineRun.Namespace),
                 },
-                {
+                tektonv1.PipelineRunResult{
                         Name:  "APPLICATION",
                         Value: *tektonv1.NewStructuredValues(GetApplicationNameFromPipelineRun(pipelineRun)),
                 },
-        }
-        fetchedResults := pipelineRun.Status.Results
+        )
         fullResults := append(namedResults, fetchedResults...)
         results, err := json.Marshal(fullResults)
         if err != nil </span><span class="cov8" title="1">{
@@ -338,7 +339,7 @@ func AddAnnotationToPipelineRun(ctx context.Context, pipelineRun *tektonv1.Pipel
         if err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("error occurred while setting the annotation: %w", err)
         }</span>
-        <span class="cov8" title="1">err = r.Client.Patch(ctx, pipelineRun, patch)
+        <span class="cov8" title="1">err = r.Patch(ctx, pipelineRun, patch)
         if err != nil </span><span class="cov8" title="1">{
                 r.Log.Error(err, "Error in update annotation patching", "pipelineRun", pipelineRun.Name)
                 return fmt.Errorf("error occurred while patching the updated pipelineRun after annotation addition: %w", err)

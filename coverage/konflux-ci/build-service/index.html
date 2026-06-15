@@ -67,7 +67,7 @@
 				
 				<option value="file5">github.com/konflux-ci/build-service/internal/controller/component_build_controller_service_account.go (72.1%)</option>
 				
-				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2.go (86.3%)</option>
+				<option value="file6">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2.go (86.8%)</option>
 				
 				<option value="file7">github.com/konflux-ci/build-service/internal/controller/component_build_controller_v2_validations.go (87.3%)</option>
 				
@@ -4729,7 +4729,7 @@ func (r *ComponentBuildReconciler) ReconcileNewModel(ctx context.Context, req ct
                 for _, versionName := range versionsToOnboard </span><span class="cov8" title="1">{
                         onboardedVersions = append(onboardedVersions, onboardedVersionInfo{name: versionName})
                 }</span>
-                <span class="cov8" title="1">if err := r.updateVersionsStatus(ctx, &amp;component, onboardedVersions, existingSpecVersions, true, ""); err != nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if err := r.updateVersionsStatus(ctx, &amp;component, onboardedVersions, existingSpecVersions, true, ""); err != nil </span><span class="cov8" title="1">{
                         log.Error(err, "Failed to update status for versions onboarding", "Versions", versionsToOnboard)
                         return ctrl.Result{}, err
                 }</span>
@@ -5508,7 +5508,7 @@ func (r *ComponentBuildReconciler) updateVersionsStatus(ctx context.Context, com
         }
 
         // Update the component status
-        <span class="cov8" title="1">if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := r.Client.Status().Update(ctx, component); err != nil </span><span class="cov8" title="1">{
                 log.Error(err, "failed to update component version status", l.Action, l.ActionUpdate, l.Audit, "true")
                 return err
         }</span>
@@ -5767,7 +5767,7 @@ func (r *ComponentBuildReconciler) setVersionStatusMessage(ctx context.Context, 
         found := false
         for i := range component.Status.Versions </span><span class="cov8" title="1">{
                 if component.Status.Versions[i].Name == versionName </span><span class="cov8" title="1">{
-                        if component.Status.Versions[i].Message == message </span><span class="cov8" title="1">{
+                        if component.Status.Versions[i].Message == message </span><span class="cov0" title="0">{
                                 return nil // Message already set, no update needed
                         }</span>
                         <span class="cov8" title="1">component.Status.Versions[i].Message = message
