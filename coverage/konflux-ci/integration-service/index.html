@@ -61,39 +61,41 @@
 				
 				<option value="file2">github.com/konflux-ci/integration-service/api/v1beta2/integrationtestscenario_types.go (100.0%)</option>
 				
-				<option value="file3">github.com/konflux-ci/integration-service/cmd/snapshotgc/snapshotgc.go (79.5%)</option>
+				<option value="file3">github.com/konflux-ci/integration-service/api/v1beta2/nudgeconfig_types.go (100.0%)</option>
 				
-				<option value="file4">github.com/konflux-ci/integration-service/git/github/github.go (79.4%)</option>
+				<option value="file4">github.com/konflux-ci/integration-service/cmd/snapshotgc/snapshotgc.go (79.5%)</option>
 				
-				<option value="file5">github.com/konflux-ci/integration-service/pkg/dag/verify.go (63.6%)</option>
+				<option value="file5">github.com/konflux-ci/integration-service/git/github/github.go (79.4%)</option>
 				
-				<option value="file6">github.com/konflux-ci/integration-service/pkg/integrationteststatus/integration_test_status.go (91.2%)</option>
+				<option value="file6">github.com/konflux-ci/integration-service/pkg/dag/verify.go (63.6%)</option>
 				
-				<option value="file7">github.com/konflux-ci/integration-service/pkg/integrationteststatus/integrationteststatus_enumer.go (63.2%)</option>
+				<option value="file7">github.com/konflux-ci/integration-service/pkg/integrationteststatus/integration_test_status.go (91.2%)</option>
 				
-				<option value="file8">github.com/konflux-ci/integration-service/pkg/metrics/githubapp.go (20.7%)</option>
+				<option value="file8">github.com/konflux-ci/integration-service/pkg/integrationteststatus/integrationteststatus_enumer.go (63.2%)</option>
 				
-				<option value="file9">github.com/konflux-ci/integration-service/pkg/metrics/integration.go (55.2%)</option>
+				<option value="file9">github.com/konflux-ci/integration-service/pkg/metrics/githubapp.go (20.7%)</option>
 				
-				<option value="file10">github.com/konflux-ci/integration-service/snapshot/create.go (68.7%)</option>
+				<option value="file10">github.com/konflux-ci/integration-service/pkg/metrics/integration.go (55.2%)</option>
 				
-				<option value="file11">github.com/konflux-ci/integration-service/snapshot/gcl.go (57.9%)</option>
+				<option value="file11">github.com/konflux-ci/integration-service/snapshot/create.go (68.7%)</option>
 				
-				<option value="file12">github.com/konflux-ci/integration-service/snapshot/utils.go (94.1%)</option>
+				<option value="file12">github.com/konflux-ci/integration-service/snapshot/gcl.go (55.3%)</option>
 				
-				<option value="file13">github.com/konflux-ci/integration-service/snapshot/validation.go (81.2%)</option>
+				<option value="file13">github.com/konflux-ci/integration-service/snapshot/utils.go (94.1%)</option>
 				
-				<option value="file14">github.com/konflux-ci/integration-service/status/format.go (85.7%)</option>
+				<option value="file14">github.com/konflux-ci/integration-service/snapshot/validation.go (81.2%)</option>
 				
-				<option value="file15">github.com/konflux-ci/integration-service/status/reporter.go (77.4%)</option>
+				<option value="file15">github.com/konflux-ci/integration-service/status/format.go (85.1%)</option>
 				
-				<option value="file16">github.com/konflux-ci/integration-service/status/reporter_forgejo.go (63.5%)</option>
+				<option value="file16">github.com/konflux-ci/integration-service/status/reporter.go (77.4%)</option>
 				
-				<option value="file17">github.com/konflux-ci/integration-service/status/reporter_github.go (78.6%)</option>
+				<option value="file17">github.com/konflux-ci/integration-service/status/reporter_forgejo.go (63.5%)</option>
 				
-				<option value="file18">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (86.0%)</option>
+				<option value="file18">github.com/konflux-ci/integration-service/status/reporter_github.go (78.6%)</option>
 				
-				<option value="file19">github.com/konflux-ci/integration-service/status/status.go (63.5%)</option>
+				<option value="file19">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (86.0%)</option>
+				
+				<option value="file20">github.com/konflux-ci/integration-service/status/status.go (63.5%)</option>
 				
 				</select>
 			</div>
@@ -481,7 +483,125 @@ func init() <span class="cov8" title="1">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">package main
+		<pre class="file" id="file3" style="display: none">/*
+Copyright 2026 Red Hat Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package v1beta2
+
+import (
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// NudgeModeType defines when a nudge is triggered.
+// +kubebuilder:validation:Enum=immediate;validated
+type NudgeModeType string
+
+const (
+        // NudgeModeImmediate triggers the nudge as soon as the source component build succeeds.
+        NudgeModeImmediate NudgeModeType = "immediate"
+
+        // NudgeModeValidated triggers the nudge only after integration tests pass for the source component.
+        NudgeModeValidated NudgeModeType = "validated"
+)
+
+// NudgeConfigSingletonName is the required name for the singleton NudgeConfig per namespace.
+const NudgeConfigSingletonName = "nudge-config"
+
+// NudgeRelationship defines a single nudge from one component to another.
+type NudgeRelationship struct {
+        // From is the source component name that triggers the nudge when its build succeeds.
+        // +kubebuilder:validation:MinLength=1
+        // +kubebuilder:validation:MaxLength=63
+        // +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
+        // +required
+        From string `json:"from"`
+
+        // To is the target component name that receives the nudge.
+        // +kubebuilder:validation:MinLength=1
+        // +kubebuilder:validation:MaxLength=63
+        // +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
+        // +required
+        To string `json:"to"`
+
+        // Mode defines when the nudge is triggered.
+        // "immediate" triggers on build success; "validated" triggers after integration tests pass.
+        // +kubebuilder:default=immediate
+        // +optional
+        Mode NudgeModeType `json:"mode,omitempty"`
+
+        // GatingGroup is reserved for Phase 2 group-based gating and is not enforced in Phase 1.
+        // +kubebuilder:validation:MaxLength=63
+        // +optional
+        GatingGroup string `json:"gatingGroup,omitempty"`
+}
+
+// NudgeConfigSpec defines the desired nudging relationships between components.
+// +kubebuilder:validation:XValidation:rule="!has(self.nudges) || self.nudges.all(n, n.from != n.to)",message="self-nudge not allowed: from and to must be different"
+// +kubebuilder:validation:XValidation:rule="!has(self.nudges) || self.nudges.all(i, self.nudges.exists_one(j, i.from == j.from &amp;&amp; i.to == j.to))",message="duplicate (from, to) pair not allowed"
+type NudgeConfigSpec struct {
+        // Nudges is the list of component nudge relationships.
+        // +kubebuilder:validation:MaxItems=256
+        // +optional
+        Nudges []NudgeRelationship `json:"nudges,omitempty"`
+}
+
+// NudgeConfigStatus defines the observed state of NudgeConfig.
+type NudgeConfigStatus struct {
+        // Conditions represent the latest available observations of the NudgeConfig's state.
+        // +optional
+        Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+        // LastValidationTime is the timestamp of the last successful validation of the nudge graph.
+        // +optional
+        LastValidationTime *metav1.Time `json:"lastValidationTime,omitempty"`
+}
+
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:shortName=nc
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:storageversion
+// +kubebuilder:validation:XValidation:rule="self.metadata.name == 'nudge-config'",message="NudgeConfig must be named 'nudge-config' (singleton per namespace)"
+
+// NudgeConfig is a namespace-scoped singleton CRD that stores component nudging relationships.
+// Exactly one NudgeConfig named "nudge-config" may exist per namespace.
+// Validation rules are enforced stateless by the API server via CEL expressions with no webhook overhead.
+type NudgeConfig struct {
+        metav1.TypeMeta   `json:",inline"`
+        metav1.ObjectMeta `json:"metadata,omitempty"`
+
+        Spec   NudgeConfigSpec   `json:"spec,omitempty"`
+        Status NudgeConfigStatus `json:"status,omitempty"`
+}
+
+// +kubebuilder:object:root=true
+
+// NudgeConfigList contains a list of NudgeConfigs.
+type NudgeConfigList struct {
+        metav1.TypeMeta `json:",inline"`
+        metav1.ListMeta `json:"metadata,omitempty"`
+        Items           []NudgeConfig `json:"items"`
+}
+
+func init() <span class="cov8" title="1">{
+        SchemeBuilder.Register(&amp;NudgeConfig{}, &amp;NudgeConfigList{})
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package main
 
 import (
         "context"
@@ -1069,7 +1189,7 @@ func main() <span class="cov0" title="0">{
 }
 </pre>
 		
-		<pre class="file" id="file4" style="display: none">/*
+		<pre class="file" id="file5" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -1657,7 +1777,7 @@ func (c *Client) GetPullRequest(ctx context.Context, owner string, repo string, 
 }
 </pre>
 		
-		<pre class="file" id="file5" style="display: none">/*
+		<pre class="file" id="file6" style="display: none">/*
 Copyright 2025 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -1786,7 +1906,7 @@ func checkGraphForCycles(testGraph map[string][]v1beta2.TestGraphNode) error <sp
 }
 </pre>
 		
-		<pre class="file" id="file6" style="display: none">/*
+		<pre class="file" id="file7" style="display: none">/*
 Copyright 2023 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2145,7 +2265,7 @@ func NewSnapshotIntegrationTestStatuses(jsondata string) (*SnapshotIntegrationTe
 }
 </pre>
 		
-		<pre class="file" id="file7" style="display: none">// Code generated by "enumer -type=IntegrationTestStatus -linecomment -json"; DO NOT EDIT.
+		<pre class="file" id="file8" style="display: none">// Code generated by "enumer -type=IntegrationTestStatus -linecomment -json"; DO NOT EDIT.
 
 package integrationteststatus
 
@@ -2225,7 +2345,7 @@ func (i *IntegrationTestStatus) UnmarshalJSON(data []byte) error <span class="co
 }
 </pre>
 		
-		<pre class="file" id="file8" style="display: none">package metrics
+		<pre class="file" id="file9" style="display: none">package metrics
 
 import (
         "context"
@@ -2327,7 +2447,7 @@ func (g *GithubAppAvailabilityProbe) AvailabilityGauge() prometheus.Gauge <span 
 }</span>
 </pre>
 		
-		<pre class="file" id="file9" style="display: none">/*
+		<pre class="file" id="file10" style="display: none">/*
 Copyright 2023 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2502,7 +2622,7 @@ type AvailabilityProbe interface {
 }
 </pre>
 		
-		<pre class="file" id="file10" style="display: none">/*
+		<pre class="file" id="file11" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2859,7 +2979,7 @@ func PrepareTempGroupSnapshot(componentGroup *v1beta2.ComponentGroup, snapshot *
 }</span>
 </pre>
 		
-		<pre class="file" id="file11" style="display: none">/*
+		<pre class="file" id="file12" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2992,7 +3112,7 @@ func UpdateMultipleGCLEntries(ctx context.Context, adapterClient client.Client, 
         }
 
         <span class="cov8" title="1">err := adapterClient.Status().Patch(ctx, componentGroup, patch)
-        if err != nil </span><span class="cov8" title="1">{
+        if err != nil </span><span class="cov0" title="0">{
                 logger.Error(err, "Failed to updated GCL entry for ComponentVersion with components", "componentGroup", componentGroup.Name, "snapshotComponents", componentsToUpdate)
                 return err
         }</span>
@@ -3040,7 +3160,7 @@ func FetchSnapshotComponentFromGCL(componentName string, snapshotComponentsFromG
 }
 </pre>
 		
-		<pre class="file" id="file12" style="display: none">/*
+		<pre class="file" id="file13" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3112,7 +3232,7 @@ func getPipelineRunStartTimeMillis(pipelineRun *tektonv1.PipelineRun) int64 <spa
 }
 </pre>
 		
-		<pre class="file" id="file13" style="display: none">/*
+		<pre class="file" id="file14" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3178,7 +3298,7 @@ func ValidateOverrideSnapshotComponents(ctx context.Context, snapshot *applicati
 }
 </pre>
 		
-		<pre class="file" id="file14" style="display: none">/*
+		<pre class="file" id="file15" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3231,7 +3351,6 @@ const summaryTemplate = `
 | &lt;a href="{{ formatTaskLogURL $tr $pipelineRunName $namespace $logger }}"&gt;{{ formatTaskName $tr }}&lt;/a&gt; | {{ $tr.GetDuration.String }} | {{ formatNamespace $tr }} | {{ formatStatus $tr }} | {{ formatDetails $tr }} | {{ formatNote $tr }} |
 {{- end }}
 
-{{ formatFootnotes .TaskRuns }}
 {{ if .ComponentSnapshotInfos}}
 The group snapshot is generated for pr group {{ .PRGroup }} and the component snasphots as below:
 | Component | Snapshot | BuildPipelineRun | PullRequest |
@@ -3283,7 +3402,6 @@ func FormatTestsSummary(taskRuns []*helpers.TaskRun, pipelineRunName string, nam
                 "formatNote":           FormatNote,
                 "formatPipelineURL":    FormatPipelineURL,
                 "formatTaskLogURL":     FormatTaskLogURL,
-                "formatFootnotes":      FormatFootnotes,
                 "formatPullRequestURL": FormatPullRequestURL,
                 "formatRepoURL":        FormatRepoURL,
         }
@@ -3303,7 +3421,6 @@ func FormatShortTestsSummary(pipelineRunName string, namespace string, component
                 "formatStatus":         FormatStatus,
                 "formatDetails":        FormatDetails,
                 "formatPipelineURL":    FormatPipelineURL,
-                "formatFootnotes":      FormatFootnotes,
                 "formatPullRequestURL": FormatPullRequestURL,
                 "formatRepoURL":        FormatRepoURL,
         }
@@ -3377,25 +3494,10 @@ func FormatStatus(taskRun *helpers.TaskRun) (string, error) <span class="cov8" t
         <span class="cov8" title="1">return emoji + " " + result.TestOutput.Result, nil</span>
 }
 
-// FormatTaskName accepts a TaskRun and returns a Markdown friendly representation of its name.
+// FormatTaskName accepts a TaskRun and returns its name.
 func FormatTaskName(taskRun *helpers.TaskRun) (string, error) <span class="cov8" title="1">{
-        result, err := taskRun.GetTestResult()
-        if err != nil </span><span class="cov0" title="0">{
-                return "", err
-        }</span>
-
-        <span class="cov8" title="1">name := taskRun.GetPipelineTaskName()
-
-        if result == nil || result.TestOutput == nil </span><span class="cov8" title="1">{
-                return name, nil
-        }</span>
-
-        <span class="cov8" title="1">if result.TestOutput.Note == "" </span><span class="cov8" title="1">{
-                return name, nil
-        }</span>
-
-        <span class="cov8" title="1">return name + "[^" + name + "]", nil</span>
-}
+        return taskRun.GetPipelineTaskName(), nil
+}</span>
 
 // FormatNamespace accepts a TaskRun and returns a Markdown friendly representation of its test suite, if any.
 func FormatNamespace(taskRun *helpers.TaskRun) (string, error) <span class="cov8" title="1">{
@@ -3463,26 +3565,6 @@ func FormatNote(taskRun *helpers.TaskRun) (string, error) <span class="cov8" tit
         }</span>
 
         <span class="cov8" title="1">return result.TestOutput.Note, nil</span>
-}
-
-// FormatResults accepts a list of TaskRuns and returns a Markdown friendly representation of their footnotes, if any.
-func FormatFootnotes(taskRuns []*helpers.TaskRun) (string, error) <span class="cov8" title="1">{
-        footnotes := []string{}
-        for _, tr := range taskRuns </span><span class="cov8" title="1">{
-                result, err := tr.GetTestResult()
-                if err != nil </span><span class="cov0" title="0">{
-                        return "", err
-                }</span>
-
-                <span class="cov8" title="1">if result == nil || result.TestOutput == nil </span><span class="cov8" title="1">{
-                        continue</span>
-                }
-
-                <span class="cov8" title="1">if result.TestOutput.Note != "" </span><span class="cov8" title="1">{
-                        footnotes = append(footnotes, "[^"+tr.GetPipelineTaskName()+"]: "+result.TestOutput.Note)
-                }</span>
-        }
-        <span class="cov8" title="1">return strings.Join(footnotes, "\n"), nil</span>
 }
 
 // Console URL env vars (CONSOLE_URL, CONSOLE_URL_TASKLOG) use literal placeholder substitution only.
@@ -3556,7 +3638,7 @@ func FormatTaskLogURL(taskRun *helpers.TaskRun, pipelinerun string, namespace st
 }
 </pre>
 		
-		<pre class="file" id="file15" style="display: none">/*
+		<pre class="file" id="file16" style="display: none">/*
 Copyright 2024 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3698,7 +3780,7 @@ func GetPACGitProviderToken(ctx context.Context, k8sClient client.Client, snapsh
 }
 </pre>
 		
-		<pre class="file" id="file16" style="display: none">/*
+		<pre class="file" id="file17" style="display: none">/*
 Copyright 2026 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4157,7 +4239,7 @@ func GenerateForgejoCommitState(state intgteststat.IntegrationTestStatus, option
 }
 </pre>
 		
-		<pre class="file" id="file17" style="display: none">/*
+		<pre class="file" id="file18" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4877,7 +4959,7 @@ func (r *GitHubReporter) ReturnCodeIsUnrecoverable(statusCode int) bool <span cl
 }</span>
 </pre>
 		
-		<pre class="file" id="file18" style="display: none">/*
+		<pre class="file" id="file19" style="display: none">/*
 Copyright 2024 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -5439,7 +5521,7 @@ func GenerateGitlabCommitState(state intgteststat.IntegrationTestStatus, optiona
 }
 </pre>
 		
-		<pre class="file" id="file19" style="display: none">/*
+		<pre class="file" id="file20" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");

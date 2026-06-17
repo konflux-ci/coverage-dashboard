@@ -55,11 +55,11 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/konflux-ci/caching/cmd/icap-server/main.go (75.0%)</option>
+				<option value="file0">github.com/konflux-ci/caching/cmd/icap-server/main.go (75.7%)</option>
 				
-				<option value="file1">github.com/konflux-ci/caching/cmd/squid-per-site-exporter/main.go (51.2%)</option>
+				<option value="file1">github.com/konflux-ci/caching/cmd/squid-per-site-exporter/main.go (57.9%)</option>
 				
-				<option value="file2">github.com/konflux-ci/caching/cmd/squid-store-id/main.go (81.2%)</option>
+				<option value="file2">github.com/konflux-ci/caching/cmd/squid-store-id/main.go (81.6%)</option>
 				
 				</select>
 			</div>
@@ -144,6 +144,11 @@ func writeHeaderAndLog(w icap.ResponseWriter, req *icap.Request, code int) <span
         }</span>
 }
 
+func logICAPStartup(port string) <span class="cov8" title="1">{
+        //nolint:gosec // G706: port may flow from ICAP_PORT (os.Getenv); deployment-controlled, default is numeric
+        log.Println("Starting ICAP server on port", port)
+}</span>
+
 func main() <span class="cov0" title="0">{
         log.SetOutput(os.Stdout)
 
@@ -154,7 +159,7 @@ func main() <span class="cov0" title="0">{
 
         <span class="cov0" title="0">icap.HandleFunc("/reqmod", reqmodHandler)
 
-        log.Println("Starting ICAP server on port", port)
+        logICAPStartup(port)
         if err := icap.ListenAndServe(":"+port, nil); err != nil </span><span class="cov0" title="0">{
                 log.Println("Error starting server:", err)
                 os.Exit(1)
@@ -416,6 +421,29 @@ func init() <span class="cov8" title="1">{
         prometheus.MustRegister(squidResponseTime)
 }</span>
 
+func indexPageHandler(w http.ResponseWriter, _ *http.Request) <span class="cov8" title="1">{
+        _, _ = w.Write([]byte(`&lt;html&gt;
+                        &lt;head&gt;&lt;title&gt;Squid Per-Site Exporter&lt;/title&gt;&lt;/head&gt;
+                        &lt;body&gt;
+                        &lt;h1&gt;Squid Per-Site Exporter&lt;/h1&gt;
+                        &lt;p&gt;&lt;a href='/metrics'&gt;Metrics&lt;/a&gt;&lt;/p&gt;
+                        &lt;/body&gt;
+                        &lt;/html&gt;`))
+}</span>
+
+func healthCheckHandler(squidAddr string, timeout time.Duration) http.HandlerFunc <span class="cov8" title="1">{
+        return func(w http.ResponseWriter, _ *http.Request) </span><span class="cov8" title="1">{
+                conn, err := net.DialTimeout("tcp", squidAddr, timeout)
+                if err != nil </span><span class="cov8" title="1">{
+                        http.Error(w, "squid unreachable", http.StatusServiceUnavailable)
+                        return
+                }</span>
+                <span class="cov8" title="1">_ = conn.Close()
+                w.WriteHeader(http.StatusOK)
+                _, _ = w.Write([]byte("OK"))</span>
+        }
+}
+
 func main() <span class="cov0" title="0">{
         // Configuration with environment variable fallbacks for container-friendly deployment
         listenAddress := flag.String("web.listen-address",
@@ -432,7 +460,8 @@ func main() <span class="cov0" title="0">{
         // Require TLS by default; explicitly disable to allow HTTP
         tlsRequired := flag.Bool("web.tls-required",
                 getEnvDefault("WEB_TLS_REQUIRED", "true") == "true",
-                "Require TLS certificate and key to be present. If true and files are missing, the server will not start. (Env: WEB_TLS_REQUIRED)")
+                "Require TLS certificate and key. If true and files are missing, the server will not start. "+
+                        "(Env: WEB_TLS_REQUIRED)")
 
         // Health check options
         squidHealthAddr := flag.String("squid.health-addr",
@@ -460,44 +489,30 @@ func main() <span class="cov0" title="0">{
                 EnableOpenMetrics: false,
         })
         http.Handle("/metrics", handler)
-        http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
-                w.Write([]byte(`&lt;html&gt;
-                        &lt;head&gt;&lt;title&gt;Squid Per-Site Exporter&lt;/title&gt;&lt;/head&gt;
-                        &lt;body&gt;
-                        &lt;h1&gt;Squid Per-Site Exporter&lt;/h1&gt;
-                        &lt;p&gt;&lt;a href='/metrics'&gt;Metrics&lt;/a&gt;&lt;/p&gt;
-                        &lt;/body&gt;
-                        &lt;/html&gt;`))
-        }</span>)
+        http.HandleFunc("/", indexPageHandler)
 
         // Health check endpoint: validates exporter process and Squid TCP port
-        <span class="cov0" title="0">http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
-                conn, err := net.DialTimeout("tcp", *squidHealthAddr, *squidHealthTimeout)
-                if err != nil </span><span class="cov0" title="0">{
-                        http.Error(w, "squid unreachable", http.StatusServiceUnavailable)
-                        return
-                }</span>
-                <span class="cov0" title="0">_ = conn.Close()
-                w.WriteHeader(http.StatusOK)
-                w.Write([]byte("OK"))</span>
-        })
+        http.HandleFunc("/health", healthCheckHandler(*squidHealthAddr, *squidHealthTimeout))
 
         // Start server based on TLS configuration
-        <span class="cov0" title="0">certPresent := fileExists(*tlsCertFile) &amp;&amp; fileExists(*tlsKeyFile)
+        certPresent := fileExists(*tlsCertFile) &amp;&amp; fileExists(*tlsKeyFile)
         if *tlsRequired </span><span class="cov0" title="0">{
                 if certPresent </span><span class="cov0" title="0">{
                         log.Printf("Starting HTTPS server on %s", *listenAddress)
                         log.Printf("Using TLS cert: %s", *tlsCertFile)
                         log.Printf("Using TLS key: %s", *tlsKeyFile)
+                        //nolint:gosec // metrics sidecar; HTTP server timeouts not required
                         log.Fatal(http.ListenAndServeTLS(*listenAddress, *tlsCertFile, *tlsKeyFile, nil))
                 }</span>
                 <span class="cov0" title="0">log.Fatalf("TLS required but certificate or key not found (cert: %s, key: %s).", *tlsCertFile, *tlsKeyFile)</span>
         } else<span class="cov0" title="0"> {
                 if certPresent </span><span class="cov0" title="0">{
                         log.Printf("TLS not required but certificates found; starting HTTPS on %s", *listenAddress)
+                        //nolint:gosec // metrics sidecar; HTTP server timeouts not required
                         log.Fatal(http.ListenAndServeTLS(*listenAddress, *tlsCertFile, *tlsKeyFile, nil))
                 }</span>
                 <span class="cov0" title="0">log.Printf("TLS disabled; starting HTTP server on %s", *listenAddress)
+                //nolint:gosec // metrics sidecar; HTTP server timeouts not required
                 log.Fatal(http.ListenAndServe(*listenAddress, nil))</span>
         }
 }
@@ -546,9 +561,9 @@ func normalizeStoreID(client HTTPClient, requestURL string) string <span class="
                 return requestURL
         }</span>
 
-        <span class="cov8" title="1">defer resp.Body.Close()
+        <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{ _ = resp.Body.Close() }</span>()
 
-        if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
                 log.Printf("Error getting URL, status code: %v", resp.StatusCode)
                 return requestURL
         }</span>
@@ -606,7 +621,7 @@ func processInput(in io.Reader, out io.Writer, normalizeFunc func(HTTPClient, st
                         defer wg.Done()
                         response := parseLine(l, normalizeFunc)
                         log.Printf("Response: %s", response)
-                        fmt.Fprintln(out, response)
+                        _, _ = fmt.Fprintln(out, response)
                 }</span>(line)
         }
 
