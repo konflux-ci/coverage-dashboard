@@ -63,7 +63,7 @@
 				
 				<option value="file3">github.com/konflux-ci/release-service/api/v1alpha1/releaseserviceconfig_types.go (81.8%)</option>
 				
-				<option value="file4">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/author/webhook.go (91.4%)</option>
+				<option value="file4">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/author/webhook.go (91.8%)</option>
 				
 				<option value="file5">github.com/konflux-ci/release-service/api/v1alpha1/webhooks/release/webhook.go (93.9%)</option>
 				
@@ -1670,16 +1670,16 @@ func (w *Webhook) handleRelease(req admission.Request) admission.Response <span 
                 }</span>
 
                 <span class="cov8" title="1">if release.GetLabels()[metadata.AuthorLabel] != oldRelease.GetLabels()[metadata.AuthorLabel] </span><span class="cov8" title="1">{
-                        return admission.Errored(http.StatusBadRequest, errors.New("release author label cannnot be updated"))
+                        return admission.Errored(http.StatusBadRequest, errors.New("release author label cannot be updated"))
                 }</span>
         }
         <span class="cov8" title="1">return admission.Allowed("Success")</span>
 }
 
 // handleReleasePlan takes an incoming admission request and returns an admission response. If the
-// attribution label is set to true, the current user is set as the author. If the attribution label
-// is false, the author label is removed. The only exception is if the attribution label remains true
-// during an update and the author value is not modified, the previous author label remains.
+// attribution label is set to true and no author is provided, the current user is set as the author.
+// If the attribution label is false, the author label is removed. Finally, if the attribution label
+// is true and an author is provided, no change is made.
 func (w *Webhook) handleReleasePlan(req admission.Request) admission.Response <span class="cov8" title="1">{
         releasePlan := &amp;v1alpha1.ReleasePlan{}
         err := json.Unmarshal(req.Object.Raw, releasePlan)
@@ -1692,27 +1692,11 @@ func (w *Webhook) handleReleasePlan(req admission.Request) admission.Response <s
         }</span>
 
         <span class="cov8" title="1">switch req.AdmissionRequest.Operation </span>{
-        case admissionv1.Create:<span class="cov8" title="1">
-                if releasePlan.GetLabels()[metadata.AttributionLabel] == "true" </span><span class="cov8" title="1">{
+        case admissionv1.Create, admissionv1.Update:<span class="cov8" title="1">
+                // Only add the current user as author if attribution is true and no author is provided
+                if releasePlan.GetLabels()[metadata.AttributionLabel] == "true" &amp;&amp; releasePlan.GetLabels()[metadata.AuthorLabel] == "" </span><span class="cov8" title="1">{
                         w.setAuthorLabel(req.UserInfo.Username, releasePlan)
                 }</span>
-        case admissionv1.Update:<span class="cov8" title="1">
-                oldReleasePlan := &amp;v1alpha1.ReleasePlan{}
-                err := json.Unmarshal(req.OldObject.Raw, oldReleasePlan)
-                if err != nil </span><span class="cov0" title="0">{
-                        return admission.Errored(http.StatusBadRequest, errors.Wrap(err, "error decoding object"))
-                }</span>
-
-                <span class="cov8" title="1">if releasePlan.GetLabels()[metadata.AttributionLabel] == "true" </span><span class="cov8" title="1">{
-                        author := releasePlan.GetLabels()[metadata.AuthorLabel]
-
-                        if oldReleasePlan.GetLabels()[metadata.AttributionLabel] != "true" || author == w.sanitizeLabelValue(req.UserInfo.Username) </span><span class="cov8" title="1">{
-                                w.setAuthorLabel(req.UserInfo.Username, releasePlan)
-                        }</span> else<span class="cov8" title="1"> {
-                                // Preserve previous author if the new author does not match the user making the change
-                                w.setAuthorLabel(oldReleasePlan.GetLabels()[metadata.AuthorLabel], releasePlan)
-                        }</span>
-                }
         }
 
         <span class="cov8" title="1">return w.patchResponse(req.Object.Raw, releasePlan)</span>

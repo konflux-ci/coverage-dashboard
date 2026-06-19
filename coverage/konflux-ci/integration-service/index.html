@@ -79,7 +79,7 @@
 				
 				<option value="file11">github.com/konflux-ci/integration-service/snapshot/create.go (68.7%)</option>
 				
-				<option value="file12">github.com/konflux-ci/integration-service/snapshot/gcl.go (57.9%)</option>
+				<option value="file12">github.com/konflux-ci/integration-service/snapshot/gcl.go (55.3%)</option>
 				
 				<option value="file13">github.com/konflux-ci/integration-service/snapshot/utils.go (94.1%)</option>
 				
@@ -3112,7 +3112,7 @@ func UpdateMultipleGCLEntries(ctx context.Context, adapterClient client.Client, 
         }
 
         <span class="cov8" title="1">err := adapterClient.Status().Patch(ctx, componentGroup, patch)
-        if err != nil </span><span class="cov8" title="1">{
+        if err != nil </span><span class="cov0" title="0">{
                 logger.Error(err, "Failed to updated GCL entry for ComponentVersion with components", "componentGroup", componentGroup.Name, "snapshotComponents", componentsToUpdate)
                 return err
         }</span>
