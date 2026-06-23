@@ -77,25 +77,27 @@
 				
 				<option value="file10">github.com/konflux-ci/integration-service/pkg/metrics/integration.go (55.2%)</option>
 				
-				<option value="file11">github.com/konflux-ci/integration-service/snapshot/create.go (68.7%)</option>
+				<option value="file11">github.com/konflux-ci/integration-service/snapshot/components.go (85.7%)</option>
 				
-				<option value="file12">github.com/konflux-ci/integration-service/snapshot/gcl.go (55.3%)</option>
+				<option value="file12">github.com/konflux-ci/integration-service/snapshot/create.go (73.5%)</option>
 				
-				<option value="file13">github.com/konflux-ci/integration-service/snapshot/utils.go (94.1%)</option>
+				<option value="file13">github.com/konflux-ci/integration-service/snapshot/gcl.go (54.5%)</option>
 				
-				<option value="file14">github.com/konflux-ci/integration-service/snapshot/validation.go (81.2%)</option>
+				<option value="file14">github.com/konflux-ci/integration-service/snapshot/utils.go (94.1%)</option>
 				
-				<option value="file15">github.com/konflux-ci/integration-service/status/format.go (85.1%)</option>
+				<option value="file15">github.com/konflux-ci/integration-service/snapshot/validation.go (81.2%)</option>
 				
-				<option value="file16">github.com/konflux-ci/integration-service/status/reporter.go (77.4%)</option>
+				<option value="file16">github.com/konflux-ci/integration-service/status/format.go (85.1%)</option>
 				
-				<option value="file17">github.com/konflux-ci/integration-service/status/reporter_forgejo.go (63.5%)</option>
+				<option value="file17">github.com/konflux-ci/integration-service/status/reporter.go (77.4%)</option>
 				
-				<option value="file18">github.com/konflux-ci/integration-service/status/reporter_github.go (78.6%)</option>
+				<option value="file18">github.com/konflux-ci/integration-service/status/reporter_forgejo.go (63.5%)</option>
 				
-				<option value="file19">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (86.0%)</option>
+				<option value="file19">github.com/konflux-ci/integration-service/status/reporter_github.go (78.6%)</option>
 				
-				<option value="file20">github.com/konflux-ci/integration-service/status/status.go (63.5%)</option>
+				<option value="file20">github.com/konflux-ci/integration-service/status/reporter_gitlab.go (86.0%)</option>
+				
+				<option value="file21">github.com/konflux-ci/integration-service/status/status.go (63.5%)</option>
 				
 				</select>
 			</div>
@@ -152,11 +154,6 @@ type ComponentGroupSpec struct {
         // +required
         Components []ComponentReference `json:"components"`
 
-        // Dependents is a list of ComponentGroup names that are dependent on this ComponentGroup.
-        // When a snapshot is created for this ComponentGroup, snapshots will also be created for all dependents.
-        // +optional
-        Dependents []string `json:"dependents,omitempty"`
-
         // TestGraph describes the desired order in which tests associated with the ComponentGroup should be executed.
         // If not specified, all tests will run in parallel.
         // The map key is the test scenario name, and the value is a list of parent test scenarios it depends on.
@@ -169,17 +166,24 @@ type ComponentGroupSpec struct {
         SnapshotCreator *SnapshotCreatorSpec `json:"snapshotCreator,omitempty"`
 }
 
-// ComponentReference references a Component and its specific branch/version
+// ComponentReference references a Component or ComponentGroup and its specific branch/version
 type ComponentReference struct {
-        // Name is the name of the Component
+        // Name is the name of the Component or ComponentGroup
         // +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
         // +required
         Name string `json:"name"`
 
+        // Kind is the type of resource  being referenced
+        // Must be 'component' or 'componentGroup', case-insensitive
+        // +kubebuilder:default:="component"
+        // +kubebuilder:validation:Pattern=`(?i)^(component|componentGroup)$`
+        Kind string `json:"kind,omitempty"`
+
         // ComponentVersion references the ComponentVersion for this Component.
+        // Can only be set if 'Kind' is set to 'Component' or empty
         // The ComponentVersion CRD will be implemented by the build team as part of STONEBLD-3604.
         // For now, this contains the branch name and GCL (Global Candidate List) information.
-        // +required
+        // +optional
         ComponentVersion ComponentVersionReference `json:"componentVersion"`
 }
 
@@ -2641,18 +2645,96 @@ limitations under the License.
 package snapshot
 
 import (
+        "fmt"
+
+        applicationapiv1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
+        "github.com/konflux-ci/integration-service/gitops"
+        "github.com/konflux-ci/integration-service/helpers"
+        tektonconsts "github.com/konflux-ci/integration-service/tekton/consts"
+)
+
+// GetAllnewComponentsInSnapshot returns a slice of SnapshotComponents. Any SnapshotComponents in the Snapshot that did not
+// come from the GCL are returned. This is one Component for Component Snapshots, many Components for Group Snapshots, and
+// all Components for Override Snapshots
+func GetAllNewComponentsInSnapshot(snapshot *applicationapiv1alpha1.Snapshot) ([]applicationapiv1alpha1.SnapshotComponent, error) <span class="cov8" title="1">{
+        snapshotComponents := []applicationapiv1alpha1.SnapshotComponent{}
+        if gitops.IsComponentSnapshot(snapshot) </span><span class="cov8" title="1">{
+                component := snapshot.Labels[gitops.SnapshotComponentLabel]
+                version := snapshot.Annotations[tektonconsts.PipelineRunComponentVersionAnnotation]
+                updatedComponent, err := getComponentFromSnapshotComponents(snapshot, component, version)
+                if err != nil </span><span class="cov0" title="0">{
+                        return snapshotComponents, err
+                }</span>
+                <span class="cov8" title="1">snapshotComponents = append(snapshotComponents, updatedComponent)</span>
+        } else<span class="cov8" title="1"> if gitops.IsGroupSnapshot(snapshot) </span><span class="cov8" title="1">{
+                var componentSnapshotInfos []*gitops.ComponentSnapshotInfo
+                var err error
+                if componentSnapshotInfoString, ok := snapshot.Annotations[gitops.GroupSnapshotInfoAnnotation]; ok </span><span class="cov8" title="1">{
+                        componentSnapshotInfos, err = gitops.UnmarshalJSON([]byte(componentSnapshotInfoString))
+                        if err != nil </span><span class="cov0" title="0">{
+                                return snapshotComponents, fmt.Errorf("failed to unmarshal JSON string: %+v", err)
+                        }</span>
+                }
+                <span class="cov8" title="1">for _, info := range componentSnapshotInfos </span><span class="cov8" title="1">{
+                        updatedComponent, err := getComponentFromSnapshotComponents(snapshot, info.Component, info.Version)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return snapshotComponents, fmt.Errorf("could not get component snapshot %s/%s referenced in group snapshot %s/%s", info.Namespace, info.Snapshot, info.Namespace, info.Component)
+                        }</span>
+                        <span class="cov8" title="1">snapshotComponents = append(snapshotComponents, updatedComponent)</span>
+                }
+        } else<span class="cov8" title="1"> if gitops.IsOverrideSnapshot(snapshot) </span><span class="cov8" title="1">{
+                // Since all images will be promoted to the GCL, everything should take priority
+                // in parent snapshot creation
+                snapshotComponents = snapshot.Spec.Components
+        }</span>
+        <span class="cov8" title="1">return snapshotComponents, nil</span>
+}
+
+func getComponentFromSnapshotComponents(snapshot *applicationapiv1alpha1.Snapshot, name, version string) (applicationapiv1alpha1.SnapshotComponent, error) <span class="cov8" title="1">{
+        for _, snapshotComponent := range snapshot.Spec.Components </span><span class="cov8" title="1">{
+                if snapshotComponent.Name == name </span><span class="cov8" title="1">{
+                        if version == "" || snapshotComponent.Version == "" || snapshotComponent.Version == version </span><span class="cov8" title="1">{
+                                return snapshotComponent, nil
+                        }</span>
+                }
+        }
+        <span class="cov0" title="0">return applicationapiv1alpha1.SnapshotComponent{}, fmt.Errorf("the snapshot '%s' does not contain the updated component/version '%s'", snapshot.Name, helpers.GetComponentVersionLogString(name, version))</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">/*
+Copyright 2022 Red Hat Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package snapshot
+
+import (
         "context"
         "errors"
         "fmt"
+        "maps"
         "slices"
         "strconv"
+        "strings"
         "time"
 
-        "github.com/go-logr/logr"
         applicationapiv1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
         "github.com/konflux-ci/integration-service/api/v1beta2"
         "github.com/konflux-ci/integration-service/gitops"
         "github.com/konflux-ci/integration-service/helpers"
+        "github.com/konflux-ci/integration-service/loader"
         "github.com/konflux-ci/integration-service/tekton"
         "github.com/konflux-ci/operator-toolkit/metadata"
         tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -2663,12 +2745,17 @@ import (
         "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const (
+        // prevents stack overflow from recursion. Can be adjusted if users have deeply nested ComponentGroups
+        MaxDepth = 15
+)
+
 // PrepareSnapshotForPipelineRun prepares the Snapshot for a given PipelineRun,
 // component and application. In case the Snapshot can't be created, an error will be returned.
-func PrepareSnapshotForPipelineRun(ctx context.Context, adapterClient client.Client, pipelineRun *tektonv1.PipelineRun, componentName string, componentGroup *v1beta2.ComponentGroup) (*applicationapiv1alpha1.Snapshot, error) <span class="cov8" title="1">{
-        log := log.FromContext(ctx)
+func PrepareSnapshotForPipelineRun(ctx context.Context, adapterClient client.Client, pipelineRun *tektonv1.PipelineRun, componentName string, componentGroup *v1beta2.ComponentGroup, loader loader.ObjectLoader) (*applicationapiv1alpha1.Snapshot, error) <span class="cov8" title="1">{
+        logger := helpers.IntegrationLogger{Logger: log.FromContext(ctx)}
 
-        newSnapshotComponent, err := getSnapshotComponentFromBuildPLR(pipelineRun, componentName, log)
+        newSnapshotComponent, err := GetSnapshotComponentFromBuildPLR(pipelineRun, componentName, logger)
         if err != nil </span><span class="cov8" title="1">{
                 return nil, err
         }</span>
@@ -2678,7 +2765,7 @@ func PrepareSnapshotForPipelineRun(ctx context.Context, adapterClient client.Cli
                 gitops.EnrichBuiltComponentSourceGitContext(&amp;newSnapshotComponent.Source, &amp;comp, newSnapshotComponent.Version)
         }</span>
 
-        <span class="cov8" title="1">snapshot, err := PrepareSnapshot(ctx, adapterClient, componentGroup, newSnapshotComponent, log)
+        <span class="cov8" title="1">snapshot, err := PrepareSnapshot(ctx, adapterClient, componentGroup, newSnapshotComponent, loader, logger)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, err
         }</span>
@@ -2753,6 +2840,7 @@ func CreateSnapshotWithCollisionHandling(ctx context.Context, client client.Clie
                                 return err // Return original collision error
                         }</span>
 
+                        // if pipelineRun is nil, this returns time.Now()
                         <span class="cov0" title="0">timestampMillis := getPipelineRunStartTimeMillis(pipelineRun)
 
                         // Regenerate name with suffix
@@ -2776,10 +2864,15 @@ func CreateSnapshotWithCollisionHandling(ctx context.Context, client client.Clie
 
 // PrepareSnapshot prepares the Snapshot for a given componentGroup, components and the updated component (if any).
 // In case the Snapshot can't be created, an error will be returned.
-func PrepareSnapshot(ctx context.Context, adapterClient client.Client, componentGroup *v1beta2.ComponentGroup, newSnapshotComponent applicationapiv1alpha1.SnapshotComponent, log logr.Logger) (*applicationapiv1alpha1.Snapshot, error) <span class="cov8" title="1">{
+func PrepareSnapshot(ctx context.Context, adapterClient client.Client, componentGroup *v1beta2.ComponentGroup, newSnapshotComponent applicationapiv1alpha1.SnapshotComponent, loader loader.ObjectLoader, logger helpers.IntegrationLogger) (*applicationapiv1alpha1.Snapshot, error) <span class="cov8" title="1">{
 
-        snapshotComponents, invalidComponents := GetSnapshotComponentsFromGCL(componentGroup, log)
-        upsertNewComponentImage(&amp;snapshotComponents, &amp;invalidComponents, newSnapshotComponent, log)
+        // Get nested snapshotComponents
+        snapshotComponentsMap, invalidComponents, err := getAllNestedSnapshotComponents(componentGroup, []string{}, 0, loader, ctx, adapterClient, logger)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("error getting nested snapshot components: %+v", err)
+        }</span>
+        <span class="cov8" title="1">upsertNewComponentImage(snapshotComponentsMap, invalidComponents, newSnapshotComponent, logger)
+        snapshotComponents := flattenSnapshotComponentsMap(snapshotComponentsMap)
 
         if len(snapshotComponents) == 0 </span><span class="cov0" title="0">{
                 return nil, helpers.NewMissingValidComponentError(joinInvalidComponentNamesAndVersions(invalidComponents))
@@ -2798,9 +2891,10 @@ func PrepareSnapshot(ctx context.Context, adapterClient client.Client, component
                 if err := metadata.SetAnnotation(snapshot, helpers.CreateSnapshotAnnotationName, fmt.Sprintf("Component(s) '%s' is(are) not included in snapshot due to missing valid containerImage or git source", joinInvalidComponentNamesAndVersions(invalidComponents))); err != nil </span><span class="cov0" title="0">{
                         return nil, fmt.Errorf("failed to set annotation %s: %w", gitops.SnapshotGitSourceRepoURLAnnotation, err)
                 }</span>
+                <span class="cov8" title="1">logger.Info("Some components were invalid", "invalidComponents", invalidComponents)</span>
         }
 
-        <span class="cov8" title="1">err := ctrl.SetControllerReference(componentGroup, snapshot, adapterClient.Scheme())
+        <span class="cov8" title="1">err = ctrl.SetControllerReference(componentGroup, snapshot, adapterClient.Scheme())
         if err != nil </span><span class="cov0" title="0">{
                 return nil, err
         }</span>
@@ -2808,10 +2902,108 @@ func PrepareSnapshot(ctx context.Context, adapterClient client.Client, component
         <span class="cov8" title="1">return snapshot, nil</span>
 }
 
+// PrepareParentSnapshot creates a snapshot from the parent componentGroup of childSnapshot. The snapshot gathers all GCL images with the parent GCL images overwriting the child GCL images if they conflict.
+// It then replaces the GCL images with all new images in the child snapshot. This can be one or many depending on the type of snapshot.
+func PrepareParentSnapshot(ctx context.Context, adapterClient client.Client, loader loader.ObjectLoader, logger helpers.IntegrationLogger, componentGroup *v1beta2.ComponentGroup, childSnapshot *applicationapiv1alpha1.Snapshot) (*applicationapiv1alpha1.Snapshot, error) <span class="cov8" title="1">{
+        // This should basically work the same as prepareSnapshot EXCEPT that it should use the snapshot's components rather than the component for the corresponding child componentGroup
+
+        snapshotComponentsMap, invalidComponents, err := getAllNestedSnapshotComponents(componentGroup, []string{}, 0, loader, ctx, adapterClient, logger)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("error getting nested snapshot components: %+v", err)
+        }</span>
+        <span class="cov8" title="1">newSnapshotComponents, err := GetAllNewComponentsInSnapshot(childSnapshot)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("error getting new components in snapshot: %+v", err)
+        }</span>
+        <span class="cov8" title="1">upsertMultipleComponentImages(snapshotComponentsMap, invalidComponents, newSnapshotComponents, logger)
+        snapshotComponents := flattenSnapshotComponentsMap(snapshotComponentsMap)
+
+        if len(snapshotComponents) == 0 </span><span class="cov8" title="1">{
+                return nil, helpers.NewMissingValidComponentError(joinInvalidComponentNamesAndVersions(invalidComponents))
+        }</span>
+        <span class="cov8" title="1">snapshot := NewSnapshot(componentGroup, &amp;snapshotComponents)
+
+        // expose the source repo URL and SHA in the snapshot as annotation so we don't have to do lookup in integration tests
+        // Only done on component snapshots
+        if len(newSnapshotComponents) == 1 </span><span class="cov8" title="1">{
+                if newSnapshotComponents[0].Source.GitSource != nil </span><span class="cov8" title="1">{
+                        // NOTE: should we skip this annotation for override snaphots?
+                        if err := metadata.SetAnnotation(snapshot, gitops.SnapshotGitSourceRepoURLAnnotation, newSnapshotComponents[0].Source.GitSource.URL); err != nil </span><span class="cov0" title="0">{
+                                return nil, fmt.Errorf("failed to set annotation %s: %w", gitops.SnapshotGitSourceRepoURLAnnotation, err)
+                        }</span>
+                }
+
+        }
+
+        // Annotate snapshot with warning about invalid components
+        <span class="cov8" title="1">if len(invalidComponents) &gt; 0 </span><span class="cov8" title="1">{
+                if err := metadata.SetAnnotation(snapshot, helpers.CreateSnapshotAnnotationName, fmt.Sprintf("Component(s) '%s' is(are) not included in snapshot due to missing valid containerImage or git source", joinInvalidComponentNamesAndVersions(invalidComponents))); err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to set annotation %s: %w", gitops.SnapshotGitSourceRepoURLAnnotation, err)
+                }</span>
+                <span class="cov8" title="1">logger.Info("Some components were invalid", "invalidComponents", invalidComponents)</span>
+        }
+
+        // Annotate the snapshot with child snapshot info
+        <span class="cov8" title="1">if err := metadata.SetAnnotation(snapshot, gitops.ChildSnapshotAnnotation, childSnapshot.Name); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to set annotation %s: %w", gitops.ChildSnapshotAnnotation, err)
+        }</span>
+
+        <span class="cov8" title="1">err = ctrl.SetControllerReference(componentGroup, snapshot, adapterClient.Scheme())
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return snapshot, nil</span>
+}
+
+// getAllNestedSnapshotComponents gets the GCL SnapshotComponents for a ComponentGroup. It recurses into the nested ComponentGroups to get their SnapshotComponents then builds upward from there.
+// As a result, if a parent and child ComponentGroup share a ComponentVersion but have different images, the image in the parent will supersede the one in the child.
+func getAllNestedSnapshotComponents(componentGroup *v1beta2.ComponentGroup, usedComponentGroups []string, depth int, loader loader.ObjectLoader, ctx context.Context, adapterClient client.Client, logger helpers.IntegrationLogger) (map[string]applicationapiv1alpha1.SnapshotComponent, map[v1beta2.ComponentState]InvalidComponentReason, error) <span class="cov8" title="1">{
+        snapshotComponents := make(map[string]applicationapiv1alpha1.SnapshotComponent)
+        invalidComponents := make(map[v1beta2.ComponentState]InvalidComponentReason)
+
+        // Cycle detection since validation webhook is at risk of a race condition
+        if slices.Contains(usedComponentGroups, componentGroup.Name) </span><span class="cov8" title="1">{
+                usedComponentGroups = append(usedComponentGroups, componentGroup.Name)
+                return nil, nil, fmt.Errorf("cycle found in nested componentGroups: %+v", usedComponentGroups)
+        }</span>
+        <span class="cov8" title="1">usedComponentGroups = append(usedComponentGroups, componentGroup.Name)
+        if depth &gt; MaxDepth </span><span class="cov0" title="0">{
+                return nil, nil, fmt.Errorf("nested ComponentGroups exceeded max depth of %d", MaxDepth)
+        }</span>
+
+        <span class="cov8" title="1">nestedComponentGroups, err := loader.GetNestedComponentGroupsForComponentGroup(ctx, adapterClient, componentGroup)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, nil, err
+        }</span>
+
+        <span class="cov8" title="1">for _, nestedComponentGroup := range nestedComponentGroups </span><span class="cov8" title="1">{
+                valid, invalid, err := getAllNestedSnapshotComponents(&amp;nestedComponentGroup, usedComponentGroups, depth+1, loader, ctx, adapterClient, logger)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, nil, err
+                }</span>
+                <span class="cov8" title="1">maps.Copy(snapshotComponents, valid)
+                maps.Copy(invalidComponents, invalid)</span>
+        }
+
+        <span class="cov8" title="1">valid, invalid := GetSnapshotComponentsFromGCL(componentGroup, logger)
+        maps.Copy(snapshotComponents, valid) // bottom-up recursion means that parent componentGroup GCL will overwrite duplicates in children
+        maps.Copy(invalidComponents, invalid)
+
+        return snapshotComponents, invalidComponents, nil</span>
+}
+
+func flattenSnapshotComponentsMap(snapshotComponentsMap map[string]applicationapiv1alpha1.SnapshotComponent) (snapshotComponents []applicationapiv1alpha1.SnapshotComponent) <span class="cov8" title="1">{
+        for _, snapshotComponent := range snapshotComponentsMap </span><span class="cov8" title="1">{
+                snapshotComponents = append(snapshotComponents, snapshotComponent)
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
 // This prevents race conditions if EnsureGCLAlignedWithSpecComponents runs late
-func GetSnapshotComponentsFromGCL(componentGroup *v1beta2.ComponentGroup, log logr.Logger) ([]applicationapiv1alpha1.SnapshotComponent, []v1beta2.ComponentState) <span class="cov8" title="1">{
-        var snapshotComponents []applicationapiv1alpha1.SnapshotComponent
-        var invalidComponents []v1beta2.ComponentState
+func GetSnapshotComponentsFromGCL(componentGroup *v1beta2.ComponentGroup, logger helpers.IntegrationLogger) (map[string]applicationapiv1alpha1.SnapshotComponent, map[v1beta2.ComponentState]InvalidComponentReason) <span class="cov8" title="1">{
+        snapshotComponents := make(map[string]applicationapiv1alpha1.SnapshotComponent)
+        invalidComponents := make(map[v1beta2.ComponentState]InvalidComponentReason)
 
         specComponents := getSpecComponentsAndVersionsMap(componentGroup)
         for _, gclComponent := range componentGroup.Status.GlobalCandidateList </span><span class="cov8" title="1">{
@@ -2823,7 +3015,7 @@ func GetSnapshotComponentsFromGCL(componentGroup *v1beta2.ComponentGroup, log lo
                 // cleaned up GCL by the time snapshot is created
                 specVersions, ok := specComponents[name]
                 if !ok || !slices.Contains(specVersions, version) </span><span class="cov8" title="1">{
-                        log.Info("componentVersion was deleted from spec.Components. Will not add to snapshot", "componentGroup", componentGroup.Name, "component.Name", name, "component.Version", version)
+                        logger.Info("componentVersion was deleted from spec.Components. Will not add to snapshot", "componentGroup", componentGroup.Name, "component.Name", name, "component.Version", version)
                         continue</span>
                 }
 
@@ -2833,27 +3025,32 @@ func GetSnapshotComponentsFromGCL(componentGroup *v1beta2.ComponentGroup, log lo
                 // including a component that is incomplete.
                 <span class="cov8" title="1">if image == "" </span><span class="cov8" title="1">{
                         // skip components that have not been added to GCL yet
-                        log.Info("component cannot be added to snapshot for application due to missing containerImage", "component.Name", gclComponent.Name)
-                        invalidComponents = append(invalidComponents, gclComponent)
+                        logger.Info("component cannot be added to snapshot for application due to missing containerImage", "component.Name", gclComponent.Name)
+                        invalidComponents[gclComponent] = InvalidComponentReason{
+                                ComponentGroup: componentGroup.Name,
+                                Reason:         "missing containerImage",
+                        }
                         continue</span>
                 }
                 <span class="cov8" title="1">err := gitops.ValidateImageDigest(image)
                 if err != nil </span><span class="cov0" title="0">{
-                        log.Error(err, "component cannot be added to snapshot for ComponentGroup due to invalid digest in containerImage", "component.Name", gclComponent.Name)
-                        invalidComponents = append(invalidComponents, gclComponent)
+                        logger.Error(err, "component cannot be added to snapshot for ComponentGroup due to invalid digest in containerImage", "component.Name", gclComponent.Name)
+                        invalidComponents[gclComponent] = InvalidComponentReason{
+                                ComponentGroup: componentGroup.Name,
+                                Reason:         "invalid digest in containerImage",
+                        }
                         continue</span>
                 }
 
                 // Get ComponentSource for the component which is not built in this pipeline
                 <span class="cov8" title="1">componentSource := GetComponentSourceFromGCLComponent(gclComponent)
 
-                snapshotComponents = append(snapshotComponents, applicationapiv1alpha1.SnapshotComponent{
+                snapshotComponents[helpers.GetComponentVersionString(name, version)] = applicationapiv1alpha1.SnapshotComponent{
                         Name:           name,
                         Version:        version,
                         ContainerImage: image,
                         Source:         componentSource,
-                },
-                )</span>
+                }</span>
         }
         <span class="cov8" title="1">return snapshotComponents, invalidComponents</span>
 }
@@ -2861,55 +3058,49 @@ func GetSnapshotComponentsFromGCL(componentGroup *v1beta2.ComponentGroup, log lo
 func getSpecComponentsAndVersionsMap(componentGroup *v1beta2.ComponentGroup) map[string][]string <span class="cov8" title="1">{
         componentVersions := make(map[string][]string)
         for _, component := range componentGroup.Spec.Components </span><span class="cov8" title="1">{
-                componentVersions[component.Name] = append(componentVersions[component.Name], component.ComponentVersion.Name)
-        }</span>
+                if strings.EqualFold(component.Kind, "componentGroup") </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov8" title="1">componentVersions[component.Name] = append(componentVersions[component.Name], component.ComponentVersion.Name)</span>
+        }
         <span class="cov8" title="1">return componentVersions</span>
 }
 
 // Adds the updated Component to the list of snapshotComponents that will be added to the snapshot.  If a SnapshotComponent with
 // a matching name and version already exists in the snapshotComponents list then it will be replaced with the updated component.
 // Otherwise the updated component will be appended to the list.
-func upsertNewComponentImage(snapshotComponents *[]applicationapiv1alpha1.SnapshotComponent, invalidComponents *[]v1beta2.ComponentState, updatedComponent applicationapiv1alpha1.SnapshotComponent, log logr.Logger) <span class="cov8" title="1">{
-        for i, snapshotComponent := range *snapshotComponents </span><span class="cov8" title="1">{
-                if snapshotComponent.Name == updatedComponent.Name </span><span class="cov8" title="1">{
-                        if snapshotComponent.Version == "" || snapshotComponent.Version == updatedComponent.Version </span><span class="cov8" title="1">{
-                                // TODO: can this be removed?
-                                err := gitops.ValidateImageDigest(updatedComponent.ContainerImage)
-                                if err != nil </span><span class="cov0" title="0">{
-                                        log.Error(err, "component cannot be added to snapshot for ComponentGroup due to invalid digest in containerImage", "component.Name", updatedComponent.Name)
-                                        *invalidComponents = append(*invalidComponents, v1beta2.ComponentState{
-                                                Name:    updatedComponent.Name,
-                                                Version: updatedComponent.Version,
-                                        })
-                                        continue</span>
-                                }
-
-                                // replace snapshotComponent
-                                <span class="cov8" title="1">*snapshotComponents = slices.Replace(*snapshotComponents, i, i+1, updatedComponent)
-                                //(*snapshotComponents)[i] = updatedComponent
-                                return</span>
+func upsertNewComponentImage(snapshotComponents map[string]applicationapiv1alpha1.SnapshotComponent, invalidComponents map[v1beta2.ComponentState]InvalidComponentReason, updatedComponent applicationapiv1alpha1.SnapshotComponent, logger helpers.IntegrationLogger) <span class="cov8" title="1">{
+        // Before we do anything else, try to validate the digest
+        err := gitops.ValidateImageDigest(updatedComponent.ContainerImage)
+        if err != nil </span><span class="cov0" title="0">{ // the updated component is invalid
+                logger.Error(err, "component cannot be added to snapshot for ComponentGroup due to invalid digest in containerImage", "component.Name", updatedComponent.Name)
+                invalidComponents[v1beta2.ComponentState{
+                        Name:    updatedComponent.Name,
+                        Version: updatedComponent.Version,
+                }] = InvalidComponentReason{
+                        ComponentGroup: "",
+                        Reason:         "invalid digest in containerImage",
+                }
+        }</span> else<span class="cov8" title="1"> { // the updated component is valid
+                // add to snapshotComponents
+                snapshotComponents[helpers.GetComponentVersionString(updatedComponent.Name, updatedComponent.Version)] = updatedComponent
+                // remove from invalidComponents if it was there (it may have been added for a missing containerImage earlier)
+                maps.DeleteFunc(invalidComponents, func(K v1beta2.ComponentState, V InvalidComponentReason) bool </span><span class="cov8" title="1">{
+                        if K.Name == updatedComponent.Name </span><span class="cov8" title="1">{
+                                if K.Version == "" || K.Version == updatedComponent.Version </span><span class="cov8" title="1">{
+                                        return true
+                                }</span>
                         }
-                }
+                        <span class="cov8" title="1">return false</span>
+                })
         }
+}
 
-        // if the component is replacing an invalid component, then we don't care that the old component was invalid
-        <span class="cov8" title="1">for i, invalidComponent := range *invalidComponents </span><span class="cov8" title="1">{
-                if invalidComponent.Name == updatedComponent.Name </span><span class="cov8" title="1">{
-                        if invalidComponent.Version == "" || invalidComponent.Version == updatedComponent.Version </span><span class="cov8" title="1">{
-                                // remove component from invalid list
-                                *snapshotComponents = append(*snapshotComponents, updatedComponent)
-                                // We don't care about the loop skipping problem here because we always exit
-                                // immediately after deleting the component from the list
-                                *invalidComponents = slices.Delete(*invalidComponents, i, i+1)
-
-                                return
-                        }</span>
-                }
-        }
-
-        // If the component is not in the list this is probably because the component has not been added to the GCL yet
-        // In this case we should append the component
-        <span class="cov0" title="0">*snapshotComponents = append(*snapshotComponents, updatedComponent)</span>
+// Accepts a dict of SnapshotComponents representing the current GCL. Updates multiple new SnapshotComponents whose ComponentVersion matches existing ComponentVersions. If no matches exist, the new SnapshotComponents are simply added to the dict
+func upsertMultipleComponentImages(snapshotComponents map[string]applicationapiv1alpha1.SnapshotComponent, invalidComponents map[v1beta2.ComponentState]InvalidComponentReason, componentsToInsert []applicationapiv1alpha1.SnapshotComponent, logger helpers.IntegrationLogger) <span class="cov8" title="1">{
+        for _, component := range componentsToInsert </span><span class="cov8" title="1">{
+                upsertNewComponentImage(snapshotComponents, invalidComponents, component, logger)
+        }</span>
 }
 
 // NewSnapshot creates a new snapshot based on the supplied ComponentGroup and components
@@ -2944,14 +3135,14 @@ func GetComponentSourceFromGCLComponent(gclComponent v1beta2.ComponentState) app
         return componentSource
 }</span>
 
-func getSnapshotComponentFromBuildPLR(pipelineRun *tektonv1.PipelineRun, componentName string, log logr.Logger) (applicationapiv1alpha1.SnapshotComponent, error) <span class="cov8" title="1">{
+func GetSnapshotComponentFromBuildPLR(pipelineRun *tektonv1.PipelineRun, componentName string, logger helpers.IntegrationLogger) (applicationapiv1alpha1.SnapshotComponent, error) <span class="cov8" title="1">{
         containerImage, err := tekton.GetImagePullSpecFromPipelineRun(pipelineRun)
         if err != nil </span><span class="cov8" title="1">{
                 return applicationapiv1alpha1.SnapshotComponent{}, err
         }</span>
         <span class="cov8" title="1">err = gitops.ValidateImageDigest(containerImage)
         if err != nil </span><span class="cov0" title="0">{
-                log.Error(err, "component cannot be added to snapshot for ComponentGroup due to invalid digest in containerImage", "component.Name", componentName)
+                logger.Error(err, "component cannot be added to snapshot for ComponentGroup due to invalid digest in containerImage", "component.Name", componentName)
                 return applicationapiv1alpha1.SnapshotComponent{}, errors.Join(helpers.NewInvalidImageDigestError(componentName, containerImage), err)
         }</span>
         <span class="cov8" title="1">componentSource, err := tekton.GetComponentSourceFromPipelineRun(pipelineRun)
@@ -2979,7 +3170,7 @@ func PrepareTempGroupSnapshot(componentGroup *v1beta2.ComponentGroup, snapshot *
 }</span>
 </pre>
 		
-		<pre class="file" id="file12" style="display: none">/*
+		<pre class="file" id="file13" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3145,22 +3336,24 @@ func UpdateGCLForOverrideSnapshot(ctx context.Context, adapterClient client.Clie
         <span class="cov8" title="1">return err</span>
 }
 
-func FetchSnapshotComponentFromGCL(componentName string, snapshotComponentsFromGCL []applicationapiv1alpha1.SnapshotComponent, invalidComponents []v1beta2.ComponentState) (*applicationapiv1alpha1.SnapshotComponent, error) <span class="cov0" title="0">{
-        for _, snapshotComponentFromGCL := range snapshotComponentsFromGCL </span><span class="cov0" title="0">{
-                if snapshotComponentFromGCL.Name == componentName </span><span class="cov0" title="0">{
-                        return &amp;snapshotComponentFromGCL, nil
-                }</span>
-        }
-        <span class="cov0" title="0">for _, invalidComponent := range invalidComponents </span><span class="cov0" title="0">{
+func FetchSnapshotComponentFromGCL(componentName, componentVersion string, snapshotComponentsFromGCL map[string]applicationapiv1alpha1.SnapshotComponent, invalidComponents map[v1beta2.ComponentState]InvalidComponentReason) (*applicationapiv1alpha1.SnapshotComponent, error) <span class="cov0" title="0">{
+        componentVersionString := helpers.GetComponentVersionString(componentName, componentVersion)
+        if component, ok := snapshotComponentsFromGCL[componentVersionString]; ok </span><span class="cov0" title="0">{
+                return &amp;component, nil
+        }</span>
+
+        <span class="cov0" title="0">for invalidComponent, reason := range invalidComponents </span><span class="cov0" title="0">{
                 if invalidComponent.Name == componentName </span><span class="cov0" title="0">{
-                        return nil, fmt.Errorf("component cannot be added to snapshot due to invalid digest in containerImage")
-                }</span>
+                        if invalidComponent.Version == "" || invalidComponent.Version == componentVersion </span><span class="cov0" title="0">{
+                                return nil, fmt.Errorf("component cannot be added to snapshot due to %s", reason.Reason)
+                        }</span>
+                }
         }
         <span class="cov0" title="0">return nil, nil</span>
 }
 </pre>
 		
-		<pre class="file" id="file13" style="display: none">/*
+		<pre class="file" id="file14" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3190,6 +3383,11 @@ import (
         tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
 
+type InvalidComponentReason struct {
+        ComponentGroup string
+        Reason         string
+}
+
 // generateRandomSuffix generates a random 2-character alphanumeric suffix for collision handling
 func generateRandomSuffix() (string, error) <span class="cov8" title="1">{
         const charset = "0123456789abcdefghijklmnopqrstuvwxyz"
@@ -3205,9 +3403,9 @@ func generateRandomSuffix() (string, error) <span class="cov8" title="1">{
         <span class="cov8" title="1">return string(suffix), nil</span>
 }
 
-func joinInvalidComponentNamesAndVersions(invalidComponents []v1beta2.ComponentState) string <span class="cov8" title="1">{
+func joinInvalidComponentNamesAndVersions(invalidComponents map[v1beta2.ComponentState]InvalidComponentReason) string <span class="cov8" title="1">{
         var sb strings.Builder
-        for _, component := range invalidComponents </span><span class="cov8" title="1">{
+        for component := range invalidComponents </span><span class="cov8" title="1">{
                 sb.WriteString(helpers.GetComponentVersionLogString(component.Name, component.Version))
         }</span>
         <span class="cov8" title="1">return sb.String()</span>
@@ -3225,14 +3423,14 @@ func snapshotComponentToComponentState(snapshotComponent applicationapiv1alpha1.
 }</span>
 
 func getPipelineRunStartTimeMillis(pipelineRun *tektonv1.PipelineRun) int64 <span class="cov8" title="1">{
-        if pipelineRun.Status.StartTime != nil </span><span class="cov8" title="1">{
+        if pipelineRun != nil &amp;&amp; pipelineRun.Status.StartTime != nil </span><span class="cov8" title="1">{
                 return pipelineRun.Status.StartTime.UnixMilli()
         }</span>
         <span class="cov8" title="1">return time.Now().UnixMilli()</span>
 }
 </pre>
 		
-		<pre class="file" id="file14" style="display: none">/*
+		<pre class="file" id="file15" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3298,7 +3496,7 @@ func ValidateOverrideSnapshotComponents(ctx context.Context, snapshot *applicati
 }
 </pre>
 		
-		<pre class="file" id="file15" style="display: none">/*
+		<pre class="file" id="file16" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3638,7 +3836,7 @@ func FormatTaskLogURL(taskRun *helpers.TaskRun, pipelinerun string, namespace st
 }
 </pre>
 		
-		<pre class="file" id="file16" style="display: none">/*
+		<pre class="file" id="file17" style="display: none">/*
 Copyright 2024 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -3780,7 +3978,7 @@ func GetPACGitProviderToken(ctx context.Context, k8sClient client.Client, snapsh
 }
 </pre>
 		
-		<pre class="file" id="file17" style="display: none">/*
+		<pre class="file" id="file18" style="display: none">/*
 Copyright 2026 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4239,7 +4437,7 @@ func GenerateForgejoCommitState(state intgteststat.IntegrationTestStatus, option
 }
 </pre>
 		
-		<pre class="file" id="file18" style="display: none">/*
+		<pre class="file" id="file19" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4959,7 +5157,7 @@ func (r *GitHubReporter) ReturnCodeIsUnrecoverable(statusCode int) bool <span cl
 }</span>
 </pre>
 		
-		<pre class="file" id="file19" style="display: none">/*
+		<pre class="file" id="file20" style="display: none">/*
 Copyright 2024 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -5521,7 +5719,7 @@ func GenerateGitlabCommitState(state intgteststat.IntegrationTestStatus, optiona
 }
 </pre>
 		
-		<pre class="file" id="file20" style="display: none">/*
+		<pre class="file" id="file21" style="display: none">/*
 Copyright 2022 Red Hat Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
